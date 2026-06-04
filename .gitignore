@@ -1,2 +1,60 @@
+# Ignore skill folders
 skills/
+
+# Ignore environment file
 .env
+
+# Ignore Node.js modules
+node_modules/
+
+# Ignore build output
+dist/
+build/
+
+# Ignore lock files
+package-lock.json
+yarn.lock
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.settings/
+
+# Ignore system files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Ignore logs and diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Ignore testing/coverage
+coverage/
+.nyc_output/
+
+# Ignore tool/linter caches
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Ignore Python virtual environments and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
