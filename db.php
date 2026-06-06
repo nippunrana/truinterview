@@ -192,6 +192,51 @@ function getTranscripts($sessionId) {
     return $stmt->fetchAll();
 }
 
+function getSessionByConversationId($convId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM sessions WHERE trugen_conversation_id = :convId");
+    $stmt->execute(['convId' => $convId]);
+    return $stmt->fetch();
+}
+
+function getLatestStartedSession() {
+    $db = getDB();
+    $stmt = $db->query("SELECT * FROM sessions WHERE current_status = 'STARTED' AND trugen_conversation_id IS NULL ORDER BY started_at DESC LIMIT 1");
+    return $stmt->fetch();
+}
+
+function getNextUnansweredQuestion($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM mcq_questions WHERE id NOT IN (SELECT question_id FROM candidate_responses WHERE session_id = :session_id) ORDER BY id ASC LIMIT 1");
+    $stmt->execute(['session_id' => $sessionId]);
+    return $stmt->fetch();
+}
+
+function saveCandidateResponse($sessionId, $questionId, $selectedOption, $isCorrect) {
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO candidate_responses (session_id, question_id, selected_option, is_correct) VALUES (:session_id, :question_id, :selected_option, :is_correct)");
+    return $stmt->execute([
+        'session_id' => $sessionId,
+        'question_id' => $questionId,
+        'selected_option' => $selectedOption,
+        'is_correct' => $isCorrect ? 1 : 0
+    ]);
+}
+
+function getMCQQuestionById($id) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM mcq_questions WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    return $stmt->fetch();
+}
+
+function getCandidateResponses($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT cr.*, mq.topic, mq.question, mq.option_a, mq.option_b, mq.option_c, mq.option_d, mq.correct_option FROM candidate_responses cr JOIN mcq_questions mq ON cr.question_id = mq.id WHERE cr.session_id = :session_id ORDER BY cr.id ASC");
+    $stmt->execute(['session_id' => $sessionId]);
+    return $stmt->fetchAll();
+}
+
 // Auto-init and seed tables on load
 try {
     initSchema();

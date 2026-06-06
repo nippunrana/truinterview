@@ -15,6 +15,11 @@ if (!empty($sessionId)) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TruInterview - AI Multimodal Technical Interviewer</title>
   <link rel="stylesheet" href="style.css">
+  <?php if ($session && $session['current_status'] === 'COMPLETED'): ?>
+    <style>
+      .workspace-grid { display: none !important; }
+    </style>
+  <?php endif; ?>
   <script>
     // Inline script to prevent theme flash before body render
     (function() {
@@ -98,6 +103,7 @@ if (!empty($sessionId)) {
           <h3 class="panel-title">AI Interviewer</h3>
         </div>
         <div class="agent-video-container" id="agent-video-container">
+          <video id="candidate-video" autoplay playsinline muted style="position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px; border-radius: var(--radius-inner); border: 2px solid var(--color-border); z-index: 5; object-fit: cover; display: none; background: #000;"></video>
           <div class="agent-video-placeholder">
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
             <p>Agent Video Connection Pending</p>
@@ -115,6 +121,9 @@ if (!empty($sessionId)) {
           </button>
           <button id="camera-toggle" class="btn-control" onclick="toggleMedia('camera')" title="Toggle Camera">
             <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+          </button>
+          <button id="end-interview-btn" class="btn-control danger" onclick="transitionToCompleted()" title="End Interview">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
           </button>
         </div>
       </div>
@@ -139,7 +148,7 @@ if (!empty($sessionId)) {
                   <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
                   <span>Share Screen</span>
                 </button>
-                <button id="submit-screenshot-btn" class="btn-action" disabled>
+                <button id="submit-screenshot-btn" class="btn-action" onclick="submitAnswer()" disabled>
                   <span>Submit Code / Answer</span>
                 </button>
               </div>
@@ -171,164 +180,11 @@ if (!empty($sessionId)) {
 
   <script>
     const sessionActive = <?php echo $session ? 'true' : 'false'; ?>;
-    let sessionId = '<?php echo $sessionId; ?>';
-    let startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
-    let timerInterval = null;
-    let pollInterval = null;
-
-    // Local settings object
-    const mediaState = {
-      mic: false,
-      camera: false,
-      screen: false
-    };
-
-    function initVisualizer() {
-      const container = document.getElementById('visualizer-container');
-      if (!container) return;
-      container.innerHTML = '';
-      for (let i = 0; i < 40; i++) {
-        const bar = document.createElement('div');
-        bar.className = 'visualizer-bar';
-        container.appendChild(bar);
-      }
-    }
-
-    function animateVisualizer() {
-      if (!mediaState.mic) {
-        document.querySelectorAll('.visualizer-bar').forEach(bar => {
-          bar.style.height = '15px';
-        });
-        return;
-      }
-      document.querySelectorAll('.visualizer-bar').forEach(bar => {
-        // Mock animation bars
-        const height = Math.floor(Math.random() * 30) + 5;
-        bar.style.height = height + 'px';
-      });
-    }
-
-    function toggleTheme() {
-      const currentTheme = document.documentElement.className === 'theme-light' ? 'light' : 'dark';
-      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-      document.documentElement.className = 'theme-' + newTheme;
-      document.body.className = 'theme-' + newTheme;
-      localStorage.setItem('theme', newTheme);
-      updateThemeToggleButton(newTheme);
-    }
-
-    function handleRegister(event) {
-      event.preventDefault();
-      const name = document.getElementById('candidate_name').value;
-      const email = document.getElementById('candidate_email').value;
-
-      fetch('api.php?action=start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          sessionId = data.session_id;
-          document.getElementById('registration-modal').style.display = 'none';
-          location.reload(); // Reload to start sessions and timers correctly
-        } else {
-          alert('Error: ' + data.message);
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        alert('Failed to connect to server API.');
-      });
-    }
-
-    function toggleMedia(type) {
-      const btn = document.getElementById(type + '-toggle');
-      if (!btn) return;
-      mediaState[type] = !mediaState[type];
-      if (mediaState[type]) {
-        btn.classList.add('active');
-        btn.classList.remove('disabled');
-      } else {
-        btn.classList.remove('active');
-        btn.classList.remove('disabled');
-      }
-    }
-
-    function toggleScreenShare() {
-      const btn = document.getElementById('screen-share-btn');
-      const submitBtn = document.getElementById('submit-screenshot-btn');
-      mediaState.screen = !mediaState.screen;
-      if (mediaState.screen) {
-        btn.classList.add('active');
-        submitBtn.removeAttribute('disabled');
-      } else {
-        btn.classList.remove('active');
-        submitBtn.setAttribute('disabled', 'true');
-      }
-    }
-
-    function updateTimer() {
-      if (!startedTime) return;
-      const started = new Date(startedTime).getTime();
-      const now = new Date().getTime();
-      const diff = Math.max(0, Math.floor((now - started) / 1000));
-      
-      const mins = String(Math.floor(diff / 60)).padStart(2, '0');
-      const secs = String(diff % 60).padStart(2, '0');
-      document.getElementById('timer-display').innerText = `${mins}:${secs}`;
-    }
-
-    function pollStatus() {
-      if (!sessionId) return;
-      fetch(`api.php?action=status&session_id=${sessionId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Update status indicator
-          const statusText = document.getElementById('session-status-text');
-          statusText.innerText = data.session.current_status;
-          
-          // Render Transcripts
-          const transcriptsContainer = document.getElementById('transcripts-feed');
-          transcriptsContainer.innerHTML = '';
-          
-          data.transcripts.forEach(msg => {
-            const row = document.createElement('div');
-            let typeClass = 'system';
-            if (msg.speaker === 'USER') typeClass = 'candidate';
-            if (msg.speaker === 'AGENT') typeClass = 'agent';
-            
-            row.className = `transcript-message ${typeClass}`;
-            row.innerHTML = `
-              <span class="message-sender">${msg.speaker}</span>
-              <span class="message-text">${msg.message}</span>
-            `;
-            transcriptsContainer.appendChild(row);
-          });
-          
-          // Scroll transcripts feed to bottom
-          transcriptsContainer.scrollTop = transcriptsContainer.scrollHeight;
-        }
-      })
-      .catch(err => console.error('Error polling status:', err));
-    }
-
-    // Initialize scripts on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      initVisualizer();
-      setInterval(animateVisualizer, 100);
-
-      if (sessionActive) {
-        updateTimer();
-        timerInterval = setInterval(updateTimer, 1000);
-        pollStatus();
-        pollInterval = setInterval(pollStatus, 3000); // Poll every 3s
-      }
-    });
+    const sessionId = '<?php echo $sessionId; ?>';
+    const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
+    const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
+    const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
   </script>
+  <script src="app.js" defer></script>
 </body>
 </html>
