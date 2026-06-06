@@ -124,6 +124,16 @@ if (!empty($sessionId)) {
           <h3 class="panel-title">AI Interviewer</h3>
         </div>
         <div class="agent-video-container" id="agent-video-container">
+          <?php if ($session && $session['current_status'] !== 'COMPLETED'): ?>
+            <?php $trugenAgentId = getenv('TRUGEN_AGENT_ID'); ?>
+            <?php if (!empty($trugenAgentId)): ?>
+              <iframe 
+                src="https://embed.trugen.ai/agent/<?php echo urlencode($trugenAgentId); ?>" 
+                allow="camera; microphone; display-capture" 
+                style="width: 100%; height: 100%; border: none; z-index: 4; position: absolute; top: 0; left: 0; background: #000;">
+              </iframe>
+            <?php endif; ?>
+          <?php endif; ?>
           <video id="candidate-video" autoplay playsinline muted style="position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px; border-radius: var(--radius-inner); border: 2px solid var(--color-border); z-index: 5; object-fit: cover; display: none; background: #000;"></video>
           <div class="agent-video-placeholder">
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
