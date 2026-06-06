@@ -128,7 +128,7 @@ if (!empty($sessionId)) {
             <?php $trugenAgentId = getenv('TRUGEN_AGENT_ID'); ?>
             <?php if (!empty($trugenAgentId)): ?>
               <iframe 
-                src="https://embed.trugen.ai/agent/<?php echo urlencode($trugenAgentId); ?>" 
+                src="https://app.trugen.ai/agent/<?php echo urlencode($trugenAgentId); ?>" 
                 allow="camera; microphone; display-capture" 
                 style="width: 100%; height: 100%; border: none; z-index: 4; position: absolute; top: 0; left: 0; background: #000;">
               </iframe>
