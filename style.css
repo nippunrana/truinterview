@@ -472,6 +472,18 @@ header {
   border-color: var(--color-accent);
 }
 
+.btn-action.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-action.btn-danger:hover {
+  background: hsl(350, 80%, 48%);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
 /* MCQ Assessment Section */
 .mcq-container {
   flex: 1;

@@ -90,6 +90,17 @@ if (!empty($sessionId)) {
           <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           <span id="timer-display">00:00</span>
         </div>
+        <!-- End Interview Button (shown during active interview) -->
+        <button id="end-interview-header-btn" class="btn-action btn-danger" onclick="transitionToCompleted()" title="End Interview" style="display: <?php echo ($session && $session['current_status'] !== 'COMPLETED') ? 'flex' : 'none'; ?>;">
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
+          <span>End Interview</span>
+        </button>
+
+        <!-- Start New Interview Button (shown when interview is completed) -->
+        <button id="new-interview-header-btn" class="btn-action" onclick="startNewInterview()" title="Start New Interview" style="display: <?php echo ($session && $session['current_status'] === 'COMPLETED') ? 'flex' : 'none'; ?>;">
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+          <span>New Interview</span>
+        </button>
         <button id="theme-toggle-btn" class="btn-theme-toggle" onclick="toggleTheme()">
           <!-- SVG injected by JS -->
         </button>

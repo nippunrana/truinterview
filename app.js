@@ -671,6 +671,10 @@ async function transitionToCompleted(immediate = false) {
   stopScreenShare();
   
   // Reset buttons status
+  const headerBtn = document.getElementById('end-interview-header-btn');
+  if (headerBtn) headerBtn.style.display = 'none';
+  const newBtn = document.getElementById('new-interview-header-btn');
+  if (newBtn) newBtn.style.display = 'flex';
   const micBtn = document.getElementById('mic-toggle');
   if (micBtn) micBtn.className = 'btn-control disabled';
   const camBtn = document.getElementById('camera-toggle');
@@ -719,6 +723,11 @@ async function transitionToCompleted(immediate = false) {
     if (analyzingDiv) analyzingDiv.remove();
     alert('Failed to generate feedback report. Refresh page to try again.');
   }
+}
+
+function startNewInterview() {
+  document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  location.href = 'index.php';
 }
 
 function renderDashboard(data) {
