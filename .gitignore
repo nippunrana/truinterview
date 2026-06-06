@@ -1,5 +1,6 @@
 # Ignore skill folders
 skills/
+plans/
 
 # Ignore environment file
 .env
