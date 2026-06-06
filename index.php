@@ -2,6 +2,16 @@
 // index.php - Main Frontend Panel Shell
 require_once __DIR__ . '/db.php';
 
+// Enforce HTTPS in non-local environments
+$host = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
+$isLocal = in_array($host, ['localhost', '127.0.0.1']) || preg_match('/^192\.168\./', $host);
+if (!$isLocal && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
+    $redirect = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    header('HTTP/1.1 301 Moved Permanently');
+    header('Location: ' . $redirect);
+    exit();
+}
+
 $sessionId = $_COOKIE['session_id'] ?? '';
 $session = null;
 if (!empty($sessionId)) {
