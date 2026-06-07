@@ -54,13 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Hero Block (Left 50%) -->
     <div class="auth-hero-side">
       <div class="auth-hero-content">
-        <div id="hero-text-candidate" class="hero-text-block">
-          <h1 class="hero-text-title">Supercharge your interview prep with real-time AI.</h1>
-          <p class="hero-text-desc">Practice realistic coding and conversational rounds, track your scores, and land your dream job with confidence.</p>
-        </div>
-        <div id="hero-text-recruiter" class="hero-text-block" style="display: none;">
-          <h1 class="hero-text-title">Identify top technical talent in minutes, not hours.</h1>
-          <p class="hero-text-desc">Create custom assessment templates, generate candidate-specific invites, and review depth feedback screens powered by Gemini.</p>
+        <div class="hero-text-block">
+          <h1 class="hero-text-title">Empowering technical interviews with real-time AI.</h1>
+          <p class="hero-text-desc">Whether you are a recruiter assessing top talent or a candidate preparing for your next role, TruInterview provides realistic rounds and deep feedback powered by Gemini.</p>
         </div>
       </div>
     </div>
@@ -86,12 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
-        <!-- Role selector toggle (for visual display of the relatable hero text on the left) -->
-        <div class="role-selector-container">
-          <button type="button" id="role-candidate-btn" class="role-btn active" onclick="setRole('candidate')">Candidate</button>
-          <button type="button" id="role-recruiter-btn" class="role-btn" onclick="setRole('recruiter')">Recruiter</button>
-        </div>
-
         <form method="POST" action="login.php">
           <div class="form-group">
             <label for="email">Email Address</label>
@@ -115,25 +105,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   </div>
 
-  <script>
-    function setRole(role) {
-      const candidateBtn = document.getElementById('role-candidate-btn');
-      const recruiterBtn = document.getElementById('role-recruiter-btn');
-      const textCandidate = document.getElementById('hero-text-candidate');
-      const textRecruiter = document.getElementById('hero-text-recruiter');
-      
-      if (role === 'candidate') {
-        candidateBtn.classList.add('active');
-        recruiterBtn.classList.remove('active');
-        textCandidate.style.display = 'block';
-        textRecruiter.style.display = 'none';
-      } else {
-        candidateBtn.classList.remove('active');
-        recruiterBtn.classList.add('active');
-        textCandidate.style.display = 'none';
-        textRecruiter.style.display = 'block';
-      }
-    }
-  </script>
 </body>
 </html>
