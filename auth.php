@@ -112,7 +112,7 @@ function getCurrentUser() {
  */
 function requireAuth($allowedRoles = []) {
     if (!isLoggedIn()) {
-        header('Location: /login.php');
+        header('Location: /truinterview/login.php');
         exit();
     }
 
@@ -120,9 +120,9 @@ function requireAuth($allowedRoles = []) {
     if (!empty($allowedRoles) && !in_array($user['role'], $allowedRoles)) {
         // Forbidden or redirect to correct role dashboard
         if ($user['role'] === 'candidate') {
-            header('Location: /candidate/index.php');
+            header('Location: /truinterview/candidate/index.php');
         } else {
-            header('Location: /recruiter/index.php');
+            header('Location: /truinterview/recruiter/index.php');
         }
         exit();
     }

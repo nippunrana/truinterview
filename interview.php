@@ -3,6 +3,9 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
+// Enforce login for all users visiting this page
+requireAuth();
+
 // Enforce HTTPS in non-local environments
 $host = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
 $isLocal = in_array($host, ['localhost', '127.0.0.1']) || preg_match('/^192\.168\./', $host);
@@ -68,7 +71,7 @@ if (!empty($inviteCode)) {
   <script>
     // Inline script to prevent theme flash before body render
     (function() {
-      const savedTheme = localStorage.getItem('theme') || 'dark';
+      const savedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.className = 'theme-' + savedTheme;
       // Also apply directly to body when loaded
       window.addEventListener('DOMContentLoaded', () => {
@@ -92,7 +95,7 @@ if (!empty($inviteCode)) {
     }
   </script>
 </head>
-<body class="theme-dark">
+<body class="theme-light">
 
   <?php if (!$session): ?>
     <!-- Onboarding Page (No session active) -->
