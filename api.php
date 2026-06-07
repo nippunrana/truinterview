@@ -6,6 +6,7 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST");
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -227,18 +228,51 @@ try {
         // Handle both standard form submit and JSON payload
         $name = $_POST['name'] ?? '';
         $email = $_POST['email'] ?? '';
+        $inviteCode = $_POST['invite_code'] ?? '';
         
         if (empty($name) || empty($email)) {
             $input = json_decode(file_get_contents('php://input'), true);
             $name = $input['name'] ?? '';
             $email = $input['email'] ?? '';
+            $inviteCode = $input['invite_code'] ?? '';
         }
 
         if (empty($name) || empty($email)) {
             throw new Exception("Candidate name and email are required");
         }
+
+        // Get currently logged-in user if available
+        $userId = null;
+        $currentUser = getCurrentUser();
+        if ($currentUser && $currentUser['role'] === 'candidate') {
+            $userId = $currentUser['id'];
+        }
+
+        $linkId = null;
+        $templateId = null;
+        $sessionType = 'practice';
+
+        if (!empty($inviteCode)) {
+            $link = getInterviewLinkByCode($inviteCode);
+            if (!$link) {
+                throw new Exception("Invalid or inactive invitation code.");
+            }
+            if ($link['expires_at'] && strtotime($link['expires_at']) < time()) {
+                throw new Exception("This invitation code has expired.");
+            }
+            if ($link['attempts_used'] >= $link['max_attempts']) {
+                throw new Exception("This invitation code has already been used maximum allowed times.");
+            }
+            
+            $linkId = $link['id'];
+            $templateId = $link['template_id'];
+            $sessionType = 'assessment';
+
+            // Increment attempts
+            incrementLinkAttempts($linkId);
+        }
         
-        $sessionId = createSession($name, $email);
+        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType);
         
         // Start session and set client cookie
         if (session_status() === PHP_SESSION_NONE) {
@@ -248,7 +282,7 @@ try {
         setcookie("session_id", $sessionId, time() + 86400, "/");
 
         // Write system welcome message to transcripts log
-        logTranscript($sessionId, 'SYSTEM', "Session started for candidate: $name");
+        logTranscript($sessionId, 'SYSTEM', "Session started for candidate: $name (" . ($sessionType === 'practice' ? 'Practice' : 'Assessment') . ")");
 
         echo json_encode([
             "status" => "success",

@@ -1,6 +1,7 @@
 <?php
-// index.php - Main Frontend Panel Shell
+// interview.php - Main Frontend Panel Shell
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 // Enforce HTTPS in non-local environments
 $host = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
@@ -16,6 +17,40 @@ $sessionId = $_COOKIE['session_id'] ?? '';
 $session = null;
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
+}
+
+// Handle invite code parameter
+$inviteCode = $_GET['code'] ?? '';
+$prefName = '';
+$prefEmail = '';
+
+// Check if candidate is logged in to prefill name/email
+$currentUser = getCurrentUser();
+if ($currentUser && $currentUser['role'] === 'candidate') {
+    $prefName = $currentUser['full_name'];
+    $prefEmail = $currentUser['email'];
+}
+
+// If code is supplied, fetch code constraints
+$inviteError = '';
+$codeDetails = null;
+if (!empty($inviteCode)) {
+    $codeDetails = getInterviewLinkByCode($inviteCode);
+    if (!$codeDetails) {
+        $inviteError = "Invalid or inactive invitation code.";
+    } elseif ($codeDetails['expires_at'] && strtotime($codeDetails['expires_at']) < time()) {
+        $inviteError = "This invitation code has expired.";
+    } elseif ($codeDetails['attempts_used'] >= $codeDetails['max_attempts']) {
+        $inviteError = "This invitation code has already been used.";
+    } else {
+        // Prefill candidate name/email if specified in invite link
+        if ($codeDetails['candidate_name']) {
+            $prefName = $codeDetails['candidate_name'];
+        }
+        if ($codeDetails['candidate_email']) {
+            $prefEmail = $codeDetails['candidate_email'];
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -68,27 +103,41 @@ if (!empty($sessionId)) {
             <svg style="width: 32px; height: 32px; color: var(--color-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             <span class="brand-logo" style="font-size: var(--text-2xl); font-family: 'Outfit', sans-serif; font-weight: 600; background: var(--color-accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">TruInterview</span>
           </div>
-          <h2>Configure Your Session</h2>
-          <p>Enter your details below to begin your interactive mock technical interview assessment.</p>
+          <?php if (!empty($inviteCode) && empty($inviteError)): ?>
+            <h2>Company Assessment</h2>
+            <p style="color: var(--color-accent); font-weight: 600;">You are launching an assessment for: <?php echo htmlspecialchars($codeDetails['template_title'] ?? 'Technical Assessment'); ?></p>
+          <?php else: ?>
+            <h2>Configure Your Session</h2>
+            <p>Enter your details below to begin your interactive mock technical interview assessment.</p>
+          <?php endif; ?>
         </div>
+
+        <?php if (!empty($inviteError)): ?>
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 16px; text-align: center;">
+            <?php echo htmlspecialchars($inviteError); ?>
+          </div>
+        <?php endif; ?>
+
         <form id="registration-form" onsubmit="handleRegister(event)">
+          <input type="hidden" id="invite_code" value="<?php echo htmlspecialchars($inviteCode); ?>">
+          
           <div class="form-group" style="margin-bottom: var(--space-4);">
             <label for="candidate_name">Full Name</label>
-            <input type="text" id="candidate_name" class="form-input" placeholder="e.g. John Doe" required autocomplete="name">
+            <input type="text" id="candidate_name" class="form-input" placeholder="e.g. John Doe" required autocomplete="name" value="<?php echo htmlspecialchars($prefName); ?>" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
           </div>
           <div class="form-group" style="margin-bottom: var(--space-6);">
             <label for="candidate_email">Email Address</label>
-            <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email">
+            <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email" value="<?php echo htmlspecialchars($prefEmail); ?>" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
           </div>
-          <button type="submit" class="btn-action" style="width: 100%;">
-            <span>Start Practice Run</span>
+          <button type="submit" class="btn-action" style="width: 100%;" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
+            <span>Start Assessment</span>
             <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
           </button>
         </form>
         <div class="onboarding-footer" style="text-align: center; margin-top: var(--space-4);">
-          <a href="index.php" class="back-link">
+          <a href="<?php echo isLoggedIn() ? 'candidate/index.php' : 'index.php'; ?>" class="back-link">
             <svg style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            Back to Landing Page
+            <?php echo isLoggedIn() ? 'Back to Dashboard' : 'Back to Landing Page'; ?>
           </a>
         </div>
       </div>

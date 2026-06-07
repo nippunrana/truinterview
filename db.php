@@ -67,6 +67,71 @@ function getDB() {
 function initSchema() {
     $db = getDB();
     
+    // Create users table
+    $db->exec("CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL,
+        full_name VARCHAR(150) NOT NULL,
+        avatar_url VARCHAR(500),
+        is_verified BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        last_login_at TIMESTAMP WITH TIME ZONE
+    )");
+
+    // Create companies table
+    $db->exec("CREATE TABLE IF NOT EXISTS companies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(200) NOT NULL,
+        domain VARCHAR(200),
+        logo_url VARCHAR(500),
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Create company_members table
+    $db->exec("CREATE TABLE IF NOT EXISTS company_members (
+        id SERIAL PRIMARY KEY,
+        company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) DEFAULT 'admin',
+        joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Create interview_templates table
+    $db->exec("CREATE TABLE IF NOT EXISTS interview_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        job_role VARCHAR(150),
+        topics JSONB DEFAULT '[]',
+        difficulty VARCHAR(20) DEFAULT 'medium',
+        duration_minutes INTEGER DEFAULT 30,
+        custom_system_prompt TEXT,
+        mcq_enabled BOOLEAN DEFAULT TRUE,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Create interview_links table
+    $db->exec("CREATE TABLE IF NOT EXISTS interview_links (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        template_id UUID REFERENCES interview_templates(id) ON DELETE CASCADE,
+        company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        code VARCHAR(12) UNIQUE NOT NULL,
+        candidate_email VARCHAR(255),
+        candidate_name VARCHAR(150),
+        max_attempts INTEGER DEFAULT 1,
+        attempts_used INTEGER DEFAULT 0,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // Create sessions table
     $db->exec("CREATE TABLE IF NOT EXISTS sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,6 +144,12 @@ function initSchema() {
         completed_at TIMESTAMP WITH TIME ZONE,
         final_score JSONB
     )");
+
+    // Add session columns if they don't exist
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) DEFAULT 'practice'");
 
     // Create transcripts table
     $db->exec("CREATE TABLE IF NOT EXISTS transcripts (
@@ -153,10 +224,17 @@ function seedQuestions() {
     }
 }
 
-function createSession($name, $email) {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice') {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email) VALUES (:name, :email) RETURNING id");
-    $stmt->execute(['name' => $name, 'email' => $email]);
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type) VALUES (:name, :email, :user_id, :link_id, :template_id, :type) RETURNING id");
+    $stmt->execute([
+        'name' => $name,
+        'email' => $email,
+        'user_id' => $userId,
+        'link_id' => $linkId,
+        'template_id' => $templateId,
+        'type' => $type
+    ]);
     return $stmt->fetchColumn();
 }
 
@@ -235,6 +313,166 @@ function getCandidateResponses($sessionId) {
     $stmt = $db->prepare("SELECT cr.*, mq.topic, mq.question, mq.option_a, mq.option_b, mq.option_c, mq.option_d, mq.correct_option FROM candidate_responses cr JOIN mcq_questions mq ON cr.question_id = mq.id WHERE cr.session_id = :session_id ORDER BY cr.id ASC");
     $stmt->execute(['session_id' => $sessionId]);
     return $stmt->fetchAll();
+}
+
+function getInterviewLinkByCode($code) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM interview_links WHERE UPPER(code) = UPPER(:code) AND status = 'active'");
+    $stmt->execute(['code' => trim($code)]);
+    return $stmt->fetch();
+}
+
+function incrementLinkAttempts($id) {
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE interview_links SET attempts_used = attempts_used + 1 WHERE id = :id");
+    return $stmt->execute(['id' => $id]);
+}
+
+function getRecruiterCompany($recruiterId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT c.* FROM companies c JOIN company_members cm ON c.id = cm.company_id WHERE cm.user_id = :user_id LIMIT 1");
+    $stmt->execute(['user_id' => $recruiterId]);
+    return $stmt->fetch();
+}
+
+function createInterviewTemplate($companyId, $userId, $title, $description, $jobRole, $topics, $difficulty, $duration, $customPrompt, $mcqEnabled) {
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO interview_templates (company_id, created_by, title, description, job_role, topics, difficulty, duration_minutes, custom_system_prompt, mcq_enabled) VALUES (:company_id, :created_by, :title, :description, :job_role, :topics, :difficulty, :duration, :custom_prompt, :mcq_enabled) RETURNING id");
+    $stmt->execute([
+        'company_id' => $companyId,
+        'created_by' => $userId,
+        'title' => $title,
+        'description' => $description,
+        'job_role' => $jobRole,
+        'topics' => json_encode($topics),
+        'difficulty' => $difficulty,
+        'duration' => (int)$duration,
+        'custom_prompt' => $customPrompt,
+        'mcq_enabled' => $mcqEnabled ? 1 : 0
+    ]);
+    return $stmt->fetchColumn();
+}
+
+function listInterviewTemplates($companyId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM interview_templates WHERE company_id = :company_id AND is_active = TRUE ORDER BY created_at DESC");
+    $stmt->execute(['company_id' => $companyId]);
+    return $stmt->fetchAll();
+}
+
+function createInterviewLink($templateId, $companyId, $userId, $code, $candidateEmail, $candidateName, $maxAttempts, $expiresAt) {
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO interview_links (template_id, company_id, created_by, code, candidate_email, candidate_name, max_attempts, expires_at) VALUES (:template_id, :company_id, :created_by, :code, :candidate_email, :candidate_name, :max_attempts, :expires_at) RETURNING id");
+    $stmt->execute([
+        'template_id' => $templateId,
+        'company_id' => $companyId,
+        'created_by' => $userId,
+        'code' => strtoupper(trim($code)),
+        'candidate_email' => empty($candidateEmail) ? null : trim($candidateEmail),
+        'candidate_name' => empty($candidateName) ? null : trim($candidateName),
+        'max_attempts' => (int)$maxAttempts,
+        'expires_at' => empty($expiresAt) ? null : $expiresAt
+    ]);
+    return $stmt->fetchColumn();
+}
+
+function listInterviewLinks($companyId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT il.*, it.title as template_title FROM interview_links il JOIN interview_templates it ON il.template_id = it.id WHERE il.company_id = :company_id ORDER BY il.created_at DESC");
+    $stmt->execute(['company_id' => $companyId]);
+    return $stmt->fetchAll();
+}
+
+function listCandidateResults($companyId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT s.*, it.title as template_title, il.code as link_code FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id JOIN interview_templates it ON s.template_id = it.id WHERE il.company_id = :company_id ORDER BY s.started_at DESC");
+    $stmt->execute(['company_id' => $companyId]);
+    return $stmt->fetchAll();
+}
+
+function listCandidateHistory($candidateId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT s.*, it.title as template_title FROM sessions s LEFT JOIN interview_templates it ON s.template_id = it.id WHERE s.user_id = :candidate_id ORDER BY s.started_at DESC");
+    $stmt->execute(['candidate_id' => $candidateId]);
+    return $stmt->fetchAll();
+}
+
+function getCandidateStats($candidateId) {
+    $db = getDB();
+    
+    // Total sessions
+    $stmt = $db->prepare("SELECT COUNT(*) FROM sessions WHERE user_id = :candidate_id");
+    $stmt->execute(['candidate_id' => $candidateId]);
+    $totalSessions = (int)$stmt->fetchColumn();
+
+    // Average score (logic/problem solving/communication overall rating)
+    $stmt = $db->prepare("SELECT final_score FROM sessions WHERE user_id = :candidate_id AND current_status = 'COMPLETED' AND final_score IS NOT NULL");
+    $stmt->execute(['candidate_id' => $candidateId]);
+    $scores = $stmt->fetchAll();
+    
+    $avgScore = 0.0;
+    $completedCount = count($scores);
+    if ($completedCount > 0) {
+        $totalVal = 0.0;
+        foreach ($scores as $s) {
+            $data = json_decode($s['final_score'], true);
+            $comm = (float)($data['communication_score'] ?? 0);
+            $prob = (float)($data['problem_solving_score'] ?? 0);
+            $qual = (float)($data['code_quality_score'] ?? 0);
+            $totalVal += ($comm + $prob + $qual) / 3.0;
+        }
+        $avgScore = round($totalVal / $completedCount, 1);
+    }
+
+    return [
+        'total_sessions' => $totalSessions,
+        'completed_sessions' => $completedCount,
+        'average_score' => $avgScore
+    ];
+}
+
+function getRecruiterStats($companyId) {
+    $db = getDB();
+
+    // Total links
+    $stmt = $db->prepare("SELECT COUNT(*) FROM interview_links WHERE company_id = :company_id");
+    $stmt->execute(['company_id' => $companyId]);
+    $totalLinks = (int)$stmt->fetchColumn();
+
+    // Total sessions
+    $stmt = $db->prepare("SELECT COUNT(*) FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id WHERE il.company_id = :company_id");
+    $stmt->execute(['company_id' => $companyId]);
+    $totalSessions = (int)$stmt->fetchColumn();
+
+    // Completed sessions
+    $stmt = $db->prepare("SELECT COUNT(*) FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id WHERE il.company_id = :company_id AND s.current_status = 'COMPLETED'");
+    $stmt->execute(['company_id' => $companyId]);
+    $completedSessions = (int)$stmt->fetchColumn();
+
+    // Avg Score
+    $stmt = $db->prepare("SELECT s.final_score FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id WHERE il.company_id = :company_id AND s.current_status = 'COMPLETED' AND s.final_score IS NOT NULL");
+    $stmt->execute(['company_id' => $companyId]);
+    $scores = $stmt->fetchAll();
+
+    $avgScore = 0.0;
+    if (count($scores) > 0) {
+        $totalVal = 0.0;
+        foreach ($scores as $s) {
+            $data = json_decode($s['final_score'], true);
+            $comm = (float)($data['communication_score'] ?? 0);
+            $prob = (float)($data['problem_solving_score'] ?? 0);
+            $qual = (float)($data['code_quality_score'] ?? 0);
+            $totalVal += ($comm + $prob + $qual) / 3.0;
+        }
+        $avgScore = round($totalVal / count($scores), 1);
+    }
+
+    return [
+        'total_links' => $totalLinks,
+        'total_sessions' => $totalSessions,
+        'completed_sessions' => $completedSessions,
+        'average_score' => $avgScore
+    ];
 }
 
 // Auto-init and seed tables on load

@@ -1,6 +1,7 @@
 <?php
 // index.php - Standalone Landing Page for TruInterview
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 // If cookie exists and session is active, redirect to interview workspace
 $sessionId = $_COOKIE['session_id'] ?? '';
@@ -40,8 +41,18 @@ if (!empty($sessionId)) {
         <li><a href="#faq" class="nav-link">FAQ</a></li>
       </ul>
 
-      <div class="nav-cta">
-        <a href="interview.php" class="btn btn-primary btn-pill">Start Practice Run</a>
+      <div class="nav-cta" style="display: flex; gap: 16px; align-items: center;">
+        <?php if (isLoggedIn()): ?>
+          <?php $u = getCurrentUser(); ?>
+          <?php if ($u['role'] === 'candidate'): ?>
+            <a href="candidate/index.php" class="btn btn-primary btn-pill">Go to Dashboard</a>
+          <?php else: ?>
+            <a href="recruiter/index.php" class="btn btn-primary btn-pill">Recruiter Dashboard</a>
+          <?php endif; ?>
+        <?php else: ?>
+          <a href="login.php" class="nav-link" style="font-weight: 600; text-decoration: none; color: var(--color-text-secondary);">Sign In</a>
+          <a href="register.php" class="btn btn-primary btn-pill">Register</a>
+        <?php endif; ?>
       </div>
     </div>
   </header>

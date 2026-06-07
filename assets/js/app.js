@@ -71,13 +71,20 @@ function handleRegister(event) {
   event.preventDefault();
   const name = document.getElementById('candidate_name').value;
   const email = document.getElementById('candidate_email').value;
+  const inviteCodeEl = document.getElementById('invite_code');
+  const inviteCode = inviteCodeEl ? inviteCodeEl.value : '';
+
+  let body = `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`;
+  if (inviteCode) {
+    body += `&invite_code=${encodeURIComponent(inviteCode)}`;
+  }
 
   fetch('api.php?action=start', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     },
-    body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+    body: body
   })
   .then(res => res.json())
   .then(data => {
