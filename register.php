@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="auth-container">
     
     <!-- Hero Block (Left 50%) -->
-    <div class="auth-hero-side">
+    <div class="auth-hero-side candidate-bg" id="auth-hero-side">
       <div class="auth-hero-content">
         <div id="hero-text-candidate" class="hero-text-block">
           <h1 class="hero-text-title">Supercharge your interview prep with real-time AI.</h1>
@@ -97,6 +97,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Form Block (Right 50%) -->
     <div class="auth-form-side">
+      <!-- Back to Home Button -->
+      <a href="index.php" class="auth-back-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        <span>Back to Home</span>
+      </a>
+
       <div class="auth-form-wrapper">
         
         <div class="auth-header">
@@ -175,6 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       const companyInput = document.getElementById('company_name');
       const textCandidate = document.getElementById('hero-text-candidate');
       const textRecruiter = document.getElementById('hero-text-recruiter');
+      const heroSide = document.getElementById('auth-hero-side');
       
       if (role === 'candidate') {
         candidateBtn.classList.add('active');
@@ -184,6 +193,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         textCandidate.style.display = 'block';
         textRecruiter.style.display = 'none';
+        
+        if (heroSide) {
+          heroSide.classList.add('candidate-bg');
+          heroSide.classList.remove('recruiter-bg');
+        }
       } else {
         candidateBtn.classList.remove('active');
         recruiterBtn.classList.add('active');
@@ -192,6 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         textCandidate.style.display = 'none';
         textRecruiter.style.display = 'block';
+        
+        if (heroSide) {
+          heroSide.classList.add('recruiter-bg');
+          heroSide.classList.remove('candidate-bg');
+        }
       }
     }
   </script>

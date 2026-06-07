@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="auth-container">
     
     <!-- Hero Block (Left 50%) -->
-    <div class="auth-hero-side">
+    <div class="auth-hero-side login-bg">
       <div class="auth-hero-content">
         <div class="hero-text-block">
           <h1 class="hero-text-title">Empowering technical interviews with real-time AI.</h1>
@@ -63,6 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Form Block (Right 50%) -->
     <div class="auth-form-side">
+      <!-- Back to Home Button -->
+      <a href="index.php" class="auth-back-btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        <span>Back to Home</span>
+      </a>
+
       <div class="auth-form-wrapper">
         
         <div class="auth-header">
