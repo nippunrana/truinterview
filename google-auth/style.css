@@ -1,0 +1,198 @@
+/* style.css - Google Sign-in and Role Selection Modal Styles */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 24px 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auth-divider:not(:empty)::before {
+  margin-right: 1.25em;
+}
+
+.auth-divider:not(:empty)::after {
+  margin-left: 1.25em;
+}
+
+.google-btn-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 8px;
+  min-height: 44px;
+}
+
+/* Modal Overlay */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Modal Box */
+.auth-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-outer);
+  width: 100%;
+  max-width: 480px;
+  padding: 40px;
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.18), 0 12px 18px -4px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--color-border);
+  transform: translateY(24px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.auth-modal-overlay.active .auth-modal {
+  transform: translateY(0);
+}
+
+.auth-modal-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.auth-modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.auth-modal-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.92rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Role Cards Selection */
+.modal-role-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-role-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-outer);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-role-card:hover {
+  border-color: var(--color-indigo);
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.06);
+}
+
+.modal-role-card.active {
+  border-color: var(--color-indigo);
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.08);
+}
+
+.modal-role-card .role-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  transition: var(--transition-smooth);
+}
+
+.modal-role-card:hover .role-icon,
+.modal-role-card.active .role-icon {
+  background: var(--color-indigo);
+  color: #ffffff;
+  border-color: var(--color-indigo);
+}
+
+.modal-role-card .role-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.modal-role-card .role-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* Modal Submit Button */
+.btn-modal-submit {
+  width: 100%;
+  background: var(--color-gradient-accent);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: var(--radius-outer);
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.22);
+  margin-top: 10px;
+}
+
+.btn-modal-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+}
+
+/* Error banner inside modal */
+.modal-error {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: var(--radius-inner);
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+  line-height: 1.4;
+  text-align: left;
+}

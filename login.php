@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - TruInterview</title>
   <link rel="stylesheet" href="assets/css/auth.css">
+  <link rel="stylesheet" href="google-auth/style.css">
 </head>
 <body class="auth-body">
 
@@ -90,6 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         <?php endif; ?>
 
+        <!-- Google Sign-In Option -->
+        <div id="google-signin-container" class="google-btn-container"></div>
+        <div class="auth-divider">or continue with email</div>
+
         <form method="POST" action="login.php">
           <div class="form-group">
             <label for="email">Email Address</label>
@@ -113,5 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   </div>
 
+  <script>
+    window.GOOGLE_CLIENT_ID = "<?php echo getenv('GOOGLE_CLIENT_ID'); ?>";
+  </script>
+  <script src="https://accounts.google.com/gsi/client?onload=onGoogleLibraryLoad" async defer></script>
+  <script src="google-auth/client.js" defer></script>
 </body>
 </html>

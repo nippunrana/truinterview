@@ -8,7 +8,7 @@ The application follows a lightweight, server-side design pattern requiring **no
 
 ## 🌟 Key Features
 
-*   **Premium Split-Screen Authentication**: Beautiful, full-bleed split layouts for registration and login. Features light glassmorphism styling, a graphic hero preview side, and dynamic marketing copy that updates based on the selected user role (Candidate vs Recruiter).
+*   **Premium Split-Screen Authentication**: Beautiful, full-bleed split layouts for registration and login. Features light glassmorphism styling, a "Back to Home" navigation button, role-specific dynamic backgrounds/copy, and integrated **"Sign in with Google"** OAuth with a dynamic first-time user role-selection workflow.
 *   **Dual Dashboards & Role-based Access**:
     *   **Candidate Dashboard**: Features self-practice sessions, historic assessment run metrics, screening code redemption, and private, individual score report cards.
     *   **Recruiter Dashboard**: Allows generating customized template configurations, distributing expiring invite codes (`TRU-XXXXXX`), and managing candidate submission pipelines via a live results dashboard.
@@ -226,6 +226,8 @@ DB_PASSWORD=your_postgres_password
 GEMINI_API_KEY=your_gemini_api_key
 TRUGEN_API_KEY=your_trugen_api_key
 TRUGEN_AGENT_ID=your_trugen_agent_id
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+
 ```
 
 ---
