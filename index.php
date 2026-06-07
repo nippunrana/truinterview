@@ -51,47 +51,48 @@ if (!empty($sessionId)) {
     <div class="stripe-bg"></div>
     <div class="hero-container">
       <div class="hero-content">
-        <div class="badge">AI Mock Interviewer</div>
-        <h1 class="hero-title">Practice makes perfect.<br>Ace your technical interview.</h1>
+        <div class="badge">✨ Low-Stakes AI Preparation</div>
+        <h1 class="hero-title">Overcome technical interview anxiety. Practice in a realistic, low-stakes environment.</h1>
         <p class="hero-description">
-          Build interview confidence in a low-stakes environment. Get interactive feedback on your coding logic, system design, and communication skills from our multimodal AI interviewer.
+          Converse naturally with a real-time AI interviewer, share your code context, and get constructive feedback before your actual assessment.
         </p>
-        <div class="hero-actions">
-          <a href="interview.php" class="btn btn-primary">Launch Mock Session</a>
-          <a href="#features" class="btn btn-secondary">Learn More</a>
+        <div class="hero-actions-wrapper">
+          <div class="hero-actions">
+            <a href="interview.php" class="btn btn-primary">Launch Mock Session</a>
+            <a href="#features" class="btn btn-secondary">Learn More</a>
+          </div>
+          <div class="hero-fud">
+            <span>No credit card required</span>
+            <span class="hero-fud-dot"></span>
+            <span>Instant setup</span>
+            <span class="hero-fud-dot"></span>
+            <span>100% Free</span>
+          </div>
         </div>
       </div>
       
       <div class="hero-visual">
-        <div class="mockup-container">
-          <div class="mockup-header">
-            <span class="mockup-dot"></span>
-            <span class="mockup-dot"></span>
-            <span class="mockup-dot"></span>
-            <div class="mockup-address">truinterview.com/session/practice</div>
+        <div class="hero-image-wrapper">
+          <img src="assets/candidate_practicing.png" alt="Candidate practicing code interview with TruInterview" class="hero-img">
+          
+          <div class="status-widget">
+            <span class="pulse-dot"></span>
+            <span>Status: Live Assessment</span>
           </div>
-          <div class="mockup-body">
-            <div class="mockup-left">
-              <svg class="mockup-agent-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path>
-              </svg>
-              <div class="mockup-left-overlay"></div>
+          
+          <div class="dialogue-widget">
+            <div class="dialogue-speaker">
+              <span>AI Interviewer</span>
+              <div class="waveform-anim">
+                <span class="waveform-bar"></span>
+                <span class="waveform-bar"></span>
+                <span class="waveform-bar"></span>
+                <span class="waveform-bar"></span>
+                <span class="waveform-bar"></span>
+              </div>
             </div>
-            <div class="mockup-right">
-              <div class="mockup-box">
-                <div class="mockup-line"></div>
-                <div class="mockup-line"></div>
-              </div>
-              <div class="mockup-options">
-                <div class="mockup-option">
-                  <span class="mockup-option-check"></span>
-                  <div class="mockup-line" style="width: 60%; margin: 0;"></div>
-                </div>
-                <div class="mockup-option">
-                  <span class="mockup-option-check"></span>
-                  <div class="mockup-line" style="width: 45%; margin: 0;"></div>
-                </div>
-              </div>
+            <div class="dialogue-text">
+              "How would you optimize the time complexity of this algorithm from O(N²) to O(N log N)?"
             </div>
           </div>
         </div>
@@ -143,65 +144,70 @@ if (!empty($sessionId)) {
 
   <!-- Interactive Scorecard Preview Section -->
   <section id="preview" class="scorecard-preview-section">
-    <div class="section-container">
-      <div class="scorecard-preview-container">
-        <div class="scorecard-preview-card">
-          <div style="border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3);">
-            <h3 style="font-size: 1.25rem;">Candidate Assessment Report</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Session Completed Mockup</p>
+    <div class="scorecard-preview-container">
+      <div class="scorecard-preview-card">
+        <div class="scorecard-preview-header">
+          <div>
+            <h3>Candidate Assessment Report</h3>
+            <p>Session Completed Mockup</p>
+          </div>
+          <div class="badge" style="background: rgba(16, 185, 129, 0.08); color: #10b981; border-color: rgba(16, 185, 129, 0.15);">Passed</div>
+        </div>
+        
+        <div class="preview-score-circles">
+          <div class="preview-score-circle">
+            <svg class="circular-chart" viewBox="0 0 36 36">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="circle-fill-indigo" stroke-dasharray="80, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <span class="score-num">8/10</span>
+            <span class="score-label">Logic &amp; Design</span>
           </div>
           
-          <div class="preview-score-circles">
-            <div class="preview-score-circle">
-              <svg class="circular-chart" viewBox="0 0 36 36">
-                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="circle-fill-indigo" stroke-dasharray="80, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="score-num">8/10</span>
-              <span class="score-label">Logic</span>
-            </div>
-            
-            <div class="preview-score-circle">
-              <svg class="circular-chart" viewBox="0 0 36 36">
-                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="circle-fill-blue" stroke-dasharray="90, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="score-num">9/10</span>
-              <span class="score-label">Problem Solving</span>
-            </div>
-
-            <div class="preview-score-circle">
-              <svg class="circular-chart" viewBox="0 0 36 36">
-                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path class="circle-fill-green" stroke-dasharray="70, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="score-num">7/10</span>
-              <span class="score-label">Speech/Comm</span>
-            </div>
+          <div class="preview-score-circle">
+            <svg class="circular-chart" viewBox="0 0 36 36">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="circle-fill-blue" stroke-dasharray="90, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <span class="score-num">9/10</span>
+            <span class="score-label">Problem Solving</span>
           </div>
 
-          <div class="preview-badge-card">
-            <h4>Highlights</h4>
-            <div class="preview-badge-item">
-              <span class="preview-badge-dot dot-success"></span>
-              <span>Identified optimal algorithms quickly under speaking pressure.</span>
-            </div>
-            <div class="preview-badge-item">
-              <span class="preview-badge-dot dot-warning"></span>
-              <span>Needs to walk through corner cases more exhaustively in live coding.</span>
-            </div>
+          <div class="preview-score-circle">
+            <svg class="circular-chart" viewBox="0 0 36 36">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="circle-fill-green" stroke-dasharray="70, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <span class="score-num">7/10</span>
+            <span class="score-label">Speech/Comm</span>
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-          <div class="badge">Actionable Analytics</div>
-          <h2 class="section-title">Get a detailed evaluation of your performance</h2>
-          <p style="color: var(--text-secondary); line-height: 1.6;">
-            Once you conclude the interview session, Gemini processes your conversation transcripts, code quality updates, and screen snapshots. You will immediately receive a structured dashboard highlighting your strengths, development items, and specific ratings.
-          </p>
-          <div style="margin-top: var(--space-2);">
-            <a href="interview.php" class="btn btn-primary">Get Your Scorecard</a>
+        <div class="preview-badge-card">
+          <h4>Highlights</h4>
+          <div class="preview-badge-item">
+            <span class="preview-badge-dot dot-success"></span>
+            <span>Identified optimal algorithms quickly under speaking pressure.</span>
           </div>
+          <div class="preview-badge-item">
+            <span class="preview-badge-dot dot-warning"></span>
+            <span>Needs to walk through corner cases more exhaustively in live coding.</span>
+          </div>
+        </div>
+
+        <div class="preview-summary-box">
+          Jane demonstrated solid command of Big-O analysis and clean JavaScript logic. Highly recommend practicing recursive base cases.
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="badge">Actionable Analytics</div>
+        <h2 class="section-title">Get a detailed evaluation of your performance</h2>
+        <p style="color: var(--text-secondary); line-height: 1.7; font-size: 1.05rem;">
+          Once you conclude the interview session, Gemini processes your conversation transcripts, code quality updates, and screen snapshots. You will immediately receive a structured dashboard highlighting your strengths, development items, and specific ratings.
+        </p>
+        <div style="margin-top: var(--space-2);">
+          <a href="interview.php" class="btn btn-primary">Get Your Scorecard</a>
         </div>
       </div>
     </div>
