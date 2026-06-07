@@ -1,21 +1,15 @@
 <?php
-// index.php - Main Frontend Panel Shell
+// index.php - Standalone Landing Page for TruInterview
 require_once __DIR__ . '/db.php';
 
-// Enforce HTTPS in non-local environments
-$host = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
-$isLocal = in_array($host, ['localhost', '127.0.0.1']) || preg_match('/^192\.168\./', $host);
-if (!$isLocal && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
-    $redirect = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-    header('HTTP/1.1 301 Moved Permanently');
-    header('Location: ' . $redirect);
-    exit();
-}
-
+// If cookie exists and session is active, redirect to interview workspace
 $sessionId = $_COOKIE['session_id'] ?? '';
-$session = null;
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
+    if ($session && $session['current_status'] !== 'COMPLETED') {
+        header('Location: interview.php');
+        exit();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -23,199 +17,272 @@ if (!empty($sessionId)) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TruInterview - AI Multimodal Technical Interviewer</title>
-  <link rel="stylesheet" href="style.css">
-  <?php if ($session && $session['current_status'] === 'COMPLETED'): ?>
-    <style>
-      .workspace-grid { display: none !important; }
-    </style>
-  <?php endif; ?>
-  <script>
-    // Inline script to prevent theme flash before body render
-    (function() {
-      const savedTheme = localStorage.getItem('theme') || 'dark';
-      document.documentElement.className = 'theme-' + savedTheme;
-      // Also apply directly to body when loaded
-      window.addEventListener('DOMContentLoaded', () => {
-        document.body.className = 'theme-' + savedTheme;
-        updateThemeToggleButton(savedTheme);
-      });
-    })();
-
-    function updateThemeToggleButton(theme) {
-      const btn = document.getElementById('theme-toggle-btn');
-      if (!btn) return;
-      if (theme === 'light') {
-        btn.innerHTML = `
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-          <span>Dark Mode</span>`;
-      } else {
-        btn.innerHTML = `
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
-          <span>Light Mode</span>`;
-      }
-    }
-  </script>
+  <title>TruInterview - AI-Powered Technical Assessment Practice</title>
+  <meta name="description" content="Practice makes perfect. Ace your next technical assessment with TruInterview - a real-time conversational AI interviewer.">
+  <link rel="stylesheet" href="landing.css">
 </head>
-<body class="theme-dark">
+<body>
 
-  <!-- Registration Overlay Modal -->
-  <div id="registration-modal" class="modal-overlay" style="display: <?php echo $session ? 'none' : 'flex'; ?>;">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h2>TruInterview</h2>
-        <p>Enter your details to begin your interactive mock interview assessment.</p>
-      </div>
-      <form id="registration-form" onsubmit="handleRegister(event)">
-        <div class="form-group" style="margin-bottom: var(--space-4);">
-          <label for="candidate_name">Full Name</label>
-          <input type="text" id="candidate_name" class="form-input" placeholder="e.g. John Doe" required autocomplete="name">
-        </div>
-        <div class="form-group" style="margin-bottom: var(--space-6);">
-          <label for="candidate_email">Email Address</label>
-          <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email">
-        </div>
-        <button type="submit" class="btn-action" style="width: 100%;">
-          <span>Start Interview Session</span>
-          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Main App Container -->
-  <div class="app-container">
-    <header>
-      <div class="brand">
-        <svg style="width: 24px; height: 24px; color: var(--color-accent);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+  <!-- Navigation Header -->
+  <header class="landing-header">
+    <div class="nav-container">
+      <a href="index.php" class="brand">
+        <svg style="width: 28px; height: 28px; color: var(--color-brand);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
         <span class="brand-logo">TruInterview</span>
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#preview" class="nav-link">Scorecard</a></li>
+        <li><a href="#how-it-works" class="nav-link">How it Works</a></li>
+        <li><a href="#faq" class="nav-link">FAQ</a></li>
+      </ul>
+
+      <div class="nav-cta">
+        <a href="interview.php" class="btn btn-primary btn-pill">Start Practice Run</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="stripe-bg"></div>
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="badge">AI Mock Interviewer</div>
+        <h1 class="hero-title">Practice makes perfect.<br>Ace your technical interview.</h1>
+        <p class="hero-description">
+          Build interview confidence in a low-stakes environment. Get interactive feedback on your coding logic, system design, and communication skills from our multimodal AI interviewer.
+        </p>
+        <div class="hero-actions">
+          <a href="interview.php" class="btn btn-primary">Launch Mock Session</a>
+          <a href="#features" class="btn btn-secondary">Learn More</a>
+        </div>
       </div>
       
-      <div class="header-meta">
-        <div class="session-indicator">
-          <div class="indicator-dot"></div>
-          <span id="session-status-text">Connecting</span>
-        </div>
-        <div class="session-timer">
-          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <span id="timer-display">00:00</span>
-        </div>
-        <!-- End Interview Button (shown during active interview) -->
-        <button id="end-interview-header-btn" class="btn-action btn-danger" onclick="transitionToCompleted()" title="End Interview" style="display: <?php echo ($session && $session['current_status'] !== 'COMPLETED') ? 'flex' : 'none'; ?>;">
-          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
-          <span>End Interview</span>
-        </button>
-
-        <!-- Start New Interview Button (shown when interview is completed) -->
-        <button id="new-interview-header-btn" class="btn-action" onclick="startNewInterview()" title="Start New Interview" style="display: <?php echo ($session && $session['current_status'] === 'COMPLETED') ? 'flex' : 'none'; ?>;">
-          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-          <span>New Interview</span>
-        </button>
-        <button id="theme-toggle-btn" class="btn-theme-toggle" onclick="toggleTheme()">
-          <!-- SVG injected by JS -->
-        </button>
-      </div>
-    </header>
-
-    <div class="workspace-grid">
-      <!-- Left Panel: Video Agent -->
-      <div class="panel left-panel">
-        <div class="panel-header">
-          <h3 class="panel-title">AI Interviewer</h3>
-        </div>
-        <div class="agent-video-container" id="agent-video-container">
-          <?php if ($session && $session['current_status'] !== 'COMPLETED'): ?>
-            <?php $trugenAgentId = getenv('TRUGEN_AGENT_ID'); ?>
-            <?php if (!empty($trugenAgentId)): ?>
-              <iframe 
-                src="https://app.trugen.ai/agent/<?php echo urlencode($trugenAgentId); ?>" 
-                allow="camera; microphone; display-capture" 
-                style="width: 100%; height: 100%; border: none; z-index: 4; position: absolute; top: 0; left: 0; background: #000;">
-              </iframe>
-            <?php endif; ?>
-          <?php endif; ?>
-          <video id="candidate-video" autoplay playsinline muted style="position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px; border-radius: var(--radius-inner); border: 2px solid var(--color-border); z-index: 5; object-fit: cover; display: none; background: #000;"></video>
-          <div class="agent-video-placeholder">
-            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
-            <p>Agent Video Connection Pending</p>
+      <div class="hero-visual">
+        <div class="mockup-container">
+          <div class="mockup-header">
+            <span class="mockup-dot"></span>
+            <span class="mockup-dot"></span>
+            <span class="mockup-dot"></span>
+            <div class="mockup-address">truinterview.com/session/practice</div>
           </div>
-        </div>
-        
-        <!-- Waveform Visualizer -->
-        <div class="visualizer-container" id="visualizer-container">
-          <!-- Bars generated by JS -->
-        </div>
-
-        <div class="media-controls">
-          <button id="mic-toggle" class="btn-control" onclick="toggleMedia('mic')" title="Toggle Microphone">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-          </button>
-          <button id="camera-toggle" class="btn-control" onclick="toggleMedia('camera')" title="Toggle Camera">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          </button>
-          <button id="end-interview-btn" class="btn-control danger" onclick="transitionToCompleted()" title="End Interview">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Right Panel: Candidate Console -->
-      <div class="panel right-panel">
-        <div class="console-grid">
-          
-          <!-- Screen Capture Preview Row -->
-          <div class="console-section">
-            <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Screen Context Share</h4>
-            <div class="screen-capture-container">
-              <div class="screen-preview" id="screen-preview">
-                <div class="screen-placeholder">
-                  <svg style="width: 36px; height: 36px; opacity: 0.4;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"></path></svg>
-                  <p style="font-size: var(--text-xs);">Screen stream inactive</p>
+          <div class="mockup-body">
+            <div class="mockup-left">
+              <svg class="mockup-agent-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path>
+              </svg>
+              <div class="mockup-left-overlay"></div>
+            </div>
+            <div class="mockup-right">
+              <div class="mockup-box">
+                <div class="mockup-line"></div>
+                <div class="mockup-line"></div>
+              </div>
+              <div class="mockup-options">
+                <div class="mockup-option">
+                  <span class="mockup-option-check"></span>
+                  <div class="mockup-line" style="width: 60%; margin: 0;"></div>
                 </div>
-                <canvas id="capture-canvas"></canvas>
-              </div>
-              <div class="screen-controls">
-                <button id="screen-share-btn" class="btn-action btn-secondary" onclick="toggleScreenShare()">
-                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                  <span>Share Screen</span>
-                </button>
-                <button id="submit-screenshot-btn" class="btn-action" onclick="submitAnswer()" disabled>
-                  <span>Submit Code / Answer</span>
-                </button>
+                <div class="mockup-option">
+                  <span class="mockup-option-check"></span>
+                  <div class="mockup-line" style="width: 45%; margin: 0;"></div>
+                </div>
               </div>
             </div>
           </div>
-
-          <!-- MCQ Questions Row -->
-          <div class="console-section" style="overflow-y: auto;">
-            <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Interactive MCQ Assessment</h4>
-            <div class="mcq-container" id="mcq-container">
-              <div class="mcq-question-card" style="opacity: 0.7; text-align: center; justify-content: center; height: 100%;">
-                <p class="mcq-text" style="color: var(--color-text-muted);">Waiting for the AI interviewer to load questions...</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dialog Transcript Row -->
-          <div class="console-section" style="background: rgba(0,0,0,0.1);">
-            <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Live Transcripts</h4>
-            <div class="transcripts-feed" id="transcripts-feed">
-              <!-- Transcript elements injected here -->
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <script>
-    const sessionActive = <?php echo $session ? 'true' : 'false'; ?>;
-    const sessionId = '<?php echo $sessionId; ?>';
-    const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
-    const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
-    const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
-  </script>
-  <script src="app.js" defer></script>
+  <!-- Features Grid Section -->
+  <section id="features" class="features-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Engineered to simulate real assessment workflows</h2>
+        <p class="section-subtitle">TruInterview integrates multimodal inputs, vision-based code evaluation, and automated feedback loops to mirror real-world interviews.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">Multimodal AI Agent</h3>
+          <p class="feature-desc">Engage in live audio/video mock sessions with a conversational agent powered by TruGen.ai. Experience realistic follow-up questions tailored to your responses.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">Live Code Vision</h3>
+          <p class="feature-desc">Share your screen context as you code. The platform periodically merges your browser canvas and webcam inputs to evaluate code quality using Gemini 3.5 Flash.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+          </div>
+          <h3 class="feature-title">Interactive MCQs</h3>
+          <p class="feature-desc">Dynamically switches into technical multi-choice questions. Uses semantic intent classification to let you read quietly or hear questions read aloud by the agent.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Scorecard Preview Section -->
+  <section id="preview" class="scorecard-preview-section">
+    <div class="section-container">
+      <div class="scorecard-preview-container">
+        <div class="scorecard-preview-card">
+          <div style="border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3);">
+            <h3 style="font-size: 1.25rem;">Candidate Assessment Report</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Session Completed Mockup</p>
+          </div>
+          
+          <div class="preview-score-circles">
+            <div class="preview-score-circle">
+              <svg class="circular-chart" viewBox="0 0 36 36">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle-fill-indigo" stroke-dasharray="80, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="score-num">8/10</span>
+              <span class="score-label">Logic</span>
+            </div>
+            
+            <div class="preview-score-circle">
+              <svg class="circular-chart" viewBox="0 0 36 36">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle-fill-blue" stroke-dasharray="90, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="score-num">9/10</span>
+              <span class="score-label">Problem Solving</span>
+            </div>
+
+            <div class="preview-score-circle">
+              <svg class="circular-chart" viewBox="0 0 36 36">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle-fill-green" stroke-dasharray="70, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="score-num">7/10</span>
+              <span class="score-label">Speech/Comm</span>
+            </div>
+          </div>
+
+          <div class="preview-badge-card">
+            <h4>Highlights</h4>
+            <div class="preview-badge-item">
+              <span class="preview-badge-dot dot-success"></span>
+              <span>Identified optimal algorithms quickly under speaking pressure.</span>
+            </div>
+            <div class="preview-badge-item">
+              <span class="preview-badge-dot dot-warning"></span>
+              <span>Needs to walk through corner cases more exhaustively in live coding.</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+          <div class="badge">Actionable Analytics</div>
+          <h2 class="section-title">Get a detailed evaluation of your performance</h2>
+          <p style="color: var(--text-secondary); line-height: 1.6;">
+            Once you conclude the interview session, Gemini processes your conversation transcripts, code quality updates, and screen snapshots. You will immediately receive a structured dashboard highlighting your strengths, development items, and specific ratings.
+          </p>
+          <div style="margin-top: var(--space-2);">
+            <a href="interview.php" class="btn btn-primary">Get Your Scorecard</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="how-it-works-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Simple 4-step preparation cycle</h2>
+        <p class="section-subtitle">Initialize your profile, connect your hardware, and begin assessment simulation.</p>
+      </div>
+
+      <div class="steps-container">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h3 class="step-title">Enter Details</h3>
+          <p class="step-desc">Register with your name and email on the configuration portal to register a local practice session.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h3 class="step-title">Connect Media</h3>
+          <p class="step-desc">Allow webcam and microphone access, and start screen sharing to feed live code context to the model.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h3 class="step-title">Converse & Code</h3>
+          <p class="step-desc">Answer live conceptual questions from the AI and solve multiple-choice technical questions.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <h3 class="step-title">Review Feedback</h3>
+          <p class="step-desc">Review a comprehensive performance report card outlining graded categories, strengths, and areas to polish.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Accordion Section -->
+  <section id="faq" class="faq-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-subtitle">Everything you need to know about the practice portal.</p>
+      </div>
+
+      <div class="faq-grid">
+        <details class="faq-details">
+          <summary class="faq-summary">How does the AI agent evaluate my code?</summary>
+          <div class="faq-content">
+            <p>The application captures periodic snapshots of your shared screen (every 9 seconds or when you manually click "Submit Code"). Gemini 3.5 Flash reviews these images alongside your vocal answers to score your logical code quality, code completeness, and system architectures.</p>
+          </div>
+        </details>
+
+        <details class="faq-details">
+          <summary class="faq-summary">What technical topics are tested?</summary>
+          <div class="faq-content">
+            <p>Mock assessments cover standard technical skills including Javascript, CSS variables, PHP OOP syntax, algorithm design, and API design principles. The multiple-choice questions dynamically align with these core topics.</p>
+          </div>
+        </details>
+
+        <details class="faq-details">
+          <summary class="faq-summary">Is my data secure?</summary>
+          <div class="faq-content">
+            <p>Yes. Screen captures and audio inputs are only analyzed during the active session context. They are stored locally in the workspace uploads folder corresponding to your unique session token and are never shared publicly.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="footer-container">
+      <span class="footer-logo">TruInterview</span>
+      <span class="footer-copy">&copy; 2026 TruInterview. Crafted with Gemini 3.5 Flash & TruGen.ai. All rights reserved.</span>
+    </div>
+  </footer>
+
 </body>
 </html>

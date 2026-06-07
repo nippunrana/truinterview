@@ -1234,3 +1234,71 @@ header {
   font-size: var(--text-sm);
   animation: pulse 2s infinite;
 }
+
+/* Onboarding Page & Layout */
+.onboarding-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  padding: var(--space-6);
+  background-color: var(--color-bg-app);
+  background-image: var(--grid-pattern);
+  background-size: 24px 24px;
+}
+
+.onboarding-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-outer);
+  padding: var(--space-8);
+  width: 480px;
+  max-width: 100%;
+  box-shadow: 0 20px 50px var(--color-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onboarding-header {
+  text-align: center;
+}
+
+.brand-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.onboarding-header h2 {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.onboarding-header p {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.onboarding-footer {
+  text-align: center;
+  margin-top: var(--space-2);
+}
+
+.back-link {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: var(--transition-smooth);
+}
+
+.back-link:hover {
+  color: var(--color-accent);
+}
