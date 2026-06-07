@@ -51,7 +51,7 @@ body.auth-body {
 }
 
 .auth-hero-side.login-bg {
-  background-image: url('../images/login_page.png');
+  background-image: url('../images/login_page.jpg');
 }
 
 .auth-hero-side.candidate-bg {
@@ -59,7 +59,7 @@ body.auth-body {
 }
 
 .auth-hero-side.recruiter-bg {
-  background-image: url('../images/recruiter_hero.png');
+  background-image: url('../images/recruiter_hero.jpg');
 }
 
 .auth-hero-side::before {
