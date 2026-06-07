@@ -125,12 +125,22 @@ if (!empty($inviteCode)) {
           <input type="hidden" id="invite_code" value="<?php echo htmlspecialchars($inviteCode); ?>">
           
           <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label for="candidate_name">Full Name</label>
-            <input type="text" id="candidate_name" class="form-input" placeholder="e.g. John Doe" required autocomplete="name" value="<?php echo htmlspecialchars($prefName); ?>" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
+            <label>Full Name</label>
+            <?php if (!empty($prefName)): ?>
+              <div class="form-value"><?php echo htmlspecialchars($prefName); ?></div>
+              <input type="hidden" id="candidate_name" value="<?php echo htmlspecialchars($prefName); ?>">
+            <?php else: ?>
+              <input type="text" id="candidate_name" class="form-input" placeholder="e.g. John Doe" required autocomplete="name" value="" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
+            <?php endif; ?>
           </div>
           <div class="form-group" style="margin-bottom: var(--space-6);">
-            <label for="candidate_email">Email Address</label>
-            <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email" value="<?php echo htmlspecialchars($prefEmail); ?>" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
+            <label>Email Address</label>
+            <?php if (!empty($prefEmail)): ?>
+              <div class="form-value"><?php echo htmlspecialchars($prefEmail); ?></div>
+              <input type="hidden" id="candidate_email" value="<?php echo htmlspecialchars($prefEmail); ?>">
+            <?php else: ?>
+              <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email" value="" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
+            <?php endif; ?>
           </div>
           <button type="submit" class="btn-action" style="width: 100%;" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
             <span>Start Assessment</span>

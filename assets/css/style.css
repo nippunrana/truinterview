@@ -737,6 +737,29 @@ header {
   box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.15);
 }
 
+.form-input:disabled,
+.form-input:read-only {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  border-color: var(--color-border);
+}
+
+.form-input:disabled:focus,
+.form-input:read-only:focus {
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.form-value {
+  color: var(--color-text-primary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  padding: var(--space-2) 0;
+  border-bottom: 1px dashed var(--color-border);
+  margin-bottom: var(--space-1);
+}
+
 /* Animations */
 @keyframes pulse {
   0% {
