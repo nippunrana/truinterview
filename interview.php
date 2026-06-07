@@ -24,7 +24,7 @@ if (!empty($sessionId)) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TruInterview - AI Multimodal Technical Interviewer</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/css/style.css">
   <?php if ($session && $session['current_status'] === 'COMPLETED'): ?>
     <style>
       .workspace-grid { display: none !important; }
@@ -228,6 +228,6 @@ if (!empty($sessionId)) {
     const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
   </script>
-  <script src="app.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
 </body>
 </html>

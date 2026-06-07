@@ -19,7 +19,7 @@ if (!empty($sessionId)) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TruInterview - AI-Powered Technical Assessment Practice</title>
   <meta name="description" content="Practice makes perfect. Ace your next technical assessment with TruInterview - a real-time conversational AI interviewer.">
-  <link rel="stylesheet" href="landing.css">
+  <link rel="stylesheet" href="assets/css/landing.css">
 </head>
 <body>
 
@@ -73,7 +73,7 @@ if (!empty($sessionId)) {
       
       <div class="hero-visual">
         <div class="hero-image-wrapper">
-          <img src="assets/candidate_practicing.png" alt="Candidate practicing code interview with TruInterview" class="hero-img">
+          <img src="assets/images/candidate_practicing.png" alt="Candidate practicing code interview with TruInterview" class="hero-img">
           
           <div class="status-widget">
             <span class="pulse-dot"></span>
