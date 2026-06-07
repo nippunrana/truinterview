@@ -73,7 +73,7 @@ if (!empty($sessionId)) {
       
       <div class="hero-visual">
         <div class="hero-image-wrapper">
-          <img src="assets/images/candidate_practicing.png" alt="Candidate practicing code interview with TruInterview" class="hero-img">
+          <img src="assets/images/candidate_practicing.jpg" alt="Candidate practicing code interview with TruInterview" class="hero-img">
           
           <div class="status-widget">
             <span class="pulse-dot"></span>
