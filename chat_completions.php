@@ -172,6 +172,13 @@ try {
     $status = $session['current_status'];
     $pref = $session['mcq_preference'];
     
+    // Model task overrides
+    $chatModel = $session['model_chat_task'] ?? 'gemini-3.5-flash';
+    $visionModel = $session['model_vision_task'] ?? 'gemini-3.5-flash';
+    
+    // Recruiter custom API Key override
+    $customApiKey = getSessionApiKey($session);
+    
     // Extract last user utterance
     $candidateText = '';
     if (!empty($messages)) {
@@ -199,7 +206,7 @@ try {
         ];
         
         try {
-            $classification = strtoupper(trim(callGemini($payload)));
+            $classification = strtoupper(trim(callGemini($payload, $chatModel, $customApiKey)));
         } catch (Exception $e) {
             $classification = 'SELF_READ';
         }
@@ -240,7 +247,7 @@ try {
             ];
             
             try {
-                $classification = strtoupper(trim(callGemini($payload)));
+                $classification = strtoupper(trim(callGemini($payload, $chatModel, $customApiKey)));
             } catch (Exception $e) {
                 $classification = 'NONE';
             }
@@ -272,10 +279,10 @@ try {
                 }
             } else {
                 // If they ask a general question during MCQ segment, fallback to normal response
-                $spokenText = queryGeminiChat($mappedMessages);
+                $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
             }
         } else {
-            $spokenText = queryGeminiChat($mappedMessages);
+            $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
         }
     } else {
         // Standard technical interview conversation mode
@@ -290,12 +297,12 @@ try {
         $imagePath = __DIR__ . '/uploads/' . $sessionId . '/latest.jpg';
         if (file_exists($imagePath) && is_readable($imagePath)) {
             try {
-                $spokenText = queryGeminiVision($imagePath, $candidateText, $contextStr);
+                $spokenText = queryGeminiVision($imagePath, $candidateText, $contextStr, $customApiKey, $visionModel);
             } catch (Exception $visionEx) {
-                $spokenText = queryGeminiChat($mappedMessages);
+                $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
             }
         } else {
-            $spokenText = queryGeminiChat($mappedMessages);
+            $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
         }
     }
 
@@ -303,14 +310,14 @@ try {
 
     $stream = $input['stream'] ?? false;
     if ($stream) {
-        streamOpenAIResponse($cleanResponse, $input['model'] ?? 'gemini-3.5-flash');
+        streamOpenAIResponse($cleanResponse, $input['model'] ?? $chatModel);
     } else {
         // Format OpenAI-compatible Chat Completions JSON output
         $response = [
             "id" => "chatcmpl-" . uniqid(),
             "object" => "chat.completion",
             "created" => time(),
-            "model" => "gemini-3.5-flash",
+            "model" => $chatModel,
             "choices" => [
                 [
                     "index" => 0,

@@ -80,6 +80,13 @@ function initSchema() {
         last_login_at TIMESTAMP WITH TIME ZONE
     )");
 
+    // Add custom settings columns to users table
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_agent_id VARCHAR(100)");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_gemini_api_key VARCHAR(255)");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+
     // Create companies table
     $db->exec("CREATE TABLE IF NOT EXISTS companies (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -150,6 +157,9 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) DEFAULT 'practice'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
 
     // Create transcripts table
     $db->exec("CREATE TABLE IF NOT EXISTS transcripts (
@@ -224,16 +234,19 @@ function seedQuestions() {
     }
 }
 
-function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice') {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.5-flash', $modelVision = 'gemini-3.5-flash', $modelEval = 'gemini-3.5-flash') {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type) VALUES (:name, :email, :user_id, :link_id, :template_id, :type) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
         'user_id' => $userId,
         'link_id' => $linkId,
         'template_id' => $templateId,
-        'type' => $type
+        'type' => $type,
+        'model_chat' => $modelChat,
+        'model_vision' => $modelVision,
+        'model_eval' => $modelEval
     ]);
     return $stmt->fetchColumn();
 }
@@ -473,6 +486,54 @@ function getRecruiterStats($companyId) {
         'completed_sessions' => $completedSessions,
         'average_score' => $avgScore
     ];
+}
+
+function getSessionApiKey($session) {
+    if (is_string($session)) {
+        $session = getSession($session);
+    }
+    if (!$session) {
+        return null;
+    }
+    $db = getDB();
+    if (!empty($session['interview_link_id'])) {
+        $stmt = $db->prepare("SELECT u.custom_gemini_api_key FROM users u JOIN interview_links il ON u.id = il.created_by WHERE il.id = :id");
+        $stmt->execute(['id' => $session['interview_link_id']]);
+        $key = $stmt->fetchColumn();
+        if (!empty($key)) {
+            return $key;
+        }
+    } elseif (!empty($session['user_id'])) {
+        $stmt = $db->prepare("SELECT custom_gemini_api_key FROM users WHERE id = :id");
+        $stmt->execute(['id' => $session['user_id']]);
+        $key = $stmt->fetchColumn();
+        if (!empty($key)) {
+            return $key;
+        }
+    }
+    return null;
+}
+
+function getSessionUserSettings($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM sessions WHERE id = :id");
+    $stmt->execute(['id' => $sessionId]);
+    $session = $stmt->fetch();
+    if (!$session) {
+        return null;
+    }
+    $recruiterId = null;
+    if (!empty($session['interview_link_id'])) {
+        $stmt = $db->prepare("SELECT created_by FROM interview_links WHERE id = :id");
+        $stmt->execute(['id' => $session['interview_link_id']]);
+        $recruiterId = $stmt->fetchColumn();
+    }
+    if ($recruiterId) {
+        $stmt = $db->prepare("SELECT custom_trugen_agent_id, custom_gemini_api_key, model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
+        $stmt->execute(['id' => $recruiterId]);
+        return $stmt->fetch();
+    }
+    return null;
 }
 
 // Auto-init and seed tables on load

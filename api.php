@@ -251,6 +251,33 @@ try {
         $linkId = null;
         $templateId = null;
         $sessionType = 'practice';
+        
+        // Defaults
+        $modelChat = $_POST['model_chat_task'] ?? $input['model_chat_task'] ?? null;
+        $modelVision = $_POST['model_vision_task'] ?? $input['model_vision_task'] ?? null;
+        $modelEval = $_POST['model_eval_task'] ?? $input['model_eval_task'] ?? null;
+
+        if ($userId) {
+            $db = getDB();
+            $stmt = $db->prepare("SELECT model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
+            $stmt->execute(['id' => $userId]);
+            $candidateDefaults = $stmt->fetch();
+            if ($candidateDefaults) {
+                if (empty($modelChat)) {
+                    $modelChat = $candidateDefaults['model_chat_task'] ?: null;
+                }
+                if (empty($modelVision)) {
+                    $modelVision = $candidateDefaults['model_vision_task'] ?: null;
+                }
+                if (empty($modelEval)) {
+                    $modelEval = $candidateDefaults['model_eval_task'] ?: null;
+                }
+            }
+        }
+
+        if (empty($modelChat)) $modelChat = 'gemini-3.5-flash';
+        if (empty($modelVision)) $modelVision = 'gemini-3.5-flash';
+        if (empty($modelEval)) $modelEval = 'gemini-3.5-flash';
 
         if (!empty($inviteCode)) {
             $link = getInterviewLinkByCode($inviteCode);
@@ -270,9 +297,20 @@ try {
 
             // Increment attempts
             incrementLinkAttempts($linkId);
+            
+            // Resolve recruiter settings
+            $db = getDB();
+            $stmt = $db->prepare("SELECT u.model_chat_task, u.model_vision_task, u.model_eval_task FROM users u WHERE u.id = :id");
+            $stmt->execute(['id' => $link['created_by']]);
+            $recruiterSettings = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($recruiterSettings) {
+                $modelChat = $recruiterSettings['model_chat_task'] ?: $modelChat;
+                $modelVision = $recruiterSettings['model_vision_task'] ?: $modelVision;
+                $modelEval = $recruiterSettings['model_eval_task'] ?: $modelEval;
+            }
         }
         
-        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType);
+        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval);
         
         // Start session and set client cookie
         if (session_status() === PHP_SESSION_NONE) {
@@ -597,7 +635,7 @@ function terminateTruGenConversation($conversationId) {
     return true;
 }
 
-function analyzeScreenshotForEvaluation($imagePath) {
+function analyzeScreenshotForEvaluation($imagePath, $customApiKey = null, $model = 'gemini-3.5-flash') {
     if (!file_exists($imagePath)) {
         return "No screenshot was uploaded.";
     }
@@ -623,7 +661,7 @@ function analyzeScreenshotForEvaluation($imagePath) {
         ]
     ];
     
-    return callGemini($payload, 'gemini-3.5-flash');
+    return callGemini($payload, $model, $customApiKey);
 }
 
 function generateGeminiEvaluation($sessionId) {
@@ -632,6 +670,11 @@ function generateGeminiEvaluation($sessionId) {
     if (!$session) {
         throw new Exception("Session not found");
     }
+    
+    // Resolve model tasks and custom API keys
+    $evalModel = $session['model_eval_task'] ?? 'gemini-3.5-flash';
+    $visionModel = $session['model_vision_task'] ?? 'gemini-3.5-flash';
+    $customApiKey = getSessionApiKey($session);
     
     // 1. Gather transcripts
     $transcripts = getTranscripts($sessionId);
@@ -656,7 +699,7 @@ function generateGeminiEvaluation($sessionId) {
     $visionNotes = "No screen capture shared.";
     if (file_exists($imagePath) && is_readable($imagePath)) {
         try {
-            $visionNotes = analyzeScreenshotForEvaluation($imagePath);
+            $visionNotes = analyzeScreenshotForEvaluation($imagePath, $customApiKey, $visionModel);
         } catch (Exception $e) {
             $visionNotes = "Error analyzing latest screen capture: " . $e->getMessage();
         }
@@ -714,7 +757,7 @@ You MUST return ONLY a valid JSON object matching the following schema exactly (
         ]
     ];
     
-    $jsonResponse = callGemini($payload, 'gemini-3.5-flash');
+    $jsonResponse = callGemini($payload, $evalModel, $customApiKey);
     
     $decoded = json_decode($jsonResponse, true);
     if (!$decoded) {

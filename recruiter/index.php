@@ -8,11 +8,15 @@ requireAuth(['recruiter']);
 
 $user = getCurrentUser();
 
+$db = getDB();
+$stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+$stmt->execute(['id' => $user['id']]);
+$userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // Get company profile
 $company = getRecruiterCompany($user['id']);
 if (!$company) {
     // Gracefully handle if no company exists, auto-create one
-    $db = getDB();
     $companyName = $user['full_name'] . "'s Company";
     $stmt = $db->prepare("INSERT INTO companies (name, created_by) VALUES (:name, :created_by) RETURNING id");
     $stmt->execute(['name' => $companyName, 'created_by' => $user['id']]);
@@ -30,6 +34,40 @@ $success = '';
 // Handle actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    
+    if ($action === 'update_settings') {
+        $agentId = $_POST['custom_trugen_agent_id'] ?? '';
+        $apiKey = $_POST['custom_gemini_api_key'] ?? '';
+        $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.5-flash';
+        $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.5-flash';
+        $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.5-flash';
+        
+        try {
+            $stmt = $db->prepare("UPDATE users SET 
+                custom_trugen_agent_id = :agent_id, 
+                custom_gemini_api_key = :api_key, 
+                model_chat_task = :model_chat, 
+                model_vision_task = :model_vision, 
+                model_eval_task = :model_eval 
+                WHERE id = :id");
+            $stmt->execute([
+                'agent_id' => empty($agentId) ? null : trim($agentId),
+                'api_key' => empty($apiKey) ? null : trim($apiKey),
+                'model_chat' => $modelChat,
+                'model_vision' => $modelVision,
+                'model_eval' => $modelEval,
+                'id' => $user['id']
+            ]);
+            
+            // Re-fetch user profile
+            $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+            $stmt->execute(['id' => $user['id']]);
+            $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+            $success = "Settings updated successfully.";
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
+    }
 
     try {
         if ($action === 'create_template') {
@@ -204,6 +242,7 @@ $initials = substr($initials, 0, 2);
           <button class="tab-btn active" onclick="switchTab('results')">Candidates Results</button>
           <button class="tab-btn" onclick="switchTab('links')">Active Invites</button>
           <button class="tab-btn" onclick="switchTab('templates')">Job Templates</button>
+          <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
         </div>
 
         <!-- Tab 1: Candidates Results -->
@@ -403,7 +442,99 @@ $initials = substr($initials, 0, 2);
                 </tbody>
               </table>
             <?php endif; ?>
-          </div>
+        </div>
+
+        <!-- Tab 4: Settings -->
+        <div id="tab-settings" class="tab-content" style="padding: 24px;">
+          <form class="recruiter-form" method="POST" action="index.php" style="display: flex; flex-direction: column; gap: 24px;">
+            <input type="hidden" name="action" value="update_settings">
+            
+            <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--color-border); padding: 24px; border-radius: 12px;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-cyan); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                TruGen AI Setup
+              </h3>
+              
+              <div class="form-group" style="margin-bottom: 16px;">
+                <label for="custom_trugen_agent_id" style="font-weight: 600;">Custom TruGen Agent ID</label>
+                <input type="text" name="custom_trugen_agent_id" id="custom_trugen_agent_id" class="form-input" 
+                       placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000" 
+                       value="<?php echo htmlspecialchars($userFull['custom_trugen_agent_id'] ?? ''); ?>">
+                <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px; display: block;">
+                  Leave blank to use the platform's global TruGen Agent.
+                </span>
+              </div>
+              
+              <div style="background: rgba(6, 182, 212, 0.04); border-left: 3px solid var(--color-cyan); padding: 16px; border-radius: 8px; margin-top: 16px;">
+                <h4 style="margin-top: 0; margin-bottom: 6px; font-size: 0.9rem; color: var(--color-text-primary); font-weight: 600;">How to Configure your TruGen Agent LLM Section</h4>
+                <p style="margin: 0; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45;">
+                  To enable TruInterview to drive the conversation, configure these settings in your TruGen dashboard LLM Section:
+                </p>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45;">
+                  <li><strong>Base URL / LLM Endpoint:</strong> <code>https://codepane.com/truinterview/chat</code></li>
+                  <li><strong>API Key:</strong> Any text (e.g. <code>dummy-key</code>)</li>
+                  <li><strong>Model:</strong> Select <code>gemini-3.5-flash</code> (our server will route dialogue task requests based on the dropdown overrides below)</li>
+                </ul>
+              </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--color-border); padding: 24px; border-radius: 12px;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-cyan); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                AI Brain Settings
+              </h3>
+              
+              <div class="form-group" style="margin-bottom: 20px;">
+                <label for="custom_gemini_api_key" style="font-weight: 600;">Custom Gemini API Key</label>
+                <input type="password" name="custom_gemini_api_key" id="custom_gemini_api_key" class="form-input" 
+                       placeholder="e.g. AIzaSy..." 
+                       value="<?php echo htmlspecialchars($userFull['custom_gemini_api_key'] ?? ''); ?>">
+                <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px; display: block;">
+                  If empty, the platform global API key is used. Your settings will override only for your invites/interview links.
+                </span>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                  <label for="model_chat_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.88rem; color: var(--color-text-primary);">Dialogue (Chat) Model Override</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Low latency models (Flash/Flash-Lite)</span>
+                  </label>
+                  <select name="model_chat_task" id="model_chat_task" class="form-input" style="padding: 8px 12px;">
+                    <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast conversation flow)</option>
+                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Ultra-low latency conversation)</option>
+                    <option value="gemini-3.5-pro" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Rich, comprehensive dialog responses)</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="model_vision_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.88rem; color: var(--color-text-primary);">Screen Context (Vision) Model Override</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for code layout comprehension</span>
+                  </label>
+                  <select name="model_vision_task" id="model_vision_task" class="form-input" style="padding: 8px 12px;">
+                    <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed & understanding)</option>
+                    <option value="gemini-3.5-pro" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Highly accurate screenshot & code recognition)</option>
+                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Highest speed processing)</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="model_eval_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 0.88rem; color: var(--color-text-primary);">Evaluation (Grading) Model Override</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for deep reasoning & metric scoring</span>
+                  </label>
+                  <select name="model_eval_task" id="model_eval_task" class="form-input" style="padding: 8px 12px;">
+                    <option value="gemini-3.5-pro" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Deep reasoning metric scorecard report generation)</option>
+                    <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard scoring evaluation)</option>
+                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fast scoring evaluation)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-submit" style="align-self: flex-start; min-width: 180px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); margin-top: 10px;">Save Settings</button>
+          </form>
         </div>
       </div>
 
@@ -535,6 +666,12 @@ $initials = substr($initials, 0, 2);
         console.error('Copy link failed:', err);
       });
     }
+
+    <?php if (isset($action) && $action === 'update_settings'): ?>
+    window.addEventListener('DOMContentLoaded', () => {
+      switchTab('settings');
+    });
+    <?php endif; ?>
   </script>
 </body>
 </html>

@@ -10,8 +10,8 @@ The application follows a lightweight, server-side design pattern requiring **no
 
 *   **Premium Split-Screen Authentication**: Beautiful, full-bleed split layouts for registration and login. Features light glassmorphism styling, a "Back to Home" navigation button, role-specific dynamic backgrounds/copy, and integrated **"Sign in with Google"** OAuth with a dynamic first-time user role-selection workflow.
 *   **Dual Dashboards & Role-based Access**:
-    *   **Candidate Dashboard**: Features self-practice sessions, historic assessment run metrics, screening code redemption, and private, individual score report cards.
-    *   **Recruiter Dashboard**: Allows generating customized template configurations, distributing expiring invite codes (`TRU-XXXXXX`), and managing candidate submission pipelines via a live results dashboard.
+    *   **Candidate Dashboard**: Features self-practice sessions, historic assessment run metrics, screening code redemption, private score reports, and a **Settings** tab allowing candidates to save custom Gemini API keys and default practice run task models.
+    *   **Recruiter Dashboard**: Allows generating customized template configurations, distributing expiring invite codes (`TRU-XXXXXX`), managing candidate pipelines, and a **Settings** tab to configure custom TruGen Agent IDs, custom Gemini API keys, and map dialogue, vision, and evaluation tasks to specific models.
 *   **Real-Time Multimodal Interview Agent**: Live audio and video conversational interview flow powered by a TruGen AI agent iframe, accompanied by a dynamic audio waveform visualizer and localized candidate webcam PiP overlay.
 *   **Intelligent Screen Context Sharing**: Periodic passive screen capturing (every 9 seconds) or active "Submit Code" snapshotting. The application merges screen contents and webcam inputs into a single high-resolution frame before uploading.
 *   **Interactive MCQ Assessment**: Dynamically shifts status to trigger multiple-choice questions. Uses Gemini to classify voice intents for reading preferences (e.g., read aloud vs. self-read) and to extract selected options (A, B, C, or D) from candidate utterances.
@@ -26,8 +26,8 @@ The application follows a lightweight, server-side design pattern requiring **no
 *   **Backend**: PHP 7.4+ (cURL integration client for Gemini APIs and TruGen SDK actions, webhooks controller, database connectivity layer, custom auth validation middleware).
 *   **Database**: PostgreSQL 12+ (stores session state machine variables, conversation transcripts, multiple-choice question sets, candidate responses, users, companies, templates, and link details).
 *   **AI Models & Engines**:
-    *   **Gemini 1.5 Flash**: Orchestrates natural language classification, multimodal code visual analysis, and final structured candidate report card compilation.
-    *   **TruGen.ai**: Facilitates real-time low-latency video interview streams, audio transcription hook triggers, and TTS (Text-to-Speech) conversational injections.
+    *   **Gemini 3.5 Family (Pro, Flash, Flash-Lite)**: Dynamically routes dialogue tasks, vision parsing (screen context), and grading evaluation tasks according to recruiter and candidate settings/practice overrides. Supports bring-your-own-key capability.
+    *   **TruGen.ai**: Facilitates real-time low-latency video interview streams, audio transcription hook triggers, and TTS (Text-to-Speech) conversational injections. Supports custom TruGen agent setups.
 
 ---
 
@@ -108,6 +108,11 @@ Stores user profile accounts.
 *   `password_hash` (VARCHAR): Securely hashed password string.
 *   `role` (VARCHAR): User type (`candidate`, `recruiter`).
 *   `full_name` (VARCHAR): Display name.
+*   `custom_gemini_api_key` (VARCHAR): Bring-your-own Gemini API key.
+*   `custom_trugen_agent_id` (VARCHAR): Custom TruGen agent ID (recruiter only).
+*   `model_chat_task` (VARCHAR): Dialogue (chat) task model preference.
+*   `model_vision_task` (VARCHAR): Screen context (vision) task model preference.
+*   `model_eval_task` (VARCHAR): Evaluation (grading) task model preference.
 *   `created_at` (TIMESTAMP): Signup date.
 *   `last_login_at` (TIMESTAMP): Last login timestamp.
 
@@ -165,6 +170,9 @@ Tracks candidate metadata, ongoing state, and evaluation results.
 *   `interview_link_id` (UUID, FK): Optional recruiter invite code reference.
 *   `template_id` (UUID, FK): Active assessment template reference.
 *   `session_type` (VARCHAR): Session category (`practice`, `assessment`).
+*   `model_chat_task` (VARCHAR): Chat model used for the session.
+*   `model_vision_task` (VARCHAR): Vision model used for the session.
+*   `model_eval_task` (VARCHAR): Evaluation model used for the session.
 
 ### 7. `transcripts`
 Logs every turn of the conversational stream.

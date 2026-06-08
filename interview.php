@@ -142,6 +142,40 @@ if (!empty($inviteCode)) {
               <input type="email" id="candidate_email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email" value="" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
             <?php endif; ?>
           </div>
+          
+          <?php if (empty($inviteCode)): ?>
+            <div style="margin-top: 16px; margin-bottom: 24px; padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--color-border); border-radius: var(--radius-inner);">
+              <h3 style="margin-top: 0; font-size: 0.95rem; color: var(--color-text-primary); margin-bottom: 12px; font-weight: 600; text-align: left;">Practice Test AI Brain Selection</h3>
+              
+              <div class="form-group" style="margin-bottom: 12px; text-align: left;">
+                <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Technical Interview Dialogue (Chat)</label>
+                <select id="model_chat_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
+                  <option value="gemini-3.5-flash" selected>gemini-3.5-flash (Fast, low-latency dialogue)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra-low latency dialogue)</option>
+                  <option value="gemini-3.5-pro">gemini-3.5-pro (Rich, comprehensive responses)</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 12px; text-align: left;">
+                <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Screen Context Analysis (Vision)</label>
+                <select id="model_vision_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
+                  <option value="gemini-3.5-flash" selected>gemini-3.5-flash (Standard speed)</option>
+                  <option value="gemini-3.5-pro">gemini-3.5-pro (Accurate code comprehension)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Fastest processing)</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0; text-align: left;">
+                <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Candidate Evaluation (Grading)</label>
+                <select id="model_eval_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
+                  <option value="gemini-3.5-pro" selected>gemini-3.5-pro (Deep, highly accurate grading)</option>
+                  <option value="gemini-3.5-flash">gemini-3.5-flash (Standard report generation)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Fast report generation)</option>
+                </select>
+              </div>
+            </div>
+          <?php endif; ?>
+
           <button type="submit" class="btn-action" style="width: 100%;" <?php if (!empty($inviteError)) echo 'disabled'; ?>>
             <span>Start Assessment</span>
             <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -198,7 +232,10 @@ if (!empty($inviteCode)) {
         </div>
         <div class="agent-video-container" id="agent-video-container">
           <?php if ($session && $session['current_status'] !== 'COMPLETED'): ?>
-            <?php $trugenAgentId = getenv('TRUGEN_AGENT_ID'); ?>
+            <?php 
+              $userSettings = getSessionUserSettings($session['id']);
+              $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID'); 
+            ?>
             <?php if (!empty($trugenAgentId)): ?>
               <iframe 
                 src="https://app.trugen.ai/embed/<?php echo urlencode($trugenAgentId); ?>?username=<?php echo urlencode($session['candidate_name'] ?? ''); ?>&id=<?php echo urlencode($session['email'] ?? ''); ?>" 

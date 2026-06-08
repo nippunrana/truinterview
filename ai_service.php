@@ -8,8 +8,8 @@ if (session_status() === PHP_SESSION_NONE) {
 /**
  * Base utility to execute request against Gemini API
  */
-function callGemini($payload, $model = 'gemini-3.5-flash') {
-    $apiKey = getenv('GEMINI_API_KEY');
+function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
+    $apiKey = $apiKeyOverride ?: getenv('GEMINI_API_KEY');
     if (!$apiKey) {
         $apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
     }
@@ -51,7 +51,7 @@ function callGemini($payload, $model = 'gemini-3.5-flash') {
 /**
  * Multimodal vision check using Gemini
  */
-function queryGeminiVision($imagePath, $prompt, $context) {
+function queryGeminiVision($imagePath, $prompt, $context, $apiKeyOverride = null, $model = 'gemini-3.5-flash') {
     if (!file_exists($imagePath)) {
         throw new Exception("Image file not found: " . $imagePath);
     }
@@ -89,13 +89,13 @@ function queryGeminiVision($imagePath, $prompt, $context) {
         ]
     ];
     
-    return callGemini($payload, 'gemini-3.5-flash');
+    return callGemini($payload, $model, $apiKeyOverride);
 }
 
 /**
  * Text-only dialog chat turn progression using Gemini
  */
-function queryGeminiChat($messages, $systemPrompt = null) {
+function queryGeminiChat($messages, $systemPrompt = null, $apiKeyOverride = null, $model = 'gemini-3.5-flash') {
     if (empty($systemPrompt)) {
         $systemPrompt = getInterviewSystemPrompt();
     }
@@ -146,7 +146,7 @@ function queryGeminiChat($messages, $systemPrompt = null) {
         ]
     ];
     
-    return callGemini($payload, 'gemini-3.5-flash');
+    return callGemini($payload, $model, $apiKeyOverride);
 }
 
 /**
