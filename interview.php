@@ -265,7 +265,6 @@ if (!empty($inviteCode)) {
               </iframe>
             <?php endif; ?>
           <?php endif; ?>
-          <video id="candidate-video" autoplay playsinline muted style="position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px; border-radius: var(--radius-inner); border: 2px solid var(--color-border); z-index: 5; object-fit: cover; display: none; background: #000;"></video>
           <div class="agent-video-placeholder">
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
             <p>Agent Video Connection Pending</p>
@@ -278,12 +277,6 @@ if (!empty($inviteCode)) {
         </div>
 
         <div class="media-controls">
-          <button id="mic-toggle" class="btn-control" onclick="toggleMedia('mic')" title="Toggle Microphone">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-          </button>
-          <button id="camera-toggle" class="btn-control" onclick="toggleMedia('camera')" title="Toggle Camera">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-          </button>
           <button id="end-interview-btn" class="btn-control danger" onclick="transitionToCompleted()" title="End Interview">
             <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
           </button>

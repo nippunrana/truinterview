@@ -6,13 +6,10 @@ let passivePollInterval = null;
 let isTransitionedToCompleted = false;
 
 // Media Streams References
-let localStream = null;
 let screenStream = null;
 
 // Local media states
 const mediaState = {
-  mic: false,
-  camera: false,
   screen: false
 };
 
@@ -28,9 +25,9 @@ function initVisualizer() {
   }
 }
 
-// Animate visualizer based on microphone status
+// Animate visualizer based on session active state
 function animateVisualizer() {
-  if (!mediaState.mic) {
+  if (!sessionActive || isTransitionedToCompleted) {
     document.querySelectorAll('.visualizer-bar').forEach(bar => {
       bar.style.height = '15px';
     });
@@ -109,90 +106,7 @@ function handleRegister(event) {
   });
 }
 
-// Toggle Microphone or Camera media tracks
-async function toggleMedia(type) {
-  const btn = document.getElementById(type + '-toggle');
-  if (!btn) return;
 
-  if (type === 'mic') {
-    if (!mediaState.mic) {
-      try {
-        if (!localStream) {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: mediaState.camera });
-        } else {
-          let audioTrack = localStream.getAudioTracks()[0];
-          if (!audioTrack) {
-            const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioTrack = tempStream.getAudioTracks()[0];
-            localStream.addTrack(audioTrack);
-          }
-          audioTrack.enabled = true;
-        }
-        mediaState.mic = true;
-        btn.classList.add('active');
-        btn.classList.remove('disabled');
-      } catch (err) {
-        console.error('Error enabling microphone:', err);
-        alert('Could not access microphone: ' + err.message);
-        btn.classList.add('disabled');
-      }
-    } else {
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.stop();
-          localStream.removeTrack(audioTrack);
-        }
-      }
-      mediaState.mic = false;
-      btn.classList.remove('active');
-    }
-  } else if (type === 'camera') {
-    const videoEl = document.getElementById('candidate-video');
-    if (!mediaState.camera) {
-      try {
-        if (!localStream) {
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: mediaState.mic, video: true });
-        } else {
-          let videoTrack = localStream.getVideoTracks()[0];
-          if (!videoTrack) {
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoTrack = tempStream.getVideoTracks()[0];
-            localStream.addTrack(videoTrack);
-          }
-          videoTrack.enabled = true;
-        }
-        
-        if (videoEl) {
-          videoEl.srcObject = localStream;
-          videoEl.style.display = 'block';
-        }
-        
-        mediaState.camera = true;
-        btn.classList.add('active');
-        btn.classList.remove('disabled');
-      } catch (err) {
-        console.error('Error enabling camera:', err);
-        alert('Could not access camera: ' + err.message);
-        btn.classList.add('disabled');
-      }
-    } else {
-      if (localStream) {
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.stop();
-          localStream.removeTrack(videoTrack);
-        }
-      }
-      if (videoEl) {
-        videoEl.srcObject = null;
-        videoEl.style.display = 'none';
-      }
-      mediaState.camera = false;
-      btn.classList.remove('active');
-    }
-  }
-}
 
 // Toggle desktop screen sharing
 async function toggleScreenShare() {
@@ -272,7 +186,6 @@ function stopScreenShare() {
 // Canvas Frame Grabber Pipeline
 function captureFrame() {
   const screenVideo = document.getElementById('screen-video-element');
-  const candidateVideo = document.getElementById('candidate-video');
   const canvas = document.getElementById('capture-canvas');
   if (!canvas || !screenVideo || !mediaState.screen) return null;
 
@@ -286,28 +199,6 @@ function captureFrame() {
 
   // Draw background screen share
   ctx.drawImage(screenVideo, 0, 0, width, height);
-
-  // Overlay candidate's camera stream picture-in-picture style
-  if (mediaState.camera && candidateVideo && candidateVideo.videoWidth) {
-    const pipWidth = Math.floor(width * 0.22); // 22% of container
-    const pipHeight = Math.floor(candidateVideo.videoHeight * (pipWidth / candidateVideo.videoWidth));
-    const margin = 24;
-    const x = width - pipWidth - margin;
-    const y = height - pipHeight - margin;
-    
-    ctx.save();
-    // Clip rounded corners for premium border design
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(x, y, pipWidth, pipHeight, 12);
-    } else {
-      ctx.rect(x, y, pipWidth, pipHeight);
-    }
-    ctx.clip();
-    
-    ctx.drawImage(candidateVideo, x, y, pipWidth, pipHeight);
-    ctx.restore();
-  }
 
   return canvas.toDataURL('image/jpeg', 0.85);
 }
@@ -676,12 +567,6 @@ async function transitionToCompleted(immediate = false) {
   if (pollInterval) clearInterval(pollInterval);
   stopPassivePolling();
 
-  // Shut down camera & microphone
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
-  }
-  
   // Shut down screen sharing
   stopScreenShare();
   
@@ -690,10 +575,6 @@ async function transitionToCompleted(immediate = false) {
   if (headerBtn) headerBtn.style.display = 'none';
   const newBtn = document.getElementById('new-interview-header-btn');
   if (newBtn) newBtn.style.display = 'flex';
-  const micBtn = document.getElementById('mic-toggle');
-  if (micBtn) micBtn.className = 'btn-control disabled';
-  const camBtn = document.getElementById('camera-toggle');
-  if (camBtn) camBtn.className = 'btn-control disabled';
   
   // Hide workspace grid
   const workspace = document.querySelector('.workspace-grid');
