@@ -338,6 +338,6 @@ if (!empty($inviteCode)) {
     const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
   </script>
-  <script src="assets/js/app.js" defer></script>
+  <script src="assets/js/interview.js" defer></script>
 </body>
 </html>

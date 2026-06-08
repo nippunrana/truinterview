@@ -1,4 +1,4 @@
-// app.js - Frontend Logic and Media Streams Lifecycle Management
+// interview.js - Frontend Logic and Media Streams Lifecycle Management
 
 let timerInterval = null;
 let pollInterval = null;
