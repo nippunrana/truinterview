@@ -31,7 +31,7 @@ $prefEmail = '';
 $currentUser = getCurrentUser();
 $modelChatPref = 'gemini-3.5-flash';
 $modelVisionPref = 'gemini-3.5-flash';
-$modelEvalPref = 'gemini-3.5-pro';
+$modelEvalPref = 'gemini-3.1-pro-preview';
 
 if ($currentUser && $currentUser['role'] === 'candidate') {
     $prefName = $currentUser['full_name'];
@@ -172,8 +172,8 @@ if (!empty($inviteCode)) {
                 <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Technical Interview Dialogue (Chat)</label>
                 <select id="model_chat_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
                   <option value="gemini-3.5-flash" <?php if ($modelChatPref === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, low-latency dialogue)</option>
-                  <option value="gemini-3.5-flash-lite" <?php if ($modelChatPref === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Ultra-low latency dialogue)</option>
-                  <option value="gemini-3.5-pro" <?php if ($modelChatPref === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Rich, comprehensive responses)</option>
+                  <option value="gemini-3.1-flash-lite" <?php if ($modelChatPref === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-low latency dialogue)</option>
+                  <option value="gemini-3.1-pro-preview" <?php if ($modelChatPref === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Rich, comprehensive responses)</option>
                 </select>
               </div>
 
@@ -181,17 +181,17 @@ if (!empty($inviteCode)) {
                 <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Screen Context Analysis (Vision)</label>
                 <select id="model_vision_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
                   <option value="gemini-3.5-flash" <?php if ($modelVisionPref === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard speed)</option>
-                  <option value="gemini-3.5-pro" <?php if ($modelVisionPref === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Accurate code comprehension)</option>
-                  <option value="gemini-3.5-flash-lite" <?php if ($modelVisionPref === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fastest processing)</option>
+                  <option value="gemini-3.1-pro-preview" <?php if ($modelVisionPref === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Accurate code comprehension)</option>
+                  <option value="gemini-3.1-flash-lite" <?php if ($modelVisionPref === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fastest processing)</option>
                 </select>
               </div>
 
               <div class="form-group" style="margin-bottom: 0; text-align: left;">
                 <label style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; display: block; color: var(--color-text-secondary); font-weight: 600;">Candidate Evaluation (Grading)</label>
                 <select id="model_eval_task" class="form-input" style="width:100%; padding: 8px 12px; background: var(--color-bg-app); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 8px;">
-                  <option value="gemini-3.5-pro" <?php if ($modelEvalPref === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Deep, highly accurate grading)</option>
+                  <option value="gemini-3.1-pro-preview" <?php if ($modelEvalPref === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep, highly accurate grading)</option>
                   <option value="gemini-3.5-flash" <?php if ($modelEvalPref === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard report generation)</option>
-                  <option value="gemini-3.5-flash-lite" <?php if ($modelEvalPref === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fast report generation)</option>
+                  <option value="gemini-3.1-flash-lite" <?php if ($modelEvalPref === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fast report generation)</option>
                 </select>
               </div>
             </div>

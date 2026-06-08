@@ -502,8 +502,8 @@ $initials = substr($initials, 0, 2);
                   </label>
                   <select name="model_chat_task" id="model_chat_task" class="form-input" style="padding: 8px 12px;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast conversation flow)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Ultra-low latency conversation)</option>
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Rich, comprehensive dialog responses)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-low latency conversation)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Rich, comprehensive dialog responses)</option>
                   </select>
                 </div>
                 
@@ -514,8 +514,8 @@ $initials = substr($initials, 0, 2);
                   </label>
                   <select name="model_vision_task" id="model_vision_task" class="form-input" style="padding: 8px 12px;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed & understanding)</option>
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Highly accurate screenshot & code recognition)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Highest speed processing)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Highly accurate screenshot & code recognition)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Highest speed processing)</option>
                   </select>
                 </div>
                 
@@ -525,9 +525,9 @@ $initials = substr($initials, 0, 2);
                     <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for deep reasoning & metric scoring</span>
                   </label>
                   <select name="model_eval_task" id="model_eval_task" class="form-input" style="padding: 8px 12px;">
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Deep reasoning metric scorecard report generation)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep reasoning metric scorecard report generation)</option>
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard scoring evaluation)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fast scoring evaluation)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fast scoring evaluation)</option>
                   </select>
                 </div>
               </div>

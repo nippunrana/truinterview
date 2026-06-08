@@ -243,8 +243,8 @@ $initials = substr($initials, 0, 2);
                   </label>
                   <select name="model_chat_task" class="form-input" style="padding: 10px 12px; background: #fff;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, conversational)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Ultra-low latency dialog)</option>
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Deep, rich answers)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-low latency dialog)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep, rich answers)</option>
                   </select>
                 </div>
 
@@ -255,8 +255,8 @@ $initials = substr($initials, 0, 2);
                   </label>
                   <select name="model_vision_task" class="form-input" style="padding: 10px 12px; background: #fff;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed)</option>
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (High intelligence code understanding)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fastest processing)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (High intelligence code understanding)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fastest processing)</option>
                   </select>
                 </div>
 
@@ -266,9 +266,9 @@ $initials = substr($initials, 0, 2);
                     <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for deep scorecard reasoning</span>
                   </label>
                   <select name="model_eval_task" class="form-input" style="padding: 10px 12px; background: #fff;">
-                    <option value="gemini-3.5-pro" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-pro') echo 'selected'; ?>>gemini-3.5-pro (Advanced grading report evaluation)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Advanced grading report evaluation)</option>
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard grading evaluation)</option>
-                    <option value="gemini-3.5-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash-lite') echo 'selected'; ?>>gemini-3.5-flash-lite (Fast grading evaluation)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fast grading evaluation)</option>
                   </select>
                 </div>
               </div>

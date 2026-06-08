@@ -9,6 +9,17 @@ if (session_status() === PHP_SESSION_NONE) {
  * Base utility to execute request against Gemini API
  */
 function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
+    // Map model names to actual supported Google Gemini API models
+    $modelMap = [
+        'gemini-3.5-flash'      => 'gemini-3.5-flash',
+        'gemini-3.5-flash-lite' => 'gemini-3.1-flash-lite',
+        'gemini-3.5-pro'        => 'gemini-3.1-pro-preview',
+        'gemini-3.1-pro'        => 'gemini-3.1-pro-preview',
+    ];
+    if (isset($modelMap[$model])) {
+        $model = $modelMap[$model];
+    }
+
     $apiKey = $apiKeyOverride ?: getenv('GEMINI_API_KEY');
     if (!$apiKey) {
         $apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
