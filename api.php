@@ -454,12 +454,15 @@ try {
         
         if ($eventName === 'agent.started_speaking') {
             $text = $eventPayload['text'] ?? '';
+            if (is_array($text)) {
+                $text = implode(" ", $text);
+            }
             logTranscript($sessionId, 'AGENT', $text);
             
             $db = getDB();
-            if (stripos($text, 'interview is complete') !== false || 
+            if (!empty($text) && (stripos($text, 'interview is complete') !== false || 
                 stripos($text, 'generate your feedback report') !== false || 
-                stripos($text, 'analyze your responses') !== false) {
+                stripos($text, 'analyze your responses') !== false)) {
                 
                 $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
                 $stmt->execute(['id' => $sessionId]);
@@ -473,12 +476,33 @@ try {
             }
             
         } elseif ($eventName === 'agent.stopped_speaking') {
+            $text = $eventPayload['text'] ?? '';
+            if (is_array($text)) {
+                $text = implode(" ", $text);
+            }
+            logTranscript($sessionId, 'AGENT', $text);
+            
             $db = getDB();
-            $stmt = $db->prepare("UPDATE sessions SET current_status = 'IN_PROGRESS' WHERE id = :id");
-            $stmt->execute(['id' => $sessionId]);
+            if (!empty($text) && (stripos($text, 'interview is complete') !== false || 
+                stripos($text, 'generate your feedback report') !== false || 
+                stripos($text, 'analyze your responses') !== false)) {
+                
+                $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+                
+                if (!empty($convId)) {
+                    terminateTruGenConversation($convId);
+                }
+            } else {
+                $stmt = $db->prepare("UPDATE sessions SET current_status = 'IN_PROGRESS' WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+            }
             
         } elseif ($eventName === 'utterance_committed') {
             $candidateText = $eventPayload['text'] ?? '';
+            if (is_array($candidateText)) {
+                $candidateText = implode(" ", $candidateText);
+            }
             if (!empty($candidateText)) {
                 logTranscript($sessionId, 'USER', $candidateText);
             }

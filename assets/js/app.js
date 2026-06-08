@@ -13,31 +13,7 @@ const mediaState = {
   screen: false
 };
 
-// Initialize audio waveform visualizer bars
-function initVisualizer() {
-  const container = document.getElementById('visualizer-container');
-  if (!container) return;
-  container.innerHTML = '';
-  for (let i = 0; i < 40; i++) {
-    const bar = document.createElement('div');
-    bar.className = 'visualizer-bar';
-    container.appendChild(bar);
-  }
-}
 
-// Animate visualizer based on session active state
-function animateVisualizer() {
-  if (!sessionActive || isTransitionedToCompleted) {
-    document.querySelectorAll('.visualizer-bar').forEach(bar => {
-      bar.style.height = '15px';
-    });
-    return;
-  }
-  document.querySelectorAll('.visualizer-bar').forEach(bar => {
-    const height = Math.floor(Math.random() * 35) + 5;
-    bar.style.height = height + 'px';
-  });
-}
 
 // Toggle Theme (Light/Dark)
 function toggleTheme() {
@@ -542,8 +518,7 @@ async function submitMCQOption() {
 
 // Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
-  initVisualizer();
-  setInterval(animateVisualizer, 100);
+
 
   if (sessionActive) {
     if (sessionStatus === 'COMPLETED') {

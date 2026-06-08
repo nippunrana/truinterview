@@ -271,7 +271,23 @@ function updateSessionPreference($id, $pref) {
 }
 
 function logTranscript($sessionId, $speaker, $message) {
+    if (is_array($message)) {
+        $message = implode(" ", $message);
+    }
+    $message = trim((string)$message);
+    if ($message === '') {
+        return false;
+    }
     $db = getDB();
+    
+    // De-duplicate consecutive identical messages for the same speaker in this session
+    $stmt = $db->prepare("SELECT speaker, message FROM transcripts WHERE session_id = :session_id ORDER BY id DESC LIMIT 1");
+    $stmt->execute(['session_id' => $sessionId]);
+    $last = $stmt->fetch();
+    if ($last && $last['speaker'] === $speaker && trim($last['message']) === $message) {
+        return true;
+    }
+    
     $stmt = $db->prepare("INSERT INTO transcripts (session_id, speaker, message) VALUES (:session_id, :speaker, :message)");
     return $stmt->execute(['session_id' => $sessionId, 'speaker' => $speaker, 'message' => $message]);
 }
