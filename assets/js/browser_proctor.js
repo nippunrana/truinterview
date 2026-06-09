@@ -2,6 +2,7 @@
 
 let activeSessionId = null;
 let isInitialized = false;
+let screenDetailsObj = null;
 
 // Onboarding checklist progress states
 let fullscreenDone = false;
@@ -79,6 +80,17 @@ export function destroyBrowserProctor() {
     if (listeners.fullscreenchange) {
         document.removeEventListener('fullscreenchange', listeners.fullscreenchange);
     }
+
+    // Clean screenDetails listeners
+    if (screenDetailsObj && listeners.screenschange) {
+        try {
+            screenDetailsObj.removeEventListener('screenschange', listeners.screenschange);
+        } catch (e) {
+            console.error("Error removing screenschange listener:", e);
+        }
+    }
+    screenDetailsObj = null;
+    listeners.screenschange = null;
 
     // Clean standard event listeners (only active if wizard completed)
     disableProctoringListeners();
@@ -199,6 +211,46 @@ function setupIntegrityWizard() {
 
     // Step 3: Fullscreen Button Handler
     listeners.fullscreenBtnClick = async () => {
+        if (!('getScreenDetails' in window)) {
+            if (window.showProctorBanner) {
+                window.showProctorBanner("Browser Error: Display detection API is unsupported. Please use a supported Chromium-based browser.", 'error', 6000);
+            }
+            alert("Your browser does not support display configuration tracking. Please use a supported Chromium-based browser like Google Chrome or Microsoft Edge.");
+            return;
+        }
+
+        try {
+            screenDetailsObj = await window.getScreenDetails();
+        } catch (err) {
+            console.error("Display permission request failed:", err);
+            if (window.showProctorBanner) {
+                window.showProctorBanner("Integrity Block: Display permission is required to verify your monitor configuration.", 'warning', 6000);
+            }
+            alert("Security Restriction: You must grant permission to view display details to proceed with this assessment.");
+            return;
+        }
+
+        if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
+            if (window.showProctorBanner) {
+                window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors.", 'warning', 6000);
+            }
+            alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens and ensure you are using a single monitor to proceed.");
+            return;
+        }
+
+        // Register listener for layout changes mid-session
+        if (!listeners.screenschange) {
+            listeners.screenschange = () => {
+                if (screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended)) {
+                    triggerBrowserAlert('device_change', 'critical', {
+                        reason: 'Candidate connected a secondary monitor during the active session.',
+                        screen_count: screenDetailsObj.screens.length
+                    });
+                }
+            };
+            screenDetailsObj.addEventListener('screenschange', listeners.screenschange);
+        }
+
         try {
             if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen();
@@ -222,6 +274,15 @@ function setupIntegrityWizard() {
 
     // Resume button link (exclusively active when escaping fullscreen mid-interview)
     listeners.resumeBtnClick = async () => {
+        if (screenDetailsObj) {
+            if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
+                if (window.showProctorBanner) {
+                    window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors to resume.", 'warning', 6000);
+                }
+                alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens to resume the assessment.");
+                return;
+            }
+        }
         try {
             if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen();

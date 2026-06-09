@@ -166,12 +166,9 @@ if (!empty($inviteCode)) {
         <p style="color: var(--color-danger); font-weight: 600; margin-top: var(--space-2);">Action Required</p>
       </div>
       <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; text-align: left; margin: var(--space-2) 0;">
-        To ensure interview security and proctoring integrity, this assessment can only be taken using one of the following supported browsers:
-        <ul style="margin: var(--space-3) 0 var(--space-3) var(--space-6); list-style-type: disc;">
-          <li><strong>Google Chrome</strong> (or Chromium-based browsers like Edge, Brave, Opera, Vivaldi)</li>
-          <li><strong>Apple Safari</strong></li>
-        </ul>
-        Please open this link in one of these supported browsers to proceed with your assessment.
+        To ensure interview security and proctoring integrity, this assessment can only be taken using a Chromium-based browser (such as Google Chrome, Microsoft Edge, Brave, or Opera).
+        <br><br>
+        Please open this link in a supported Chromium-based browser to proceed with your assessment.
       </div>
     </div>
   </div>
@@ -250,10 +247,8 @@ if (!empty($inviteCode)) {
   <script>
     (function() {
       const ua = navigator.userAgent;
-      const vendor = navigator.vendor;
       const isChromium = !!window.chrome || ua.includes("Chrome") || ua.includes("Chromium") || ua.includes("CriOS");
-      const isSafari = ua.includes("Safari") && vendor.includes("Apple") && !ua.includes("Chrome") && !ua.includes("Chromium");
-      if (!isChromium && !isSafari) {
+      if (!isChromium) {
         window.addEventListener('DOMContentLoaded', () => {
           const overlay = document.getElementById('browser-block-overlay');
           if (overlay) {
