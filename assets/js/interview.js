@@ -809,11 +809,11 @@ window.loadAgentIframe = function() {
 
   // Create iframe
   const iframe = document.createElement('iframe');
-  iframe.src = `https://app.trugen.ai/embed?agentId=${encodeURIComponent(trugenAgentId)}&name=${encodeURIComponent(candidateName)}&email=${encodeURIComponent(candidateEmail)}`;
+  iframe.src = `https://app.trugen.ai/embed/${encodeURIComponent(trugenAgentId)}?username=${encodeURIComponent(candidateName)}&id=${encodeURIComponent(candidateEmail)}`;
   iframe.style.width = '100%';
   iframe.style.height = '100%';
   iframe.style.border = 'none';
-  iframe.setAttribute('allow', 'camera; microphone; autoplay');
+  iframe.setAttribute('allow', 'camera; microphone; autoplay; display-capture');
   container.appendChild(iframe);
 };
 
