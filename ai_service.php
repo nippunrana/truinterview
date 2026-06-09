@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 /**
  * Base utility to execute request against Gemini API
  */
-function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
+function callGeminiRaw($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
     // Map model names to actual supported Google Gemini API models
     $modelMap = [
         'gemini-3.5-flash'      => 'gemini-3.5-flash',
@@ -52,8 +52,16 @@ function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = nul
     }
     
     $data = json_decode($response, true);
+    if (!$data) {
+        throw new Exception("Invalid JSON response from Gemini API: " . $response);
+    }
+    return $data;
+}
+
+function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
+    $data = callGeminiRaw($payload, $model, $apiKeyOverride);
     if (!isset($data['candidates'][0]['content']['parts'][0]['text'])) {
-        throw new Exception("Unexpected response format from Gemini API: " . $response);
+        throw new Exception("Unexpected response format from Gemini API: " . json_encode($data));
     }
     
     return trim($data['candidates'][0]['content']['parts'][0]['text']);
@@ -182,3 +190,5 @@ function getInterviewSystemPrompt() {
 - Spell out all symbols (e.g., say 'percent' instead of '%', 'dollars' instead of '$').
 - Use standard punctuation to introduce brief pauses for natural turn-taking.";
 }
+
+

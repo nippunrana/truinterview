@@ -7,6 +7,9 @@ header("Access-Control-Allow-Methods: GET, POST");
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/ai_service.php';
+require_once __DIR__ . '/trugen_service.php';
+require_once __DIR__ . '/evaluation_service.php';
 
 $action = $_GET['action'] ?? '';
 
@@ -185,19 +188,42 @@ try {
         if ($session['current_status'] !== 'COMPLETED') {
             $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
             $stmt->execute(['id' => $sessionId]);
-            
-            // Terminate TruGen conversation if there is an active session
-            if (!empty($session['trugen_conversation_id'])) {
-                terminateTruGenConversation($session['trugen_conversation_id']);
-            }
-            
-            // Re-fetch updated session
-            $session = getSession($sessionId);
         }
+        
+        // Terminate TruGen conversation if there is an active session
+        if (!empty($session['trugen_conversation_id'])) {
+            terminateTruGenConversation($session['trugen_conversation_id']);
+            $stmt = $db->prepare("UPDATE sessions SET trugen_conversation_id = NULL WHERE id = :id");
+            $stmt->execute(['id' => $sessionId]);
+            $session['trugen_conversation_id'] = null;
+        }
+        
+        // Re-fetch updated session
+        $session = getSession($sessionId);
         
         // If final_score is not generated, generate it using Gemini
         if (empty($session['final_score'])) {
-            $evaluation = generateGeminiEvaluation($sessionId);
+            if (($session['closure_reason'] ?? '') === 'misconduct') {
+                $evaluation = [
+                    "communication_score" => 0,
+                    "communication_feedback" => "Interview terminated early due to repeated misconduct / off-topic behavior.",
+                    "problem_solving_score" => 0,
+                    "problem_solving_feedback" => "Interview terminated early due to repeated misconduct / off-topic behavior.",
+                    "code_quality_score" => 0,
+                    "code_quality_feedback" => "Interview terminated early due to repeated misconduct / off-topic behavior.",
+                    "strengths" => [
+                        "None"
+                    ],
+                    "recommendations" => [
+                        "Maintain professional conduct during technical interviews.",
+                        "Engage seriously with the assessment questions.",
+                        "Avoid off-topic conversations or prompt injection attempts."
+                    ],
+                    "overall_feedback" => "The interview was terminated by the automated system due to a breach of the professional conduct guidelines. Multiple warnings were issued for off-topic behavior or prompt-injection attempts before closure."
+                ];
+            } else {
+                $evaluation = generateGeminiEvaluation($sessionId);
+            }
             
             $stmt = $db->prepare("UPDATE sessions SET final_score = :final_score WHERE id = :id");
             $stmt->execute([
@@ -532,261 +558,3 @@ try {
     ]);
 }
 
-function cleanSpeechText($text) {
-    // 1. Remove emojis
-    $clean = preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $text);
-    $clean = preg_replace('/[\x{1F300}-\x{1F5FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F680}-\x{1F6FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{2600}-\x{26FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{2700}-\x{27BF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F900}-\x{1F9FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F018}-\x{1F0F5}]/u', '', $clean);
-    
-    // 2. Remove markdown elements
-    $clean = str_replace(['*', '#', '_', '`'], '', $clean);
-    $clean = preg_replace('/^\s*[-*+•]\s+/m', ' ', $clean);
-    
-    // 3. Convert symbols to words
-    $replacements = [
-        '$' => ' dollars ',
-        '%' => ' percent ',
-        '&' => ' and ',
-        '+' => ' plus ',
-        '=' => ' equals ',
-        '@' => ' at ',
-        '#' => ' number ',
-        '<' => ' less than ',
-        '>' => ' greater than ',
-        '/' => ' slash ',
-        '\\' => ' backslash '
-    ];
-    
-    foreach ($replacements as $symbol => $word) {
-        $clean = str_replace($symbol, $word, $clean);
-    }
-    
-    $clean = preg_replace('/\s+/', ' ', $clean);
-    return trim($clean);
-}
-
-function injectSpeakText($conversationId, $text) {
-    if ($conversationId === 'mock_id') {
-        return true;
-    }
-    
-    $apiKey = getenv('TRUGEN_API_KEY');
-    if (!$apiKey) {
-        $apiKey = $_ENV['TRUGEN_API_KEY'] ?? '';
-    }
-    
-    if (empty($apiKey)) {
-        error_log("TruGen API key not found in environment.");
-        return false;
-    }
-    
-    $url = "https://api.trugen.ai/v1/conversation/" . urlencode($conversationId) . "/speak";
-    
-    $payload = [
-        "text" => $text
-    ];
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'x-api-key: ' . $apiKey
-    ]);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-    
-    if ($error) {
-        error_log("TruGen speak injection curl error: " . $error);
-        return false;
-    }
-    
-    if ($httpCode !== 200) {
-        error_log("TruGen speak injection API returned code {$httpCode}: " . $response);
-        return false;
-    }
-    
-    return true;
-}
-
-function terminateTruGenConversation($conversationId) {
-    if ($conversationId === 'mock_id') {
-        return true;
-    }
-    
-    $apiKey = getenv('TRUGEN_API_KEY');
-    if (!$apiKey) {
-        $apiKey = $_ENV['TRUGEN_API_KEY'] ?? '';
-    }
-    
-    if (empty($apiKey)) {
-        error_log("TruGen API key not found in environment.");
-        return false;
-    }
-    
-    $url = "https://api.trugen.ai/v1/conversation/" . urlencode($conversationId);
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'x-api-key: ' . $apiKey
-    ]);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-    
-    if ($error) {
-        error_log("TruGen termination curl error: " . $error);
-        return false;
-    }
-    
-    if ($httpCode !== 200) {
-        error_log("TruGen termination API returned code {$httpCode}: " . $response);
-        return false;
-    }
-    
-    return true;
-}
-
-function analyzeScreenshotForEvaluation($imagePath, $customApiKey = null, $model = 'gemini-3.5-flash') {
-    if (!file_exists($imagePath)) {
-        return "No screenshot was uploaded.";
-    }
-    
-    $imageData = base64_encode(file_get_contents($imagePath));
-    $mimeType = 'image/jpeg';
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => "Analyze the code, UI, or work shown in this screenshot. Provide a brief, technical summary of what is visible, including any programming languages, algorithms, UI designs, or potential bugs/issues. Keep it under 2-3 sentences."
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => $mimeType,
-                            "data" => $imageData
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    ];
-    
-    return callGemini($payload, $model, $customApiKey);
-}
-
-function generateGeminiEvaluation($sessionId) {
-    require_once __DIR__ . '/ai_service.php';
-    $session = getSession($sessionId);
-    if (!$session) {
-        throw new Exception("Session not found");
-    }
-    
-    // Resolve model tasks and custom API keys
-    $evalModel = $session['model_eval_task'] ?? 'gemini-3.5-flash';
-    $visionModel = $session['model_vision_task'] ?? 'gemini-3.5-flash';
-    $customApiKey = getSessionApiKey($session);
-    
-    // 1. Gather transcripts
-    $transcripts = getTranscripts($sessionId);
-    $transcriptStr = "";
-    foreach ($transcripts as $t) {
-        $transcriptStr .= $t['speaker'] . ": " . $t['message'] . "\n";
-    }
-    
-    // 2. Gather MCQ details
-    $responses = getCandidateResponses($sessionId);
-    $totalMCQ = count($responses);
-    $correctMCQ = 0;
-    foreach ($responses as $r) {
-        if ($r['is_correct']) {
-            $correctMCQ++;
-        }
-    }
-    $mcqScoreStr = "{$correctMCQ} out of {$totalMCQ} correct";
-    
-    // 3. Gather Vision Notes Summary
-    $imagePath = __DIR__ . '/uploads/' . $sessionId . '/latest.jpg';
-    $visionNotes = "No screen capture shared.";
-    if (file_exists($imagePath) && is_readable($imagePath)) {
-        try {
-            $visionNotes = analyzeScreenshotForEvaluation($imagePath, $customApiKey, $visionModel);
-        } catch (Exception $e) {
-            $visionNotes = "Error analyzing latest screen capture: " . $e->getMessage();
-        }
-    }
-    
-    // 4. Construct the prompt
-    $prompt = "Analyze the following mock interview details and provide a structured evaluation:
-- Candidate Name: " . $session['candidate_name'] . "
-- MCQ Score: " . $mcqScoreStr . "
-- Code Screenshots Context: " . $visionNotes . "
-- Dialogue Transcript:
-" . $transcriptStr . "
-
-Provide a structured evaluation in JSON containing:
-1. Communication Score (1-10) with descriptive text.
-2. Problem Solving Score (1-10) with descriptive text.
-3. Code Quality / Debugging Score (1-10) with details.
-4. Key strengths (list of 3 items).
-5. Development recommendations (list of 3 items).
-6. Comprehensive overall feedback summary.
-
-You MUST return ONLY a valid JSON object matching the following schema exactly (no markdown formatting, no backticks, no wrap, just the raw JSON string):
-{
-  \"communication_score\": 8,
-  \"communication_feedback\": \"Descriptive feedback here...\",
-  \"problem_solving_score\": 7,
-  \"problem_solving_feedback\": \"Descriptive feedback here...\",
-  \"code_quality_score\": 9,
-  \"code_quality_feedback\": \"Descriptive feedback here...\",
-  \"strengths\": [
-    \"strength 1\",
-    \"strength 2\",
-    \"strength 3\"
-  ],
-  \"recommendations\": [
-    \"rec 1\",
-    \"rec 2\",
-    \"rec 3\"
-  ],
-  \"overall_feedback\": \"Comprehensive overall feedback summary.\"
-}";
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => $prompt
-                    ]
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
-        ]
-    ];
-    
-    $jsonResponse = callGemini($payload, $evalModel, $customApiKey);
-    
-    $decoded = json_decode($jsonResponse, true);
-    if (!$decoded) {
-        throw new Exception("Failed to generate a valid JSON evaluation from Gemini.");
-    }
-    
-    return $decoded;
-}

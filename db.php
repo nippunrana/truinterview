@@ -160,6 +160,8 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS conduct_warnings INTEGER DEFAULT 0");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS closure_reason VARCHAR(50)");
 
     // Create transcripts table
     $db->exec("CREATE TABLE IF NOT EXISTS transcripts (
@@ -256,6 +258,26 @@ function getSession($id) {
     $stmt = $db->prepare("SELECT * FROM sessions WHERE id = :id");
     $stmt->execute(['id' => $id]);
     return $stmt->fetch();
+}
+
+function getSessionConductWarnings($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT conduct_warnings FROM sessions WHERE id = :id");
+    $stmt->execute(['id' => $sessionId]);
+    return (int)$stmt->fetchColumn();
+}
+
+function incrementConductWarning($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE sessions SET conduct_warnings = conduct_warnings + 1 WHERE id = :id RETURNING conduct_warnings");
+    $stmt->execute(['id' => $sessionId]);
+    return (int)$stmt->fetchColumn();
+}
+
+function closeSessionForMisconduct($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', closure_reason = 'misconduct', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
+    return $stmt->execute(['id' => $sessionId]);
 }
 
 function updateSessionConversation($id, $convId) {
@@ -387,6 +409,14 @@ function listInterviewTemplates($companyId) {
     $stmt = $db->prepare("SELECT * FROM interview_templates WHERE company_id = :company_id AND is_active = TRUE ORDER BY created_at DESC");
     $stmt->execute(['company_id' => $companyId]);
     return $stmt->fetchAll();
+}
+
+function getInterviewTemplate($id) {
+    if (empty($id)) return null;
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM interview_templates WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    return $stmt->fetch();
 }
 
 function createInterviewLink($templateId, $companyId, $userId, $code, $candidateEmail, $candidateName, $maxAttempts, $expiresAt) {

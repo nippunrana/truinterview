@@ -11,43 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/ai_service.php';
-
-function cleanSpeechText($text) {
-    // 1. Remove emojis
-    $clean = preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $text);
-    $clean = preg_replace('/[\x{1F300}-\x{1F5FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F680}-\x{1F6FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{2600}-\x{26FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{2700}-\x{27BF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F900}-\x{1F9FF}]/u', '', $clean);
-    $clean = preg_replace('/[\x{1F018}-\x{1F0F5}]/u', '', $clean);
-    
-    // 2. Remove markdown elements
-    $clean = str_replace(['*', '#', '_', '`'], '', $clean);
-    $clean = preg_replace('/^\s*[-*+•]\s+/m', ' ', $clean);
-    
-    // 3. Convert symbols to words
-    $replacements = [
-        '$' => ' dollars ',
-        '%' => ' percent ',
-        '&' => ' and ',
-        '+' => ' plus ',
-        '=' => ' equals ',
-        '@' => ' at ',
-        '#' => ' number ',
-        '<' => ' less than ',
-        '>' => ' greater than ',
-        '/' => ' slash ',
-        '\\' => ' backslash '
-    ];
-    
-    foreach ($replacements as $symbol => $word) {
-        $clean = str_replace($symbol, $word, $clean);
-    }
-    
-    $clean = preg_replace('/\s+/', ' ', $clean);
-    return trim($clean);
-}
+require_once __DIR__ . '/trugen_service.php';
+require_once __DIR__ . '/conduct_service.php';
 
 function mapMessagesForGemini($messages) {
     $mapped = [];
@@ -279,10 +244,10 @@ try {
                 }
             } else {
                 // If they ask a general question during MCQ segment, fallback to normal response
-                $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
+                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
             }
         } else {
-            $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
+            $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
         }
     } else {
         // Standard technical interview conversation mode
@@ -297,12 +262,12 @@ try {
         $imagePath = __DIR__ . '/uploads/' . $sessionId . '/latest.jpg';
         if (file_exists($imagePath) && is_readable($imagePath)) {
             try {
-                $spokenText = queryGeminiVision($imagePath, $candidateText, $contextStr, $customApiKey, $visionModel);
+                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $visionModel, $sessionId, $imagePath, $contextStr, $candidateText);
             } catch (Exception $visionEx) {
-                $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
+                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
             }
         } else {
-            $spokenText = queryGeminiChat($mappedMessages, null, $customApiKey, $chatModel);
+            $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
         }
     }
 
