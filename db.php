@@ -276,7 +276,7 @@ function incrementConductWarning($sessionId) {
 
 function closeSessionForMisconduct($sessionId) {
     $db = getDB();
-    $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', closure_reason = 'misconduct', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
+    $stmt = $db->prepare("UPDATE sessions SET current_status = 'TERMINATING', closure_reason = 'misconduct' WHERE id = :id");
     return $stmt->execute(['id' => $sessionId]);
 }
 

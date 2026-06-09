@@ -486,7 +486,9 @@ try {
             logTranscript($sessionId, 'AGENT', $text);
             
             $db = getDB();
-            if (!empty($text) && (stripos($text, 'interview is complete') !== false || 
+            if (($session['current_status'] ?? '') === 'TERMINATING') {
+                // Keep the status as 'TERMINATING' so it is not overwritten
+            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false || 
                 stripos($text, 'generate your feedback report') !== false || 
                 stripos($text, 'analyze your responses') !== false)) {
                 
@@ -509,7 +511,14 @@ try {
             logTranscript($sessionId, 'AGENT', $text);
             
             $db = getDB();
-            if (!empty($text) && (stripos($text, 'interview is complete') !== false || 
+            if (($session['current_status'] ?? '') === 'TERMINATING') {
+                $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+                
+                if (!empty($convId)) {
+                    terminateTruGenConversation($convId);
+                }
+            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false || 
                 stripos($text, 'generate your feedback report') !== false || 
                 stripos($text, 'analyze your responses') !== false)) {
                 
