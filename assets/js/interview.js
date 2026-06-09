@@ -280,8 +280,6 @@ function handleRegister(event) {
   });
 }
 
-
-
 // Toggle desktop screen sharing
 async function toggleScreenShare() {
   const btn = document.getElementById('screen-share-btn');
@@ -300,6 +298,7 @@ async function toggleScreenShare() {
         alert("Security Restriction: You must share your ENTIRE SCREEN, not just a window or tab, to proceed with this assessment.");
         if (track) track.stop();
         screenStream = null;
+        if (window.onScreenShareSuccess) window.onScreenShareSuccess(false);
         return;
       }
 
@@ -307,6 +306,7 @@ async function toggleScreenShare() {
       btn.classList.add('active');
       submitBtn.removeAttribute('disabled');
       if (window.setSecurityIndicator) window.setSecurityIndicator('screen', true);
+      if (window.onScreenShareSuccess) window.onScreenShareSuccess(true);
       
       let screenVideo = document.getElementById('screen-video-element');
       if (!screenVideo) {
@@ -337,6 +337,7 @@ async function toggleScreenShare() {
       mediaState.screen = false;
       btn.classList.remove('active');
       submitBtn.setAttribute('disabled', 'true');
+      if (window.onScreenShareSuccess) window.onScreenShareSuccess(false);
     }
   } else {
     stopScreenShare();
@@ -367,6 +368,7 @@ function stopScreenShare() {
   placeholder.style.display = 'flex';
   
   if (window.setSecurityIndicator) window.setSecurityIndicator('screen', false);
+  if (window.onScreenShareSuccess) window.onScreenShareSuccess(false);
   stopPassivePolling();
 }
 
@@ -782,10 +784,41 @@ function updateProctorIndicator(status) {
   }
 }
 
+// Expose functions globally for the proctoring wizard in browser_proctor.js
+window.updateProctorIndicator = updateProctorIndicator;
+window.updateWebcamMonitorStatus = updateWebcamMonitorStatus;
+window.bindWebcamStreamToVideo = bindWebcamStreamToVideo;
+window.setLatestLandmarks = (landmarks) => {
+  latestLandmarks = landmarks;
+};
+
+// Dynamically construct and load the TruGen AI agent iframe
+window.loadAgentIframe = function() {
+  const container = document.getElementById('agent-video-container');
+  if (!container) return;
+
+  // Remove placeholder
+  const placeholder = container.querySelector('.agent-video-placeholder');
+  if (placeholder) {
+    placeholder.style.opacity = '0';
+    setTimeout(() => { placeholder.style.display = 'none'; }, 300);
+  }
+
+  // Check if iframe already exists
+  if (container.querySelector('iframe')) return;
+
+  // Create iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://app.trugen.ai/embed?agentId=${encodeURIComponent(trugenAgentId)}&name=${encodeURIComponent(candidateName)}&email=${encodeURIComponent(candidateEmail)}`;
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  iframe.setAttribute('allow', 'camera; microphone; autoplay');
+  container.appendChild(iframe);
+};
+
 // Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
-
-
   if (sessionActive) {
     if (sessionStatus === 'COMPLETED') {
       transitionToCompleted(hasFinalScore);
@@ -796,28 +829,9 @@ window.addEventListener('DOMContentLoaded', () => {
       pollInterval = setInterval(pollStatus, 3000);
       pollMCQState();
 
-      // Start browser proctoring
+      // Start browser proctoring wizard (shows integrity setup overlay)
       if (window.initBrowserProctor) {
         window.initBrowserProctor(sessionId);
-      }
-
-      // Start webcam proctoring
-      if (window.initProctor) {
-        window.initProctor(sessionId, 
-          (status) => {
-            updateProctorIndicator(status);
-            updateWebcamMonitorStatus(status);
-            if (status === 'ok') {
-              bindWebcamStreamToVideo();
-              if (window.setSecurityIndicator) window.setSecurityIndicator('webcam', true);
-            } else if (status === 'warning' || status === 'critical' || status === 'error') {
-              if (window.setSecurityIndicator) window.setSecurityIndicator('webcam', false);
-            }
-          },
-          (landmarks) => {
-            latestLandmarks = landmarks;
-          }
-        );
       }
     }
   }

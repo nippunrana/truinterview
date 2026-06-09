@@ -18,8 +18,13 @@ if (!$isLocal && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
 
 $sessionId = $_COOKIE['session_id'] ?? '';
 $session = null;
+$trugenAgentId = '';
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
+    if ($session) {
+        $userSettings = getSessionUserSettings($session['id']);
+        $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID');
+    }
 }
 
 // Handle invite code parameter
@@ -135,21 +140,74 @@ if (!empty($inviteCode)) {
     </div>
   </div>
 
-  <!-- Fullscreen Enforcer Overlay -->
-  <div id="fullscreen-block-overlay" class="modal-overlay" style="display: none; z-index: 9999; text-align: center;">
-    <div class="modal-card" style="border: 2px solid var(--color-accent); max-width: 480px;">
-      <div class="modal-header">
-        <div style="font-size: 48px; margin-bottom: var(--space-4);">🖥️</div>
-        <h2>Fullscreen Mode Required</h2>
-        <p style="color: var(--color-accent); font-weight: 600; margin-top: var(--space-2);">Assessment Environment Lock</p>
+  <!-- Integrity Setup Wizard Modal -->
+  <div id="integrity-setup-modal" class="modal-overlay" style="display: none; z-index: 9999; text-align: center;">
+    <div class="modal-card" style="border: 1px solid var(--color-border); max-width: 500px; padding: var(--space-6); text-align: left;">
+      <div id="wizard-setup-view">
+        <div class="modal-header" style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: var(--space-2);">🛡️</div>
+          <h2>Pre-Interview Security Setup</h2>
+          <p style="color: var(--color-text-secondary); margin-top: var(--space-1); font-size: var(--text-sm);">Complete the following steps sequentially to begin your assessment.</p>
+        </div>
+        
+        <div class="setup-steps" style="display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-4) 0;">
+          <!-- Step 1: Fullscreen -->
+          <div class="setup-step" id="setup-step-fullscreen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); background: var(--color-surface-elevated); transition: var(--transition-smooth);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <div class="step-indicator-circle" id="setup-circle-1" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">1</div>
+              <div>
+                <div style="font-weight: 600; font-size: var(--text-sm);">Enter Fullscreen Mode</div>
+                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Enforces isolated test environment</div>
+              </div>
+            </div>
+            <button id="setup-btn-fullscreen" class="btn-action" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;">Enter</button>
+          </div>
+          
+          <!-- Step 2: Screen Share -->
+          <div class="setup-step" id="setup-step-screen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); opacity: 0.5; pointer-events: none; transition: var(--transition-smooth);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <div class="step-indicator-circle" id="setup-circle-2" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">2</div>
+              <div>
+                <div style="font-weight: 600; font-size: var(--text-sm);">Share Entire Screen</div>
+                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Streams desktop context securely</div>
+              </div>
+            </div>
+            <button id="setup-btn-screen" class="btn-action btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;" disabled>Share</button>
+          </div>
+          
+          <!-- Step 3: Webcam & Mic -->
+          <div class="setup-step" id="setup-step-webcam" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); opacity: 0.5; pointer-events: none; transition: var(--transition-smooth);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <div class="step-indicator-circle" id="setup-circle-3" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">3</div>
+              <div>
+                <div style="font-weight: 600; font-size: var(--text-sm);">Enable Camera & Mic Access</div>
+                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Webcam monitoring validation</div>
+              </div>
+            </div>
+            <button id="setup-btn-webcam" class="btn-action btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;" disabled>Allow</button>
+          </div>
+        </div>
+        
+        <button id="setup-start-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);" disabled>
+          <span>Start Interview Call</span>
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
       </div>
-      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; text-align: left; margin: var(--space-2) 0;">
-        To begin or resume your technical assessment, you must enter Fullscreen Mode. This helps secure the test environment and prevent accidental navigation.
+
+      <div id="wizard-resume-view" style="display: none;">
+        <div class="modal-header" style="text-align: center;">
+          <div style="font-size: 48px; margin-bottom: var(--space-4);">🖥️</div>
+          <h2>Fullscreen Mode Required</h2>
+          <p style="color: var(--color-accent); font-weight: 600; margin-top: var(--space-2);">Assessment Environment Locked</p>
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin: var(--space-3) 0;">
+          To resume your technical assessment, you must return to Fullscreen Mode. This helps secure the test environment and prevent accidental navigation.
+        </div>
+        <button id="enter-fullscreen-resume-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);">
+          <span>Re-enter Fullscreen</span>
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+        </button>
       </div>
-      <button id="enter-fullscreen-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);">
-        <span>Enter Fullscreen</span>
-        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-      </button>
     </div>
   </div>
 
@@ -308,20 +366,7 @@ if (!empty($inviteCode)) {
           </div>
         </div>
         <div class="agent-video-container" id="agent-video-container">
-          <?php if ($session && $session['current_status'] !== 'COMPLETED'): ?>
-            <?php 
-              $userSettings = getSessionUserSettings($session['id']);
-              $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID'); 
-            ?>
-            <?php if (!empty($trugenAgentId)): ?>
-              <iframe 
-                src="https://app.trugen.ai/embed/<?php echo urlencode($trugenAgentId); ?>?username=<?php echo urlencode($session['candidate_name'] ?? ''); ?>&id=<?php echo urlencode($session['email'] ?? ''); ?>" 
-                allow="camera; microphone; display-capture" 
-                style="width: 100%; height: 100%; border: none; z-index: 4; position: absolute; top: 0; left: 0; background: #000;">
-              </iframe>
-            <?php endif; ?>
-          <?php endif; ?>
-          <div class="agent-video-placeholder">
+          <div class="agent-video-placeholder" style="transition: opacity 0.3s ease;">
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
             <p>Agent Video Connection Pending</p>
           </div>
@@ -453,6 +498,9 @@ if (!empty($inviteCode)) {
     const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
     const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
+    const trugenAgentId = '<?php echo $trugenAgentId; ?>';
+    const candidateName = '<?php echo $session ? addslashes($session['candidate_name']) : ''; ?>';
+    const candidateEmail = '<?php echo $session ? addslashes($session['email']) : ''; ?>';
   </script>
   <script type="module">
     import { initProctor, destroyProctor, getWebcamStream } from './assets/js/proctor.js';
