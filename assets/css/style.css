@@ -1756,4 +1756,99 @@ header {
   box-shadow: 0 0 6px var(--color-danger);
 }
 
+/* Security Check Cards Grid styling */
+.security-check-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-inner);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  transition: var(--transition-smooth);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.security-check-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.security-check-icon-wrapper svg {
+  width: 14px;
+  height: 14px;
+}
+
+.security-check-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.security-check-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.security-check-status-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 900;
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+.security-check-status-badge .status-icon {
+  line-height: 1;
+}
+
+/* Card States */
+.security-check-card[data-okay="true"] {
+  border-color: rgba(16, 185, 129, 0.2);
+  background: var(--color-success-bg);
+}
+
+.security-check-card[data-okay="true"] .security-check-icon-wrapper {
+  color: var(--color-success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.security-check-card[data-okay="true"] .security-check-status-badge {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.security-check-card[data-okay="false"] {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: var(--color-danger-bg);
+}
+
+.security-check-card[data-okay="false"] .security-check-icon-wrapper {
+  color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.security-check-card[data-okay="false"] .security-check-status-badge {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+
 

@@ -23,29 +23,28 @@ let lastFocusLostTime = null;
 window.setSecurityIndicator = function(indicatorId, isSecure) {
     const node = document.getElementById(`sec-node-${indicatorId}`);
     if (!node) return;
-    const dot = node.querySelector('.status-glow-dot');
-    if (!dot) return;
+    
+    node.setAttribute('data-okay', isSecure ? 'true' : 'false');
+    
+    const badge = node.querySelector('.security-check-status-badge');
+    if (badge) {
+        badge.innerHTML = isSecure ? '<span class="status-icon">✓</span>' : '<span class="status-icon">✗</span>';
+    }
     
     if (isSecure) {
-        dot.className = 'status-glow-dot status-green';
-        node.style.color = 'var(--color-success)';
-        node.style.borderColor = 'rgba(16, 185, 129, 0.2)';
-        node.style.background = 'var(--color-success-bg)';
         if (indicatorId === 'webcam') node.title = "Webcam Monitoring: Active";
         if (indicatorId === 'screen') node.title = "Screen Sharing: Active";
         if (indicatorId === 'fullscreen') node.title = "Fullscreen Environment: Active";
         if (indicatorId === 'focus') node.title = "Tab Focus: Active";
         if (indicatorId === 'cursor') node.title = "Cursor Boundary: Secure";
+        if (indicatorId === 'monitor') node.title = "Monitor: Single Display Secure";
     } else {
-        dot.className = 'status-glow-dot status-red';
-        node.style.color = 'var(--color-danger)';
-        node.style.borderColor = 'rgba(239, 68, 68, 0.2)';
-        node.style.background = 'var(--color-danger-bg)';
         if (indicatorId === 'webcam') node.title = "Webcam Monitoring: Anomaly/Inactive";
         if (indicatorId === 'screen') node.title = "Screen Sharing: Inactive";
         if (indicatorId === 'fullscreen') node.title = "Fullscreen Environment: Escaped/Inactive";
         if (indicatorId === 'focus') node.title = "Tab Focus: Background state";
         if (indicatorId === 'cursor') node.title = "Cursor Boundary: Outside Page";
+        if (indicatorId === 'monitor') node.title = "Monitor: Multiple Displays Detected";
     }
 };
 
@@ -58,6 +57,10 @@ export function initBrowserProctor(sessionId) {
     
     // Setup wizard DOM connections and buttons
     setupIntegrityWizard();
+
+    // Set initial display monitor state
+    const isSingleMonitor = !window.screen.isExtended;
+    window.setSecurityIndicator('monitor', isSingleMonitor);
 
     isInitialized = true;
     console.log("Browser proctoring wizard initialized.");
@@ -113,6 +116,7 @@ export function destroyBrowserProctor() {
     window.setSecurityIndicator('fullscreen', false);
     window.setSecurityIndicator('focus', false);
     window.setSecurityIndicator('cursor', false);
+    window.setSecurityIndicator('monitor', false);
 
     console.log("Browser proctoring destroyed.");
 }
@@ -213,7 +217,7 @@ function setupIntegrityWizard() {
     listeners.fullscreenBtnClick = async () => {
         if (!('getScreenDetails' in window)) {
             if (window.showProctorBanner) {
-                window.showProctorBanner("Browser Error: Display detection API is unsupported. Please use a supported Chromium-based browser.", 'error', 6000);
+                window.showProctorBanner("Browser Error: Display detection API is unsupported. Please use a supported Chromium-based browser.", 'error', 6000, 'monitor');
             }
             alert("Your browser does not support display configuration tracking. Please use a supported Chromium-based browser like Google Chrome or Microsoft Edge.");
             return;
@@ -221,10 +225,12 @@ function setupIntegrityWizard() {
 
         try {
             screenDetailsObj = await window.getScreenDetails();
+            const isSingleMonitor = !(screenDetailsObj.screens.length > 1 || window.screen.isExtended);
+            window.setSecurityIndicator('monitor', isSingleMonitor);
         } catch (err) {
             console.error("Display permission request failed:", err);
             if (window.showProctorBanner) {
-                window.showProctorBanner("Integrity Block: Display permission is required to verify your monitor configuration.", 'warning', 6000);
+                window.showProctorBanner("Integrity Block: Display permission is required to verify your monitor configuration.", 'warning', 6000, 'monitor');
             }
             alert("Security Restriction: You must grant permission to view display details to proceed with this assessment.");
             return;
@@ -232,7 +238,7 @@ function setupIntegrityWizard() {
 
         if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
             if (window.showProctorBanner) {
-                window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors.", 'warning', 6000);
+                window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors.", 'warning', 6000, 'monitor');
             }
             alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens and ensure you are using a single monitor to proceed.");
             return;
@@ -241,7 +247,9 @@ function setupIntegrityWizard() {
         // Register listener for layout changes mid-session
         if (!listeners.screenschange) {
             listeners.screenschange = () => {
-                if (screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended)) {
+                const isSingleMonitor = !(screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended));
+                window.setSecurityIndicator('monitor', isSingleMonitor);
+                if (!isSingleMonitor) {
                     triggerBrowserAlert('device_change', 'critical', {
                         reason: 'Candidate connected a secondary monitor during the active session.',
                         screen_count: screenDetailsObj.screens.length
@@ -260,7 +268,7 @@ function setupIntegrityWizard() {
         } catch (err) {
             console.error("Fullscreen request failed:", err);
             if (window.showProctorBanner) {
-                window.showProctorBanner("Fullscreen permission denied or blocked by browser.", 'warning', 4000);
+                window.showProctorBanner("Fullscreen permission denied or blocked by browser.", 'warning', 4000, 'fullscreen');
             }
         }
     };
@@ -277,7 +285,7 @@ function setupIntegrityWizard() {
         if (screenDetailsObj) {
             if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
                 if (window.showProctorBanner) {
-                    window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors to resume.", 'warning', 6000);
+                    window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors to resume.", 'warning', 6000, 'monitor');
                 }
                 alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens to resume the assessment.");
                 return;
@@ -478,6 +486,8 @@ function enableProctoringListeners() {
     // Set initial active indicator states
     window.setSecurityIndicator('focus', document.visibilityState === 'visible' && document.hasFocus());
     window.setSecurityIndicator('cursor', true);
+    const isSingleMonitor = screenDetailsObj ? (screenDetailsObj.screens.length === 1 && !window.screen.isExtended) : !window.screen.isExtended;
+    window.setSecurityIndicator('monitor', isSingleMonitor);
 }
 
 function disableProctoringListeners() {
@@ -566,7 +576,7 @@ function handleKeyDown(e) {
         e.preventDefault();
         e.stopPropagation();
         if (window.showProctorBanner) {
-            window.showProctorBanner(`Action blocked: ${shortcutName} is disabled during this assessment.`, 'warning', 4000);
+            window.showProctorBanner(`Action blocked: ${shortcutName} is disabled during this assessment.`, 'warning', 4000, 'focus');
         }
         triggerBrowserAlert('copy_paste_attempt', 'warning', { reason: `Attempted to open DevTools via ${shortcutName}.` });
     }
@@ -575,7 +585,7 @@ function handleKeyDown(e) {
 function handleClipboardBlock(e, type) {
     e.preventDefault();
     if (window.showProctorBanner) {
-        window.showProctorBanner(`Action blocked: Clipboard ${type} is disabled.`, 'warning', 4000);
+        window.showProctorBanner(`Action blocked: Clipboard ${type} is disabled.`, 'warning', 4000, 'focus');
     }
     triggerBrowserAlert('copy_paste_attempt', 'warning', { reason: `Attempted clipboard ${type} operation.` });
 }
@@ -659,13 +669,13 @@ async function triggerBrowserAlert(alertType, severity, clientDetails) {
         // Show non-intrusive warning banner at the top of the screen
         if (window.showProctorBanner) {
             if (alertType === 'tab_switch') {
-                window.showProctorBanner("Integrity Anomaly: Tab switch or focus loss detected.", "warning", 4000);
+                window.showProctorBanner("Integrity Anomaly: Tab switch or focus loss detected.", "warning", 4000, "focus");
             } else if (alertType === 'fullscreen_exit') {
-                window.showProctorBanner("Assessment Paused: Please enter Fullscreen mode.", "warning", 4000);
+                window.showProctorBanner("Assessment Paused: Please enter Fullscreen mode.", "warning", 4000, "fullscreen");
             } else if (alertType === 'cursor_left_screen') {
-                window.showProctorBanner("Gaze/Mouse Anomaly: Please keep focus on the assessment screen.", "warning", 4000);
+                window.showProctorBanner("Gaze/Mouse Anomaly: Please keep focus on the assessment screen.", "warning", 4000, "cursor");
             } else if (alertType === 'device_change') {
-                window.showProctorBanner("Hardware Alert: Monitor or peripheral connection change detected.", "warning", 4000);
+                window.showProctorBanner("Hardware Alert: Monitor or peripheral connection change detected.", "warning", 4000, "monitor");
             }
         }
     } catch (err) {

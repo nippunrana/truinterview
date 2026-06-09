@@ -440,56 +440,118 @@ if (!empty($inviteCode)) {
         <div class="console-grid">
           
           <!-- Screen Capture Preview Row -->
-          <div class="console-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
-              <h4 style="font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary); margin: 0;">Screen Context Share</h4>
+          <div class="console-section" style="padding: var(--space-3); height: 100%;">
+            <div style="display: flex; flex-direction: row; gap: var(--space-4); align-items: stretch; height: 100%; width: 100%;">
               
-              <!-- Security Integrity Monitor Lights Bar -->
-              <div class="security-monitor-bar" style="display: flex; gap: var(--space-2); align-items: center; background: rgba(0,0,0,0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--glass-border);">
-                <!-- Webcam status -->
-                <div class="security-status-node" id="sec-node-webcam" title="Webcam Feed: Inactive">
-                  <div class="status-glow-dot status-red"></div>
-                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+              <!-- Live Screen Division -->
+              <div class="live-screen-division" style="display: flex; flex-direction: column; height: 100%; flex-shrink: 0;">
+                <h4 style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary); margin-bottom: var(--space-2);">Live Screen</h4>
+                <div class="screen-preview" id="screen-preview" style="height: 120px; aspect-ratio: 16 / 9; width: auto; background-color: #000; border-radius: var(--radius-inner); overflow: hidden; position: relative; border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center;">
+                  <div class="screen-placeholder">
+                    <svg style="width: 28px; height: 28px; opacity: 0.4;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"></path></svg>
+                    <p style="font-size: var(--text-xs); margin-top: 4px; color: var(--color-text-muted);">Screen stream inactive</p>
+                  </div>
+                  <canvas id="capture-canvas" style="display: none;"></canvas>
                 </div>
-                <!-- Screen Share status -->
-                <div class="security-status-node" id="sec-node-screen" title="Screen Context Share: Inactive">
-                  <div class="status-glow-dot status-red"></div>
-                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 21h6l-.75-4M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                </div>
-                <!-- Fullscreen status -->
-                <div class="security-status-node" id="sec-node-fullscreen" title="Fullscreen Environment: Inactive">
-                  <div class="status-glow-dot status-red"></div>
-                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                </div>
-                <!-- Tab focus status -->
-                <div class="security-status-node" id="sec-node-focus" title="Tab Focus state: Focused">
-                  <div class="status-glow-dot status-green"></div>
-                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12h9.75c1.05 0 2 .922 2 2v9.75c0 1.05-.95 2-2 2H7.5a2 2 0 01-2-2V8c0-1.05.95-2 2-2z"></path></svg>
-                </div>
-                <!-- Mouse Cursor status -->
-                <div class="security-status-node" id="sec-node-cursor" title="Cursor Position: Inside Screen">
-                  <div class="status-glow-dot status-green"></div>
-                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"></path></svg>
+                <div class="screen-controls-row" style="display: flex; gap: var(--space-2); margin-top: auto;">
+                  <button id="screen-share-btn" class="btn-action btn-secondary" onclick="toggleScreenShare()" style="padding: 6px 12px; font-size: var(--text-xs); flex: 1;">
+                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                    <span>Share Screen</span>
+                  </button>
+                  <button id="submit-screenshot-btn" class="btn-action" onclick="submitAnswer()" disabled style="padding: 6px 12px; font-size: var(--text-xs); flex: 1;">
+                    <span>Submit</span>
+                  </button>
                 </div>
               </div>
-            </div>
-            <div class="screen-capture-container">
-              <div class="screen-preview" id="screen-preview">
-                <div class="screen-placeholder">
-                  <svg style="width: 36px; height: 36px; opacity: 0.4;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"></path></svg>
-                  <p style="font-size: var(--text-xs);">Screen stream inactive</p>
+
+              <!-- Security Checks Division -->
+              <div class="security-checks-division" style="flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column;">
+                <h4 style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary); margin-bottom: var(--space-2);">Security Checks</h4>
+                
+                <div class="security-checks-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: var(--space-2); flex: 1;">
+                  <!-- Webcam Feed -->
+                  <div class="security-check-card" id="sec-node-webcam" data-okay="false" title="Webcam Monitoring: Inactive">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Webcam Feed</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✗</span>
+                    </div>
+                  </div>
+
+                  <!-- Screen Sharing -->
+                  <div class="security-check-card" id="sec-node-screen" data-okay="false" title="Screen Context Share: Inactive">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 21h6l-.75-4M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Screen Share</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✗</span>
+                    </div>
+                  </div>
+
+                  <!-- Fullscreen Mode -->
+                  <div class="security-check-card" id="sec-node-fullscreen" data-okay="false" title="Fullscreen Environment: Inactive">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Fullscreen</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✗</span>
+                    </div>
+                  </div>
+
+                  <!-- Tab Focus -->
+                  <div class="security-check-card" id="sec-node-focus" data-okay="true" title="Tab Focus state: Focused">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12h9.75c1.05 0 2 .922 2 2v9.75c0 1.05-.95 2-2 2H7.5a2 2 0 01-2-2V8c0-1.05.95-2 2-2z"></path></svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Tab Focus</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✓</span>
+                    </div>
+                  </div>
+
+                  <!-- Mouse Cursor -->
+                  <div class="security-check-card" id="sec-node-cursor" data-okay="true" title="Cursor Position: Inside Screen">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"></path></svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Cursor Inside</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✓</span>
+                    </div>
+                  </div>
+
+                  <!-- Monitor Display (Single Display check) -->
+                  <div class="security-check-card" id="sec-node-monitor" data-okay="false" title="Monitor Display: Initializing">
+                    <div class="security-check-icon-wrapper">
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z M9 20h6 M12 18v2"></path>
+                      </svg>
+                    </div>
+                    <div class="security-check-info">
+                      <span class="security-check-name">Single Display</span>
+                    </div>
+                    <div class="security-check-status-badge">
+                      <span class="status-icon">✗</span>
+                    </div>
+                  </div>
                 </div>
-                <canvas id="capture-canvas"></canvas>
+
               </div>
-              <div class="screen-controls">
-                <button id="screen-share-btn" class="btn-action btn-secondary" onclick="toggleScreenShare()">
-                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                  <span>Share Screen</span>
-                </button>
-                <button id="submit-screenshot-btn" class="btn-action" onclick="submitAnswer()" disabled>
-                  <span>Submit Code / Answer</span>
-                </button>
-              </div>
+
             </div>
           </div>
 

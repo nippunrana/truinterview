@@ -784,19 +784,23 @@ function restoreWebcamBannerState() {
   if (currentProctorStatus === 'warning') {
     bannerDiv.style.display = 'flex';
     bannerDiv.classList.add('proctor-banner-warning');
-    if (iconSpan) iconSpan.innerText = '⚠️';
+    if (iconSpan) {
+      iconSpan.innerHTML = `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>`;
+    }
     if (msgSpan) msgSpan.innerText = 'Attention: Please look at the screen and remain visible.';
   } else if (currentProctorStatus === 'critical') {
     bannerDiv.style.display = 'flex';
     bannerDiv.classList.add('proctor-banner-critical');
-    if (iconSpan) iconSpan.innerText = '🚨';
+    if (iconSpan) {
+      iconSpan.innerHTML = `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>`;
+    }
     if (msgSpan) msgSpan.innerText = 'CRITICAL WARNING: Integrity anomaly detected! Please correct immediately.';
   } else {
     bannerDiv.style.display = 'none';
   }
 }
 
-window.showProctorBanner = function(message, severity, duration = 0) {
+window.showProctorBanner = function(message, severity, duration = 0, alertType = '') {
   const bannerDiv = document.getElementById('proctor-warning-banner');
   if (!bannerDiv) return;
 
@@ -813,13 +817,23 @@ window.showProctorBanner = function(message, severity, duration = 0) {
 
   if (severity === 'warning') {
     bannerDiv.classList.add('proctor-banner-warning');
-    if (iconSpan) iconSpan.innerText = '⚠️';
   } else if (severity === 'critical') {
     bannerDiv.classList.add('proctor-banner-critical');
-    if (iconSpan) iconSpan.innerText = '🚨';
   } else {
     bannerDiv.style.display = 'none';
     return;
+  }
+
+  if (iconSpan) {
+    const svgMap = {
+      webcam: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>`,
+      screen: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 21h6l-.75-4M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>`,
+      fullscreen: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>`,
+      focus: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12h9.75c1.05 0 2 .922 2 2v9.75c0 1.05-.95 2-2 2H7.5a2 2 0 01-2-2V8c0-1.05.95-2 2-2z"></path></svg>`,
+      cursor: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"></path></svg>`,
+      monitor: `<svg style="width: 18px; height: 18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z M9 20h6 M12 18v2"></path></svg>`
+    };
+    iconSpan.innerHTML = svgMap[alertType] || (severity === 'critical' ? '🚨' : '⚠️');
   }
 
   if (msgSpan) {
