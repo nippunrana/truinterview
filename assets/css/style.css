@@ -1701,3 +1701,22 @@ header {
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
+/* Proctor Toast Notifications */
+#proctor-toast-container {
+  pointer-events: none;
+}
+
+.proctor-toast {
+  pointer-events: auto;
+  transition: var(--transition-smooth);
+}
+
+.proctor-toast.warning {
+  border-left: 4px solid var(--color-danger) !important;
+}
+
+.proctor-toast.info {
+  border-left: 4px solid var(--color-accent) !important;
+}
+
+

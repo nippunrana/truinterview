@@ -116,7 +116,59 @@ if (!empty($inviteCode)) {
     }
   </script>
 </head>
-<body class="theme-light">
+  <!-- Browser Restriction Block Overlay -->
+  <div id="browser-block-overlay" class="modal-overlay" style="display: none; z-index: 10000; text-align: center;">
+    <div class="modal-card" style="border: 2px solid var(--color-danger); max-width: 500px;">
+      <div class="modal-header">
+        <div style="font-size: 48px; margin-bottom: var(--space-4);">🚫</div>
+        <h2>Unsupported Browser</h2>
+        <p style="color: var(--color-danger); font-weight: 600; margin-top: var(--space-2);">Action Required</p>
+      </div>
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; text-align: left; margin: var(--space-2) 0;">
+        To ensure interview security and proctoring integrity, this assessment can only be taken using one of the following supported browsers:
+        <ul style="margin: var(--space-3) 0 var(--space-3) var(--space-6); list-style-type: disc;">
+          <li><strong>Google Chrome</strong> (or Chromium-based browsers like Edge, Brave, Opera, Vivaldi)</li>
+          <li><strong>Apple Safari</strong></li>
+        </ul>
+        Please open this link in one of these supported browsers to proceed with your assessment.
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Enforcer Overlay -->
+  <div id="fullscreen-block-overlay" class="modal-overlay" style="display: none; z-index: 9999; text-align: center;">
+    <div class="modal-card" style="border: 2px solid var(--color-accent); max-width: 480px;">
+      <div class="modal-header">
+        <div style="font-size: 48px; margin-bottom: var(--space-4);">🖥️</div>
+        <h2>Fullscreen Mode Required</h2>
+        <p style="color: var(--color-accent); font-weight: 600; margin-top: var(--space-2);">Assessment Environment Lock</p>
+      </div>
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; text-align: left; margin: var(--space-2) 0;">
+        To begin or resume your technical assessment, you must enter Fullscreen Mode. This helps secure the test environment and prevent accidental navigation.
+      </div>
+      <button id="enter-fullscreen-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);">
+        <span>Enter Fullscreen</span>
+        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const ua = navigator.userAgent;
+      const vendor = navigator.vendor;
+      const isChromium = !!window.chrome || ua.includes("Chrome") || ua.includes("Chromium") || ua.includes("CriOS");
+      const isSafari = ua.includes("Safari") && vendor.includes("Apple") && !ua.includes("Chrome") && !ua.includes("Chromium");
+      if (!isChromium && !isSafari) {
+        window.addEventListener('DOMContentLoaded', () => {
+          const overlay = document.getElementById('browser-block-overlay');
+          if (overlay) {
+            overlay.style.display = 'flex';
+          }
+        });
+      }
+    })();
+  </script>
 
   <?php if (!$session): ?>
     <!-- Onboarding Page (No session active) -->
@@ -376,6 +428,11 @@ if (!empty($inviteCode)) {
     window.initProctor = initProctor;
     window.destroyProctor = destroyProctor;
     window.getWebcamStream = getWebcamStream;
+  </script>
+  <script type="module">
+    import { initBrowserProctor, destroyBrowserProctor } from './assets/js/browser_proctor.js';
+    window.initBrowserProctor = initBrowserProctor;
+    window.destroyBrowserProctor = destroyBrowserProctor;
   </script>
   <script src="assets/js/interview.js" defer></script>
 </body>

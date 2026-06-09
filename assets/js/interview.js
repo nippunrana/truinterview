@@ -292,6 +292,17 @@ async function toggleScreenShare() {
   if (!mediaState.screen) {
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      
+      // Enforce Entire Screen Share restriction
+      const track = screenStream.getVideoTracks()[0];
+      const settings = track ? track.getSettings() : {};
+      if (settings.displaySurface && settings.displaySurface !== 'monitor') {
+        alert("Security Restriction: You must share your ENTIRE SCREEN, not just a window or tab, to proceed with this assessment.");
+        if (track) track.stop();
+        screenStream = null;
+        return;
+      }
+
       mediaState.screen = true;
       btn.classList.add('active');
       submitBtn.removeAttribute('disabled');
@@ -376,6 +387,7 @@ function captureFrame() {
 
   return canvas.toDataURL('image/jpeg', 0.85);
 }
+window.captureScreenFrame = captureFrame;
 
 // Background Passive Polling loop (uploads every 9 seconds)
 function startPassivePolling() {
@@ -782,6 +794,11 @@ window.addEventListener('DOMContentLoaded', () => {
       pollInterval = setInterval(pollStatus, 3000);
       pollMCQState();
 
+      // Start browser proctoring
+      if (window.initBrowserProctor) {
+        window.initBrowserProctor(sessionId);
+      }
+
       // Start webcam proctoring
       if (window.initProctor) {
         window.initProctor(sessionId, 
@@ -813,6 +830,11 @@ async function transitionToCompleted(immediate = false) {
   // Shut down screen sharing
   stopScreenShare();
   
+  // Stop browser proctoring
+  if (window.destroyBrowserProctor) {
+    window.destroyBrowserProctor();
+  }
+
   // Stop webcam proctoring
   if (window.destroyProctor) {
     window.destroyProctor();

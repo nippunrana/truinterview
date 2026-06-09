@@ -507,14 +507,21 @@ try {
         $apiKeyOverride = getSessionApiKey($session);
         $model = $session['model_vision_task'] ?? 'gemini-3.5-flash';
         
-        // Analyze snapshot using Gemini Vision
+        // Analyze snapshot using Gemini Vision (skip for browser-native deterministic telemetry)
         $aiVerdict = 'AI analysis skipped.';
         $aiConfirmed = true; // default to true if no snapshot is available for analysis
         
+        $browserAlerts = ['tab_switch', 'fullscreen_exit', 'copy_paste_attempt', 'cursor_left_screen', 'device_change'];
+        
         if ($snapshotPath) {
-            $analysis = analyzeProctorSnapshot(__DIR__ . '/' . $snapshotPath, $alertType, $clientDetails, $apiKeyOverride, $model);
-            $aiVerdict = $analysis['verdict'];
-            $aiConfirmed = $analysis['confirmed'];
+            if (in_array($alertType, $browserAlerts)) {
+                $aiVerdict = 'Browser-native telemetry logged.';
+                $aiConfirmed = true;
+            } else {
+                $analysis = analyzeProctorSnapshot(__DIR__ . '/' . $snapshotPath, $alertType, $clientDetails, $apiKeyOverride, $model);
+                $aiVerdict = $analysis['verdict'] ?? 'AI analysis completed.';
+                $aiConfirmed = isset($analysis['confirmed']) ? (bool)$analysis['confirmed'] : true;
+            }
         }
         
         // Save alert to database

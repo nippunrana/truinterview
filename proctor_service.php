@@ -132,6 +132,16 @@ function buildProctorWarningMessage($alertType, $aiVerdict) {
             return "I detected multiple people in the camera frame. Please ensure you are alone during the interview.";
         case 'gaze_away':
             return "Please keep your attention on the screen. Looking away repeatedly is not permitted.";
+        case 'tab_switch':
+            return "Please do not switch tabs or windows. Navigating away is logged as a violation.";
+        case 'fullscreen_exit':
+            return "Fullscreen mode is required. Please re-enter fullscreen immediately to continue.";
+        case 'copy_paste_attempt':
+            return "Clipboard actions are restricted during this assessment.";
+        case 'cursor_left_screen':
+            return "Please keep your mouse focus on the assessment browser screen.";
+        case 'device_change':
+            return "A peripheral or device connection change has been detected and logged.";
         default:
             return "Please ensure you follow the interview integrity rules.";
     }
