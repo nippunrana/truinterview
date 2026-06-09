@@ -187,34 +187,22 @@ if (!empty($inviteCode)) {
         </div>
         
         <div class="setup-steps" style="display: flex; flex-direction: column; gap: var(--space-4); margin: var(--space-4) 0;">
-          <!-- Step 1: Fullscreen -->
-          <div class="setup-step" id="setup-step-fullscreen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); background: var(--color-surface-elevated); transition: var(--transition-smooth);">
+          <!-- Step 1: Screen Share -->
+          <div class="setup-step" id="setup-step-screen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); background: var(--color-surface-elevated); transition: var(--transition-smooth);">
             <div style="display: flex; align-items: center; gap: var(--space-3);">
               <div class="step-indicator-circle" id="setup-circle-1" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">1</div>
-              <div>
-                <div style="font-weight: 600; font-size: var(--text-sm);">Enter Fullscreen Mode</div>
-                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Enforces isolated test environment</div>
-              </div>
-            </div>
-            <button id="setup-btn-fullscreen" class="btn-action" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;">Enter</button>
-          </div>
-          
-          <!-- Step 2: Screen Share -->
-          <div class="setup-step" id="setup-step-screen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); opacity: 0.5; pointer-events: none; transition: var(--transition-smooth);">
-            <div style="display: flex; align-items: center; gap: var(--space-3);">
-              <div class="step-indicator-circle" id="setup-circle-2" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">2</div>
               <div>
                 <div style="font-weight: 600; font-size: var(--text-sm);">Share Entire Screen</div>
                 <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Streams desktop context securely</div>
               </div>
             </div>
-            <button id="setup-btn-screen" class="btn-action btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;" disabled>Share</button>
+            <button id="setup-btn-screen" class="btn-action" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;">Share</button>
           </div>
           
-          <!-- Step 3: Webcam & Mic -->
+          <!-- Step 2: Webcam & Mic -->
           <div class="setup-step" id="setup-step-webcam" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); opacity: 0.5; pointer-events: none; transition: var(--transition-smooth);">
             <div style="display: flex; align-items: center; gap: var(--space-3);">
-              <div class="step-indicator-circle" id="setup-circle-3" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">3</div>
+              <div class="step-indicator-circle" id="setup-circle-2" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">2</div>
               <div>
                 <div style="font-weight: 600; font-size: var(--text-sm);">Enable Camera & Mic Access</div>
                 <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Webcam monitoring validation</div>
@@ -222,9 +210,21 @@ if (!empty($inviteCode)) {
             </div>
             <button id="setup-btn-webcam" class="btn-action btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;" disabled>Allow</button>
           </div>
+          
+          <!-- Step 3: Fullscreen -->
+          <div class="setup-step" id="setup-step-fullscreen" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-radius: var(--radius-inner); border: 1px solid var(--color-border); opacity: 0.5; pointer-events: none; transition: var(--transition-smooth);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <div class="step-indicator-circle" id="setup-circle-3" style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--color-surface); color: var(--color-text-secondary);">3</div>
+              <div>
+                <div style="font-weight: 600; font-size: var(--text-sm);">Enter Fullscreen Mode</div>
+                <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Enforces isolated test environment</div>
+              </div>
+            </div>
+            <button id="setup-btn-fullscreen" class="btn-action btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs); line-height: 1;" disabled>Allow</button>
+          </div>
         </div>
         
-        <button id="setup-start-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);" disabled>
+        <button id="setup-start-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2); display: none !important;" disabled>
           <span>Start Interview Call</span>
           <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
         </button>

@@ -109,6 +109,28 @@ export function destroyBrowserProctor() {
 // INTEGRITY SETUP WIZARD PIPELINE
 // ----------------------------------------------------
 
+function completeWizardAndStart() {
+    if (setupWizardComplete) return;
+    setupWizardComplete = true;
+    
+    const overlay = document.getElementById('integrity-setup-modal');
+    if (overlay) overlay.style.display = 'none';
+    
+    // Load TruGen Agent call iframe dynamically
+    if (window.loadAgentIframe) {
+        window.loadAgentIframe();
+    }
+    
+    // Enable passive security logging listeners
+    enableProctoringListeners();
+}
+
+function checkAndStartInterview() {
+    if (screenDone && webcamDone && fullscreenDone) {
+        completeWizardAndStart();
+    }
+}
+
 function setupIntegrityWizard() {
     const overlay = document.getElementById('integrity-setup-modal');
     const wizardView = document.getElementById('wizard-setup-view');
@@ -127,35 +149,17 @@ function setupIntegrityWizard() {
     wizardView.style.display = 'block';
     resumeView.style.display = 'none';
 
-    // Reset setup visual step nodes
-    resetStepUI('fullscreen', 1);
-    resetStepUI('screen', 2);
-    resetStepUI('webcam', 3);
+    // Reset setup visual step nodes (Step 1: Screen, Step 2: Webcam, Step 3: Fullscreen)
+    resetStepUI('screen', 1);
+    resetStepUI('webcam', 2);
+    resetStepUI('fullscreen', 3);
 
-    // Initial fullscreen check
-    const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-    if (isFullscreen) {
-        markStepComplete('fullscreen', 1);
-        fullscreenDone = true;
-        enableStep('screen');
-    }
+    // Initially active step is Screen Share
+    enableStep('screen');
+    disableStep('webcam');
+    disableStep('fullscreen');
 
-    // Step 1: Fullscreen Button Handler
-    listeners.fullscreenBtnClick = async () => {
-        try {
-            if (document.documentElement.requestFullscreen) {
-                await document.documentElement.requestFullscreen();
-            } else if (document.documentElement.webkitRequestFullscreen) {
-                await document.documentElement.webkitRequestFullscreen();
-            }
-        } catch (err) {
-            console.error("Fullscreen request failed:", err);
-            showProctorToast("Fullscreen permission denied or blocked by browser.", 'warning');
-        }
-    };
-    if (fseBtn) fseBtn.addEventListener('click', listeners.fullscreenBtnClick);
-
-    // Step 2: Screen Sharing Button Link
+    // Step 1: Screen Sharing Button Link
     listeners.screenBtnClick = () => {
         if (window.toggleScreenShare) {
             window.toggleScreenShare();
@@ -163,7 +167,7 @@ function setupIntegrityWizard() {
     };
     if (screenBtn) screenBtn.addEventListener('click', listeners.screenBtnClick);
 
-    // Step 3: Webcam Initialization Button Link
+    // Step 2: Webcam Initialization Button Link
     listeners.webcamBtnClick = () => {
         const webcamPlaceholder = document.getElementById('webcam-monitor-placeholder');
         if (webcamPlaceholder) {
@@ -193,18 +197,24 @@ function setupIntegrityWizard() {
     };
     if (webcamBtn) webcamBtn.addEventListener('click', listeners.webcamBtnClick);
 
-    // Start Button: Loads Agent Iframe and official session start
-    listeners.startBtnClick = () => {
-        setupWizardComplete = true;
-        overlay.style.display = 'none';
-        
-        // Load TruGen Agent call iframe dynamically
-        if (window.loadAgentIframe) {
-            window.loadAgentIframe();
+    // Step 3: Fullscreen Button Handler
+    listeners.fullscreenBtnClick = async () => {
+        try {
+            if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                await document.documentElement.webkitRequestFullscreen();
+            }
+        } catch (err) {
+            console.error("Fullscreen request failed:", err);
+            showProctorToast("Fullscreen permission denied or blocked by browser.", 'warning');
         }
-        
-        // Enable passive security logging listeners
-        enableProctoringListeners();
+    };
+    if (fseBtn) fseBtn.addEventListener('click', listeners.fullscreenBtnClick);
+
+    // Start Button (fallback event if still clicked somehow)
+    listeners.startBtnClick = () => {
+        completeWizardAndStart();
     };
     if (startBtn) startBtn.addEventListener('click', listeners.startBtnClick);
 
@@ -243,16 +253,18 @@ function setupIntegrityWizard() {
         } else {
             // Setup wizard layout checks
             if (isFullscreen) {
-                markStepComplete('fullscreen', 1);
-                fullscreenDone = true;
-                enableStep('screen');
-                window.setSecurityIndicator('fullscreen', true);
+                if (webcamDone) {
+                    markStepComplete('fullscreen', 3);
+                    fullscreenDone = true;
+                    window.setSecurityIndicator('fullscreen', true);
+                    checkAndStartInterview();
+                }
             } else {
-                resetStepUI('fullscreen', 1);
-                fullscreenDone = false;
-                disableStep('screen');
-                disableStep('webcam');
-                window.setSecurityIndicator('fullscreen', false);
+                if (webcamDone) {
+                    resetStepUI('fullscreen', 3);
+                    fullscreenDone = false;
+                    window.setSecurityIndicator('fullscreen', false);
+                }
             }
         }
     };
@@ -265,35 +277,39 @@ function setupIntegrityWizard() {
 
 window.onScreenShareSuccess = function(isSuccess) {
     if (isSuccess) {
-        markStepComplete('screen', 2);
+        markStepComplete('screen', 1);
         screenDone = true;
         enableStep('webcam');
         window.setSecurityIndicator('screen', true);
     } else {
-        resetStepUI('screen', 2);
+        resetStepUI('screen', 1);
         screenDone = false;
         disableStep('webcam');
+        disableStep('fullscreen');
         window.setSecurityIndicator('screen', false);
     }
 };
 
 window.onWebcamSuccess = function(isSuccess) {
-    const startBtn = document.getElementById('setup-start-btn');
     if (isSuccess) {
-        markStepComplete('webcam', 3);
+        markStepComplete('webcam', 2);
         webcamDone = true;
         window.setSecurityIndicator('webcam', true);
-        if (startBtn) {
-            startBtn.removeAttribute('disabled');
-            startBtn.focus();
+        enableStep('fullscreen');
+        
+        // Auto-complete fullscreen step if browser is already fullscreened
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+        if (isFullscreen) {
+            markStepComplete('fullscreen', 3);
+            fullscreenDone = true;
+            window.setSecurityIndicator('fullscreen', true);
+            checkAndStartInterview();
         }
     } else {
-        resetStepUI('webcam', 3);
+        resetStepUI('webcam', 2);
         webcamDone = false;
         window.setSecurityIndicator('webcam', false);
-        if (startBtn) {
-            startBtn.setAttribute('disabled', 'true');
-        }
+        disableStep('fullscreen');
     }
 };
 
@@ -350,7 +366,7 @@ function resetStepUI(stepId, num) {
     circle.style.color = 'var(--color-text-secondary)';
     circle.style.background = 'var(--color-surface)';
     
-    btn.innerText = stepId === 'fullscreen' ? 'Enter' : (stepId === 'screen' ? 'Share' : 'Allow');
+    btn.innerText = stepId === 'fullscreen' ? 'Allow' : (stepId === 'screen' ? 'Share' : 'Allow');
 }
 
 // ----------------------------------------------------
