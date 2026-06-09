@@ -207,7 +207,9 @@ function setupIntegrityWizard() {
             }
         } catch (err) {
             console.error("Fullscreen request failed:", err);
-            showProctorToast("Fullscreen permission denied or blocked by browser.", 'warning');
+            if (window.showProctorBanner) {
+                window.showProctorBanner("Fullscreen permission denied or blocked by browser.", 'warning', 4000);
+            }
         }
     };
     if (fseBtn) fseBtn.addEventListener('click', listeners.fullscreenBtnClick);
@@ -502,14 +504,18 @@ function handleKeyDown(e) {
     if (shouldBlock) {
         e.preventDefault();
         e.stopPropagation();
-        showProctorToast(`Action blocked: ${shortcutName} is disabled during this assessment.`, 'warning');
+        if (window.showProctorBanner) {
+            window.showProctorBanner(`Action blocked: ${shortcutName} is disabled during this assessment.`, 'warning', 4000);
+        }
         triggerBrowserAlert('copy_paste_attempt', 'warning', { reason: `Attempted to open DevTools via ${shortcutName}.` });
     }
 }
 
 function handleClipboardBlock(e, type) {
     e.preventDefault();
-    showProctorToast(`Action blocked: Clipboard ${type} is disabled.`, 'warning');
+    if (window.showProctorBanner) {
+        window.showProctorBanner(`Action blocked: Clipboard ${type} is disabled.`, 'warning', 4000);
+    }
     triggerBrowserAlert('copy_paste_attempt', 'warning', { reason: `Attempted clipboard ${type} operation.` });
 }
 
@@ -589,66 +595,20 @@ async function triggerBrowserAlert(alertType, severity, clientDetails) {
         const data = await response.json();
         console.log(`[Browser Proctor response]`, data);
         
-        // Show non-intrusive toast warning on screen
-        if (alertType === 'tab_switch') {
-            showProctorToast("Integrity Anomaly: Tab switch or focus loss detected.", "warning");
-        } else if (alertType === 'fullscreen_exit') {
-            showProctorToast("Assessment Paused: Please enter Fullscreen mode.", "warning");
-        } else if (alertType === 'cursor_left_screen') {
-            showProctorToast("Gaze/Mouse Anomaly: Please keep focus on the assessment screen.", "warning");
-        } else if (alertType === 'device_change') {
-            showProctorToast("Hardware Alert: Monitor or peripheral connection change detected.", "warning");
+        // Show non-intrusive warning banner at the top of the screen
+        if (window.showProctorBanner) {
+            if (alertType === 'tab_switch') {
+                window.showProctorBanner("Integrity Anomaly: Tab switch or focus loss detected.", "warning", 4000);
+            } else if (alertType === 'fullscreen_exit') {
+                window.showProctorBanner("Assessment Paused: Please enter Fullscreen mode.", "warning", 4000);
+            } else if (alertType === 'cursor_left_screen') {
+                window.showProctorBanner("Gaze/Mouse Anomaly: Please keep focus on the assessment screen.", "warning", 4000);
+            } else if (alertType === 'device_change') {
+                window.showProctorBanner("Hardware Alert: Monitor or peripheral connection change detected.", "warning", 4000);
+            }
         }
     } catch (err) {
         console.error("Failed to send browser proctor alert details to api:", err);
     }
-}
-
-function showProctorToast(message, type = 'warning') {
-    let container = document.getElementById('proctor-toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'proctor-toast-container';
-        container.style.position = 'fixed';
-        container.style.bottom = '24px';
-        container.style.right = '24px';
-        container.style.zIndex = '99999';
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.gap = '8px';
-        document.body.appendChild(container);
-    }
-    
-    const toast = document.createElement('div');
-    toast.className = `proctor-toast ${type}`;
-    toast.style.background = type === 'warning' ? 'var(--color-danger-bg)' : 'var(--color-accent-gradient)';
-    toast.style.color = type === 'warning' ? 'var(--color-danger)' : '#fff';
-    toast.style.border = `1px solid ${type === 'warning' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`;
-    toast.style.padding = '12px 20px';
-    toast.style.borderRadius = 'var(--radius-inner)';
-    toast.style.boxShadow = '0 8px 16px var(--color-shadow)';
-    toast.style.fontFamily = 'Inter, sans-serif';
-    toast.style.fontSize = 'var(--text-sm)';
-    toast.style.fontWeight = '500';
-    toast.style.backdropFilter = 'blur(8px)';
-    toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(20px)';
-    toast.innerText = message;
-    
-    container.appendChild(toast);
-    
-    // Trigger transition
-    setTimeout(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
-    }, 10);
-    
-    // Remove toast after 4 seconds
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-20px)';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
 }
 

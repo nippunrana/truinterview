@@ -12,6 +12,10 @@ let screenStream = null;
 let meshAnimFrame = null;
 let latestLandmarks = [];
 
+// Proctor status tracking
+let currentProctorStatus = 'connecting';
+let bannerTimeout = null;
+
 // Local media states
 const mediaState = {
   screen: false
@@ -731,9 +735,9 @@ async function submitMCQOption() {
 }
 
 function updateProctorIndicator(status) {
+  currentProctorStatus = status;
+
   const statusDiv = document.getElementById('proctor-status');
-  const bannerDiv = document.getElementById('proctor-warning-banner');
-  
   if (statusDiv) {
     statusDiv.className = 'proctor-indicator';
     const textSpan = statusDiv.querySelector('.proctor-text');
@@ -763,26 +767,72 @@ function updateProctorIndicator(status) {
     }
   }
 
-  if (bannerDiv) {
-    bannerDiv.className = ''; // Reset class
-    const iconSpan = bannerDiv.querySelector('.proctor-banner-icon');
-    const msgSpan = bannerDiv.querySelector('.proctor-banner-message');
-
-    if (status === 'warning') {
-      bannerDiv.style.display = 'flex';
-      bannerDiv.classList.add('proctor-banner-warning');
-      if (iconSpan) iconSpan.innerText = '⚠️';
-      if (msgSpan) msgSpan.innerText = 'Attention: Please look at the screen and remain visible.';
-    } else if (status === 'critical') {
-      bannerDiv.style.display = 'flex';
-      bannerDiv.classList.add('proctor-banner-critical');
-      if (iconSpan) iconSpan.innerText = '🚨';
-      if (msgSpan) msgSpan.innerText = 'CRITICAL WARNING: Integrity anomaly detected! Please correct immediately.';
-    } else {
-      bannerDiv.style.display = 'none';
-    }
+  // Only update the banner if there is no active transient banner timeout
+  if (!bannerTimeout) {
+    restoreWebcamBannerState();
   }
 }
+
+function restoreWebcamBannerState() {
+  const bannerDiv = document.getElementById('proctor-warning-banner');
+  if (!bannerDiv) return;
+
+  bannerDiv.className = '';
+  const iconSpan = bannerDiv.querySelector('.proctor-banner-icon');
+  const msgSpan = bannerDiv.querySelector('.proctor-banner-message');
+
+  if (currentProctorStatus === 'warning') {
+    bannerDiv.style.display = 'flex';
+    bannerDiv.classList.add('proctor-banner-warning');
+    if (iconSpan) iconSpan.innerText = '⚠️';
+    if (msgSpan) msgSpan.innerText = 'Attention: Please look at the screen and remain visible.';
+  } else if (currentProctorStatus === 'critical') {
+    bannerDiv.style.display = 'flex';
+    bannerDiv.classList.add('proctor-banner-critical');
+    if (iconSpan) iconSpan.innerText = '🚨';
+    if (msgSpan) msgSpan.innerText = 'CRITICAL WARNING: Integrity anomaly detected! Please correct immediately.';
+  } else {
+    bannerDiv.style.display = 'none';
+  }
+}
+
+window.showProctorBanner = function(message, severity, duration = 0) {
+  const bannerDiv = document.getElementById('proctor-warning-banner');
+  if (!bannerDiv) return;
+
+  if (bannerTimeout) {
+    clearTimeout(bannerTimeout);
+    bannerTimeout = null;
+  }
+
+  bannerDiv.className = '';
+  bannerDiv.style.display = 'flex';
+
+  const iconSpan = bannerDiv.querySelector('.proctor-banner-icon');
+  const msgSpan = bannerDiv.querySelector('.proctor-banner-message');
+
+  if (severity === 'warning') {
+    bannerDiv.classList.add('proctor-banner-warning');
+    if (iconSpan) iconSpan.innerText = '⚠️';
+  } else if (severity === 'critical') {
+    bannerDiv.classList.add('proctor-banner-critical');
+    if (iconSpan) iconSpan.innerText = '🚨';
+  } else {
+    bannerDiv.style.display = 'none';
+    return;
+  }
+
+  if (msgSpan) {
+    msgSpan.innerText = message;
+  }
+
+  if (duration > 0) {
+    bannerTimeout = setTimeout(() => {
+      bannerTimeout = null;
+      restoreWebcamBannerState();
+    }, duration);
+  }
+};
 
 // Expose functions globally for the proctoring wizard in browser_proctor.js
 window.updateProctorIndicator = updateProctorIndicator;
