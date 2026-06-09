@@ -6,6 +6,11 @@ require_once __DIR__ . '/auth.php';
 // Enforce login for all users visiting this page
 requireAuth();
 
+// Prevent caching and disable back-forward cache (BFcache) to force Safari to release media locks on unload
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 // Enforce HTTPS in non-local environments
 $host = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
 $isLocal = in_array($host, ['localhost', '127.0.0.1']) || preg_match('/^192\.168\./', $host);
@@ -95,6 +100,37 @@ if (!empty($inviteCode)) {
     </style>
   <?php endif; ?>
   <script>
+    // Monkeypatch getUserMedia and getDisplayMedia to track and stop all media streams globally
+    (function() {
+      window.activeMediaStreams = [];
+      if (navigator.mediaDevices) {
+        if (navigator.mediaDevices.getUserMedia) {
+          const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+          navigator.mediaDevices.getUserMedia = async function(constraints) {
+            try {
+              const stream = await originalGetUserMedia(constraints);
+              window.activeMediaStreams.push(stream);
+              return stream;
+            } catch (err) {
+              throw err;
+            }
+          };
+        }
+        if (navigator.mediaDevices.getDisplayMedia) {
+          const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+          navigator.mediaDevices.getDisplayMedia = async function(constraints) {
+            try {
+              const stream = await originalGetDisplayMedia(constraints);
+              window.activeMediaStreams.push(stream);
+              return stream;
+            } catch (err) {
+              throw err;
+            }
+          };
+        }
+      }
+    })();
+
     // Inline script to prevent theme flash before body render
     (function() {
       const savedTheme = localStorage.getItem('theme') || 'light';

@@ -12,7 +12,8 @@ The application follows a lightweight, server-side design pattern requiring **no
 *   **Dual Dashboards & Role-based Access**:
     *   **Candidate Dashboard**: Features self-practice sessions, historic assessment run metrics, screening code redemption, private score reports, and a **Settings** tab allowing candidates to save custom Gemini API keys and default practice run task models.
     *   **Recruiter Dashboard**: Allows generating customized template configurations, distributing expiring invite codes (`TRU-XXXXXX`), managing candidate pipelines, and a **Settings** tab to configure custom TruGen Agent IDs, custom Gemini API keys, and map dialogue, vision, and evaluation tasks to specific models.
-*   **Real-Time Audio Interview Agent**: Live conversational interview flow powered by a TruGen AI agent iframe, embedded within a clean user interface.
+*   **Real-Time Audio Interview Agent**: Live conversational interview flow powered by a TruGen AI agent iframe, dynamically embedded within a clean user interface.
+*   **Pre-Interview Security Setup Wizard**: A strict linear environment check wizard that verifies browser support (Chrome, Chromium, Safari), enforces fullscreen mode, validates entire desktop screen sharing, and requests webcam/mic permissions step-by-step before dynamically loading the TruGen AI agent. Prevents concurrent sessions and permission overlay conflicts.
 *   **Intelligent Screen Context Sharing**: Periodic passive screen capturing (every 9 seconds) or active "Submit Code" snapshotting. The application captures screen contents into a high-resolution frame for AI vision-based analysis.
 *   **Automated Candidate Conduct Monitoring**: Leverages Gemini function calling to track candidate focus and professional conduct. Inappropriate or off-topic dialogue triggers formal system warnings, leading to automated session termination after two warnings.
 *   **Interactive MCQ Assessment**: Dynamically shifts status to trigger multiple-choice questions. Uses Gemini to classify voice intents for reading preferences (e.g., read aloud vs. self-read) and to extract selected options (A, B, C, or D) from candidate utterances.
@@ -57,7 +58,11 @@ sequenceDiagram
     Candidate->>Server: Submits verification & starts
     Server->>DB: Create Session (Status: STARTED)
     Server-->>Candidate: Return Session ID
-    Candidate->>TruGen: Connect Agent Iframe & Media Streams
+    note over Candidate: Pre-check Setup Wizard
+    Candidate->>Candidate: Enter Fullscreen Mode (Step 1)
+    Candidate->>Candidate: Share Entire Screen (Step 2)
+    Candidate->>Candidate: Allow Camera/Mic permissions (Step 3)
+    Candidate->>TruGen: Load Agent Iframe (Start Interview Call)
     TruGen->>Server: Webhook: agent.started_speaking (Greet candidate)
     Server->>DB: Log Transcript
     

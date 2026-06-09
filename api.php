@@ -201,6 +201,15 @@ try {
         // Re-fetch updated session
         $session = getSession($sessionId);
         
+        $fast = $_GET['fast'] ?? '0';
+        if ($fast === '1') {
+            echo json_encode([
+                "status" => "success",
+                "session" => $session
+            ]);
+            exit;
+        }
+        
         // If final_score is not generated, generate it using Gemini
         if (empty($session['final_score'])) {
             if (($session['closure_reason'] ?? '') === 'misconduct') {

@@ -813,7 +813,8 @@ window.loadAgentIframe = function() {
   iframe.style.width = '100%';
   iframe.style.height = '100%';
   iframe.style.border = 'none';
-  iframe.setAttribute('allow', 'camera; microphone; autoplay; display-capture');
+  // Restrict to microphone and autoplay to prevent iframe camera leaks
+  iframe.setAttribute('allow', 'microphone; autoplay');
   container.appendChild(iframe);
 };
 
@@ -854,58 +855,9 @@ async function transitionToCompleted(immediate = false) {
     window.destroyBrowserProctor();
   }
 
-  // Stop webcam proctoring
-  if (window.destroyProctor) {
-    window.destroyProctor();
-  }
-
-  // Release camera/microphone by destroying the agent iframe from DOM
-  const agentIframe = document.querySelector('#agent-video-container iframe');
-  if (agentIframe) {
-    agentIframe.src = 'about:blank';
-    agentIframe.remove();
-  }
-
-  if (meshAnimFrame) {
-    cancelAnimationFrame(meshAnimFrame);
-    meshAnimFrame = null;
-  }
-  const displayVideo = document.getElementById('webcam-display-video');
-  if (displayVideo) {
-    displayVideo.srcObject = null;
-  }
-  const canvas = document.getElementById('webcam-mesh-canvas');
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  updateWebcamMonitorStatus('completed');
-  const placeholder = document.getElementById('webcam-monitor-placeholder');
-  if (placeholder) {
-    placeholder.style.display = 'flex';
-    placeholder.style.opacity = '1';
-    const textEl = placeholder.querySelector('p');
-    if (textEl) textEl.innerText = "Webcam Monitoring Closed";
-  }
-  
-  const proctorIndicator = document.getElementById('proctor-status');
-  if (proctorIndicator) {
-    proctorIndicator.style.display = 'none';
-  }
-  
-  // Reset buttons status
-  const headerBtn = document.getElementById('end-interview-header-btn');
-  if (headerBtn) headerBtn.style.display = 'none';
-  const newBtn = document.getElementById('new-interview-header-btn');
-  if (newBtn) newBtn.style.display = 'flex';
-  
-  // Hide workspace grid
-  const workspace = document.querySelector('.workspace-grid');
-  if (workspace) workspace.style.display = 'none';
-
   // Inject professional analyzing ring
   let analyzingDiv = null;
-  if (!immediate) {
+  if (!hasFinalScore) {
     analyzingDiv = document.getElementById('analyzing-screen');
     if (!analyzingDiv) {
       analyzingDiv = document.createElement('div');
@@ -927,15 +879,168 @@ async function transitionToCompleted(immediate = false) {
   }
 
   try {
-    const res = await fetch(`api.php?action=complete&session_id=${sessionId}`);
-    const data = await res.json();
-    
-    if (analyzingDiv) analyzingDiv.remove();
+    if (sessionStatus !== 'COMPLETED') {
+      // Send end_call signal via postMessage to the TruGen iframe to trigger immediate client-side track teardown
+      const agentIframe = document.querySelector('#agent-video-container iframe');
+      if (agentIframe && agentIframe.contentWindow) {
+        try {
+          agentIframe.contentWindow.postMessage({ action: 'end_call', type: 'end_call' }, '*');
+          agentIframe.contentWindow.postMessage('end_call', '*');
+        } catch (e) {
+          console.error("Error sending postMessage to TruGen iframe:", e);
+        }
+      }
 
-    if (data.status === 'success') {
-      renderDashboard(data);
+      // Step 1: Fast mark session completed on backend and terminate streams (sends signaling call-end)
+      const res = await fetch(`api.php?action=complete&session_id=${sessionId}&fast=1`);
+      const data = await res.json();
+      
+      if (data.status === 'success') {
+        // Step 2: Wait 3.0 seconds to let the cross-origin iframe receive the signaling call-end and shut down WebRTC media tracks cleanly
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Step 3: Stop local webcam proctoring
+        if (window.destroyProctor) {
+          window.destroyProctor();
+        }
+
+        // Stop all active streams tracked globally by the monkeypatch
+        try {
+          if (window.activeMediaStreams && window.activeMediaStreams.length > 0) {
+            window.activeMediaStreams.forEach((stream) => {
+              if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => {
+                  try {
+                    track.stop();
+                    track.enabled = false;
+                  } catch(e) {}
+                });
+              }
+            });
+            window.activeMediaStreams = [];
+          }
+        } catch (e) {
+          console.error("Error stopping tracked streams:", e);
+        }
+
+        // Step 4: Release local webcam display stream
+        const displayVideo = document.getElementById('webcam-display-video');
+        if (displayVideo) {
+          if (displayVideo.srcObject) {
+            const tracks = displayVideo.srcObject.getTracks();
+            tracks.forEach(track => {
+              try { track.stop(); } catch(e){}
+            });
+          }
+          displayVideo.srcObject = null;
+        }
+
+        // Step 5: Release camera/microphone by navigating the agent iframe
+        const agentIframeRemove = document.querySelector('#agent-video-container iframe');
+        if (agentIframeRemove) {
+          agentIframeRemove.src = 'about:blank';
+          agentIframeRemove.style.display = 'none';
+        }
+
+        if (meshAnimFrame) {
+          cancelAnimationFrame(meshAnimFrame);
+          meshAnimFrame = null;
+        }
+        const canvas = document.getElementById('webcam-mesh-canvas');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        updateWebcamMonitorStatus('completed');
+        const placeholder = document.getElementById('webcam-monitor-placeholder');
+        if (placeholder) {
+          placeholder.style.display = 'flex';
+          placeholder.style.opacity = '1';
+          const textEl = placeholder.querySelector('p');
+          if (textEl) textEl.innerText = "Webcam Monitoring Closed";
+        }
+        
+        const proctorIndicator = document.getElementById('proctor-status');
+        if (proctorIndicator) {
+          proctorIndicator.style.display = 'none';
+        }
+        
+        // Reset buttons status
+        const headerBtn = document.getElementById('end-interview-header-btn');
+        if (headerBtn) headerBtn.style.display = 'none';
+        const newBtn = document.getElementById('new-interview-header-btn');
+        if (newBtn) newBtn.style.display = 'flex';
+        
+        // Hide workspace grid
+        const workspace = document.querySelector('.workspace-grid');
+        if (workspace) workspace.style.display = 'none';
+
+        if (analyzingDiv) analyzingDiv.remove();
+        
+        location.reload();
+      } else {
+        if (analyzingDiv) analyzingDiv.remove();
+        alert('Error ending session: ' + data.message);
+      }
     } else {
-      alert('Error fetching report: ' + data.message);
+      // Clean up local tracks if we are loading into the completed state directly
+      if (window.destroyProctor) {
+        window.destroyProctor();
+      }
+      const displayVideo = document.getElementById('webcam-display-video');
+      if (displayVideo) {
+        if (displayVideo.srcObject) {
+          try {
+            displayVideo.srcObject.getTracks().forEach(track => track.stop());
+          } catch (e) {
+            console.error("Error stopping webcam video tracks:", e);
+          }
+        }
+        displayVideo.srcObject = null;
+      }
+      const agentIframe = document.querySelector('#agent-video-container iframe');
+      if (agentIframe) {
+        agentIframe.src = 'about:blank';
+        agentIframe.remove();
+      }
+      if (meshAnimFrame) {
+        cancelAnimationFrame(meshAnimFrame);
+        meshAnimFrame = null;
+      }
+      const canvas = document.getElementById('webcam-mesh-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      updateWebcamMonitorStatus('completed');
+      const placeholder = document.getElementById('webcam-monitor-placeholder');
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+        placeholder.style.opacity = '1';
+        const textEl = placeholder.querySelector('p');
+        if (textEl) textEl.innerText = "Webcam Monitoring Closed";
+      }
+      const proctorIndicator = document.getElementById('proctor-status');
+      if (proctorIndicator) {
+        proctorIndicator.style.display = 'none';
+      }
+      const headerBtn = document.getElementById('end-interview-header-btn');
+      if (headerBtn) headerBtn.style.display = 'none';
+      const newBtn = document.getElementById('new-interview-header-btn');
+      if (newBtn) newBtn.style.display = 'flex';
+      const workspace = document.querySelector('.workspace-grid');
+      if (workspace) workspace.style.display = 'none';
+
+      // Step 6: Fetch report details (generates via Gemini on the clean reloaded page)
+      const res = await fetch(`api.php?action=complete&session_id=${sessionId}`);
+      const data = await res.json();
+      if (analyzingDiv) analyzingDiv.remove();
+      if (data.status === 'success') {
+        renderDashboard(data);
+      } else {
+        alert('Error fetching report: ' + data.message);
+      }
     }
   } catch (err) {
     console.error('Error fetching complete state:', err);
@@ -1118,3 +1223,106 @@ function renderDashboard(data) {
   `;
   container.appendChild(resultsDiv);
 }
+
+// Global media tracks cleanup registry to prevent Safari process leak on page unload
+function forceStopAllMediaTracks() {
+  console.log("forceStopAllMediaTracks: Initiating absolute hardware release...");
+  
+  // Stop all active streams tracked globally by the monkeypatch
+  try {
+    if (window.activeMediaStreams && window.activeMediaStreams.length > 0) {
+      console.log(`forceStopAllMediaTracks: Stopping ${window.activeMediaStreams.length} globally tracked MediaStreams.`);
+      window.activeMediaStreams.forEach(stream => {
+        if (stream) {
+          stream.getTracks().forEach(track => {
+            try {
+              track.stop();
+              track.enabled = false;
+            } catch(e){}
+          });
+        }
+      });
+      window.activeMediaStreams = [];
+    }
+  } catch (e) {
+    console.error("Error stopping globally tracked media streams on unload:", e);
+  }
+  
+  // 1. Release local video stream tracks
+  try {
+    const displayVideo = document.getElementById('webcam-display-video');
+    if (displayVideo && displayVideo.srcObject) {
+      displayVideo.srcObject.getTracks().forEach(track => {
+        try { track.stop(); } catch(e){}
+      });
+      displayVideo.srcObject = null;
+      if (typeof displayVideo.load === 'function') {
+        displayVideo.load();
+      }
+    }
+  } catch (e) {
+    console.error("Error stopping local video stream tracks on unload:", e);
+  }
+
+  // 2. Shut down proctoring media streams and faceLandmarker
+  try {
+    if (window.destroyProctor) {
+      window.destroyProctor();
+    }
+  } catch (e) {
+    console.error("Error destroying proctor on unload:", e);
+  }
+
+  // 3. Stop screen sharing
+  try {
+    if (screenStream) {
+      screenStream.getVideoTracks().forEach(track => {
+        try { track.stop(); } catch(e){}
+      });
+      screenStream = null;
+    }
+  } catch (e) {
+    console.error("Error stopping screen share tracks on unload:", e);
+  }
+
+  // 4. Force unload cross-origin iframe to stop WebRTC media hooks
+  try {
+    const agentIframe = document.querySelector('#agent-video-container iframe');
+    if (agentIframe) {
+      if (agentIframe.contentWindow) {
+        try {
+          agentIframe.contentWindow.postMessage({ action: 'end_call', type: 'end_call' }, '*');
+          agentIframe.contentWindow.postMessage('end_call', '*');
+        } catch(e){}
+      }
+      agentIframe.src = 'about:blank';
+      agentIframe.style.display = 'none';
+    }
+  } catch (e) {
+    console.error("Error freeing iframe on unload:", e);
+  }
+}
+
+// Register browser lifecycle listeners for absolute resource release
+window.addEventListener('beforeunload', forceStopAllMediaTracks);
+window.addEventListener('pagehide', forceStopAllMediaTracks);
+
+// Listen to TruGen iframe messages for auto-closing proceedings
+window.addEventListener('message', (event) => {
+  if (event.origin && event.origin.includes('trugen.ai')) {
+    console.log('TruGen message received:', event.data);
+    const data = event.data;
+    if (data && (
+      data.type === 'call_ended' || 
+      data.event === 'call_ended' ||
+      data.type === 'call-ended' ||
+      data.event === 'call-ended' ||
+      (typeof data === 'string' && (data.includes('ended') || data.includes('completed') || data.includes('close')))
+    )) {
+      console.log('TruGen call ended signal detected via postMessage.');
+      if (typeof transitionToCompleted === 'function') {
+        transitionToCompleted();
+      }
+    }
+  }
+});

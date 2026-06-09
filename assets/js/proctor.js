@@ -130,11 +130,18 @@ export function destroyProctor() {
     }
     
     if (webcamStream) {
-        webcamStream.getTracks().forEach(track => track.stop());
+        const tracks = webcamStream.getTracks();
+        tracks.forEach(track => {
+            track.stop();
+        });
         webcamStream = null;
     }
     
     if (trackingVideo) {
+        trackingVideo.srcObject = null;
+        if (typeof trackingVideo.load === 'function') {
+            trackingVideo.load();
+        }
         trackingVideo.remove();
         trackingVideo = null;
     }
@@ -144,7 +151,14 @@ export function destroyProctor() {
         trackingCanvas = null;
     }
     
-    faceLandmarker = null;
+    if (faceLandmarker) {
+        try {
+            faceLandmarker.close();
+        } catch (e) {
+            console.error("Error closing faceLandmarker:", e);
+        }
+        faceLandmarker = null;
+    }
     isInitialized = false;
     activeSessionId = null;
     statusCallback = null;
