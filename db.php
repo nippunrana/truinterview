@@ -193,6 +193,19 @@ function initSchema() {
         is_correct BOOLEAN,
         submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Create proctor_alerts table
+    $db->exec("CREATE TABLE IF NOT EXISTS proctor_alerts (
+        id SERIAL PRIMARY KEY,
+        session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+        alert_type VARCHAR(50) NOT NULL,
+        severity VARCHAR(20) DEFAULT 'warning',
+        client_details JSONB,
+        snapshot_path VARCHAR(500),
+        ai_verdict TEXT,
+        ai_confirmed BOOLEAN,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
 }
 
 function seedQuestions() {
@@ -580,6 +593,48 @@ function getSessionUserSettings($sessionId) {
         return $stmt->fetch();
     }
     return null;
+}
+
+function saveProctorAlert($sessionId, $type, $severity, $clientDetails, $snapshotPath, $aiVerdict, $aiConfirmed) {
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO proctor_alerts (session_id, alert_type, severity, client_details, snapshot_path, ai_verdict, ai_confirmed) VALUES (:session_id, :alert_type, :severity, :client_details, :snapshot_path, :ai_verdict, :ai_confirmed) RETURNING id");
+    $stmt->execute([
+        'session_id' => $sessionId,
+        'alert_type' => $type,
+        'severity' => $severity,
+        'client_details' => is_array($clientDetails) ? json_encode($clientDetails) : $clientDetails,
+        'snapshot_path' => $snapshotPath,
+        'ai_verdict' => $aiVerdict,
+        'ai_confirmed' => $aiConfirmed ? 'true' : 'false'
+    ]);
+    return $stmt->fetchColumn();
+}
+
+function getProctorAlerts($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM proctor_alerts WHERE session_id = :session_id ORDER BY created_at ASC");
+    $stmt->execute(['session_id' => $sessionId]);
+    $alerts = $stmt->fetchAll();
+    foreach ($alerts as &$a) {
+        if (!empty($a['client_details'])) {
+            $a['client_details'] = json_decode($a['client_details'], true);
+        }
+    }
+    return $alerts;
+}
+
+function getProctorAlertCount($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT COUNT(*) FROM proctor_alerts WHERE session_id = :session_id AND ai_confirmed = TRUE");
+    $stmt->execute(['session_id' => $sessionId]);
+    return (int)$stmt->fetchColumn();
+}
+
+function getProctorSummary($sessionId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT alert_type, COUNT(*) as count FROM proctor_alerts WHERE session_id = :session_id GROUP BY alert_type");
+    $stmt->execute(['session_id' => $sessionId]);
+    return $stmt->fetchAll();
 }
 
 // Auto-init and seed tables on load

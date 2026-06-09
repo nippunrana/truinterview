@@ -221,6 +221,107 @@ $codeOffset = 251.2 - (251.2 * $codeScore) / 10;
         <p><?php echo htmlspecialchars($scoreData['overall_feedback'] ?? 'No summary comments.'); ?></p>
       </div>
 
+      <!-- Proctoring Integrity Section -->
+      <?php 
+        $proctorAlerts = getProctorAlerts($sessionId);
+        $confirmedAlertCount = getProctorAlertCount($sessionId);
+      ?>
+      <div class="proctoring-integrity-section" style="margin-top: 32px;">
+        <div class="proctoring-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 20px;">
+          <h3>Webcam Proctoring Integrity</h3>
+          <?php 
+            if ($confirmedAlertCount === 0) {
+                $confText = "High Confidence — 0 confirmed alerts";
+                $confStyle = "background: var(--color-success-bg); color: var(--color-success);";
+            } elseif ($confirmedAlertCount <= 2) {
+                $confText = "Medium Confidence — {$confirmedAlertCount} confirmed alert(s)";
+                $confStyle = "background: rgba(245, 158, 11, 0.1); color: hsl(38, 95%, 50%);";
+            } else {
+                $confText = "Low Confidence — {$confirmedAlertCount} confirmed alerts";
+                $confStyle = "background: var(--color-danger-bg); color: var(--color-danger);";
+            }
+          ?>
+          <span class="badge" style="<?php echo $confStyle; ?> padding: 6px 12px; font-weight: 700; border-radius: 6px;">
+            <?php echo $confText; ?>
+          </span>
+        </div>
+        
+        <?php if (empty($proctorAlerts)): ?>
+          <div style="background: var(--color-surface-elevated); border: 1px solid var(--color-border); border-radius: 12px; padding: 20px; text-align: center; color: var(--color-text-muted); font-size: 0.9rem;">
+            No integrity anomalies detected. Candidate remained visible, alone, and attentive throughout the session.
+          </div>
+        <?php else: ?>
+          <div class="proctor-timeline" style="display: flex; flex-direction: column; gap: 16px;">
+            <?php foreach ($proctorAlerts as $alert): ?>
+              <?php 
+                $alertTypeLabel = str_replace('_', ' ', $alert['alert_type']);
+                $alertTypeLabel = ucwords($alertTypeLabel);
+                $isConfirmed = (bool)$alert['ai_confirmed'];
+                $alertSeverity = htmlspecialchars($alert['severity']);
+                
+                if ($isConfirmed) {
+                    $borderCol = $alertSeverity === 'critical' ? 'var(--color-danger)' : 'hsl(38, 95%, 50%)';
+                    $statusLabel = "Confirmed Anomaly";
+                    $statusBg = $alertSeverity === 'critical' ? 'var(--color-danger-bg)' : 'rgba(245, 158, 11, 0.1)';
+                    $statusColor = $alertSeverity === 'critical' ? 'var(--color-danger)' : 'hsl(38, 95%, 50%)';
+                } else {
+                    $borderCol = 'var(--color-border)';
+                    $statusLabel = "False Positive (Filtered by AI)";
+                    $statusBg = 'var(--color-success-bg)';
+                    $statusColor = 'var(--color-success)';
+                }
+              ?>
+              <div class="proctor-alert-card" style="background: var(--color-surface-elevated); border: 1px solid <?php echo $borderCol; ?>; border-left: 5px solid <?php echo $isConfirmed ? ($alertSeverity === 'critical' ? 'var(--color-danger)' : 'hsl(38, 95%, 50%)') : 'var(--color-text-muted)'; ?>; border-radius: 12px; padding: 16px; display: flex; gap: 16px;">
+                
+                <?php if (!empty($alert['snapshot_path'])): ?>
+                  <div class="proctor-snapshot-thumb" style="width: 120px; height: 90px; border-radius: 8px; overflow: hidden; background: #000; flex-shrink: 0; border: 1px solid var(--color-border);">
+                    <a href="../<?php echo htmlspecialchars($alert['snapshot_path']); ?>" target="_blank" title="Click to view full size">
+                      <img src="../<?php echo htmlspecialchars($alert['snapshot_path']); ?>" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;" alt="Webcam Snapshot">
+                    </a>
+                  </div>
+                <?php endif; ?>
+                
+                <div class="proctor-alert-details" style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <h4 style="margin: 0; font-size: 1rem;"><?php echo $alertTypeLabel; ?> Alert</h4>
+                    <span style="font-size: 0.75rem; color: var(--color-text-muted); font-weight: 500;">
+                      Time: <?php echo date('h:i:s A', strtotime($alert['created_at'])); ?>
+                    </span>
+                  </div>
+                  
+                  <div style="font-size: 0.85rem; line-height: 1.4; color: var(--color-text-secondary);">
+                    <strong>Local Detection Details:</strong> 
+                    <?php 
+                      if (is_array($alert['client_details'])) {
+                          $details = [];
+                          foreach ($alert['client_details'] as $k => $v) {
+                              $details[] = htmlspecialchars(str_replace('_', ' ', $k)) . ": " . htmlspecialchars($v);
+                          }
+                          echo implode(', ', $details);
+                      } else {
+                          echo htmlspecialchars($alert['client_details']);
+                      }
+                    ?>
+                  </div>
+                  
+                  <div style="font-size: 0.85rem; line-height: 1.4; color: var(--color-text-primary); margin-top: 4px;">
+                    <strong>Gemini Vision Verdict:</strong> <?php echo htmlspecialchars($alert['ai_verdict'] ?? 'No verification performed.'); ?>
+                  </div>
+                  
+                  <div style="margin-top: 6px;">
+                    <span style="<?php echo "background: {$statusBg}; color: {$statusColor};"; ?> font-size: 0.75rem; font-weight: 700; padding: 4px 8px; border-radius: 4px;">
+                      <?php echo $statusLabel; ?>
+                    </span>
+                  </div>
+                </div>
+                
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+
+
       <!-- MCQ Summary Section -->
       <?php if (!empty($responses)): ?>
         <?php 

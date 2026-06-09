@@ -62,3 +62,7 @@ env/
 
 # Ignore AI context file
 ai-context.md
+
+# Ignore uploads contents but track the directory
+uploads/*
+!uploads/.gitkeep

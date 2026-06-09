@@ -440,6 +440,153 @@ try {
         exit;
     }
 
+    if ($action === 'proctor_alert') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            throw new Exception("Method not allowed. Use POST.");
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            throw new Exception("Invalid JSON payload");
+        }
+        
+        $sessionId = $input['session_id'] ?? $_COOKIE['session_id'] ?? '';
+        if (empty($sessionId)) {
+            throw new Exception("Session ID required");
+        }
+        
+        $session = getSession($sessionId);
+        if (!$session) {
+            throw new Exception("Session not found");
+        }
+        
+        $alertType = $input['alert_type'] ?? '';
+        $severity = $input['severity'] ?? 'warning';
+        $clientDetails = $input['client_details'] ?? [];
+        $snapshot = $input['snapshot'] ?? '';
+        
+        if (empty($alertType)) {
+            throw new Exception("Alert type is required");
+        }
+        
+        $snapshotPath = null;
+        if (!empty($snapshot)) {
+            if (preg_match('/^data:image\/(\w+);base64,(.*)$/', $snapshot, $matches)) {
+                $type = strtolower($matches[1]);
+                $data = base64_decode($matches[2]);
+                if ($data === false) {
+                    throw new Exception("Invalid base64 payload");
+                }
+            } else {
+                throw new Exception("Payload format invalid, expected base64 data URI");
+            }
+            
+            if (!in_array($type, ['jpg', 'jpeg', 'png'])) {
+                throw new Exception("Unsupported file format: " . $type);
+            }
+            
+            $uploadDir = __DIR__ . '/uploads/' . $sessionId;
+            if (!file_exists($uploadDir)) {
+                if (!mkdir($uploadDir, 0755, true)) {
+                    throw new Exception("Failed to create upload directory");
+                }
+            }
+            
+            $filename = 'proctor_' . time() . '_' . uniqid() . '.jpg';
+            $snapshotPath = 'uploads/' . $sessionId . '/' . $filename;
+            $filePath = __DIR__ . '/' . $snapshotPath;
+            if (file_put_contents($filePath, $data) === false) {
+                throw new Exception("Failed to write snapshot file to disk");
+            }
+        }
+        
+        // Load proctor service
+        require_once __DIR__ . '/proctor_service.php';
+        
+        // Determine which Gemini API key to override with
+        $apiKeyOverride = getSessionApiKey($session);
+        $model = $session['model_vision_task'] ?? 'gemini-3.5-flash';
+        
+        // Analyze snapshot using Gemini Vision
+        $aiVerdict = 'AI analysis skipped.';
+        $aiConfirmed = true; // default to true if no snapshot is available for analysis
+        
+        if ($snapshotPath) {
+            $analysis = analyzeProctorSnapshot(__DIR__ . '/' . $snapshotPath, $alertType, $clientDetails, $apiKeyOverride, $model);
+            $aiVerdict = $analysis['verdict'];
+            $aiConfirmed = $analysis['confirmed'];
+        }
+        
+        // Save alert to database
+        $alertId = saveProctorAlert($sessionId, $alertType, $severity, $clientDetails, $snapshotPath, $aiVerdict, $aiConfirmed);
+        
+        // Log to transcript
+        $logMessage = "Proctor warning: [Type: " . $alertType . "] [Severity: " . $severity . "] AI Confirmed: " . ($aiConfirmed ? 'Yes' : 'No') . " - Verdict: " . $aiVerdict;
+        logTranscript($sessionId, 'SYSTEM', $logMessage);
+        
+        // If alert is confirmed and severity is critical, we can speak a warning.
+        $shouldSpeak = false;
+        if ($aiConfirmed && $severity === 'critical') {
+            // Count existing confirmed critical alerts in db
+            $db = getDB();
+            $stmt = $db->prepare("SELECT COUNT(*) FROM proctor_alerts WHERE session_id = :session_id AND severity = 'critical' AND ai_confirmed = TRUE");
+            $stmt->execute(['session_id' => $sessionId]);
+            $criticalCount = (int)$stmt->fetchColumn();
+            
+            // If this is the first one (since it was just inserted, count will be 1)
+            if ($criticalCount === 1) {
+                $shouldSpeak = true;
+            }
+        }
+        
+        $warningSpoken = false;
+        if ($shouldSpeak) {
+            $speakText = buildProctorWarningMessage($alertType, $aiVerdict);
+            require_once __DIR__ . '/trugen_service.php';
+            if (!empty($session['trugen_conversation_id'])) {
+                try {
+                    injectSpeakText($session['trugen_conversation_id'], $speakText);
+                    $warningSpoken = true;
+                    logTranscript($sessionId, 'SYSTEM', "Spoke warning to candidate: " . $speakText);
+                } catch (Exception $e) {
+                    logTranscript($sessionId, 'SYSTEM', "Failed to inject speak warning: " . $e->getMessage());
+                }
+            }
+        }
+        
+        echo json_encode([
+            "status" => "success",
+            "alert_id" => $alertId,
+            "ai_verdict" => $aiVerdict,
+            "ai_confirmed" => $aiConfirmed,
+            "warning_spoken" => $warningSpoken
+        ]);
+        exit;
+    }
+    
+    if ($action === 'proctor_status') {
+        $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
+        if (empty($sessionId)) {
+            throw new Exception("Session ID required");
+        }
+        
+        $session = getSession($sessionId);
+        if (!$session) {
+            throw new Exception("Session not found");
+        }
+        
+        $alerts = getProctorAlerts($sessionId);
+        $confirmedCount = getProctorAlertCount($sessionId);
+        
+        echo json_encode([
+            "status" => "success",
+            "alert_count" => count($alerts),
+            "confirmed_count" => $confirmedCount,
+            "alerts" => $alerts
+        ]);
+        exit;
+    }
+
     if ($action === 'webhook') {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             throw new Exception("Method not allowed. Use POST.");

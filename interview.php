@@ -248,8 +248,12 @@ if (!empty($inviteCode)) {
     <div class="workspace-grid">
       <!-- Left Panel: Video Agent -->
       <div class="panel left-panel">
-        <div class="panel-header">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="panel-title">AI Interviewer</h3>
+          <div class="proctor-indicator warning" id="proctor-status">
+            <span class="proctor-dot"></span>
+            <span class="proctor-text">Connecting...</span>
+          </div>
         </div>
         <div class="agent-video-container" id="agent-video-container">
           <?php if ($session && $session['current_status'] !== 'COMPLETED'): ?>
@@ -269,6 +273,9 @@ if (!empty($inviteCode)) {
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
             <p>Agent Video Connection Pending</p>
           </div>
+        </div>
+        <div class="proctor-note" style="padding: var(--space-2) var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; border-bottom: 1px solid var(--color-border);">
+          Webcam is being monitored locally to verify interview integrity.
         </div>
         
 
@@ -328,6 +335,12 @@ if (!empty($inviteCode)) {
         </div>
       </div>
     </div>
+    
+    <!-- Proctor Warning Banner -->
+    <div id="proctor-warning-banner" style="display: none; position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: var(--space-3) var(--space-6); border-radius: var(--radius-inner); font-weight: 600; font-size: var(--text-sm); box-shadow: 0 10px 30px var(--color-shadow); align-items: center; gap: var(--space-3); transition: var(--transition-smooth);">
+      <span class="proctor-banner-icon"></span>
+      <span class="proctor-banner-message"></span>
+    </div>
   </div>
   <?php endif; ?>
 
@@ -337,6 +350,11 @@ if (!empty($inviteCode)) {
     const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
     const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
+  </script>
+  <script type="module">
+    import { initProctor, destroyProctor } from './assets/js/proctor.js';
+    window.initProctor = initProctor;
+    window.destroyProctor = destroyProctor;
   </script>
   <script src="assets/js/interview.js" defer></script>
 </body>

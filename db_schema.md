@@ -10,6 +10,7 @@ This document provides a detailed overview of the PostgreSQL tables, fields, typ
 erDiagram
     sessions ||--o{ transcripts : "owns"
     sessions ||--o{ candidate_responses : "submits"
+    sessions ||--o{ proctor_alerts : "records"
     mcq_questions ||--o{ candidate_responses : "evaluates"
 
     sessions {
@@ -114,3 +115,20 @@ Tracks user answers to MCQ questions during the interview.
 | `selected_option` | `CHAR(1)` | `NULL` | Selected answer option (`A`, `B`, `C`, or `D`). |
 | `is_correct` | `BOOLEAN` | `NULL` | Computed correctness state. |
 | `submitted_at` | `TIMESTAMP WITH TIME ZONE` | Default `CURRENT_TIMESTAMP` | Time response was received. |
+
+---
+
+### 5. `proctor_alerts`
+Logs proctoring events triggered by the client-side detection or verified by Gemini Vision.
+
+| Field Name | Data Type | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `INTEGER` | `PRIMARY KEY`, `SERIAL` | Auto-incrementing identifier. |
+| `session_id` | `UUID` | `FOREIGN KEY REFERENCES sessions(id) ON DELETE CASCADE` | Associated candidate session. |
+| `alert_type` | `VARCHAR(50)` | `NOT NULL` | Type of detection anomaly (`no_face`, `multiple_faces`, `gaze_away`, `face_changed`). |
+| `severity` | `VARCHAR(20)` | Default `'warning'` | Severity of the alert (`info`, `warning`, `critical`). |
+| `client_details` | `JSONB` | `NULL` | JSON metadata from the client-side detection (e.g., face count, gaze position, absent duration). |
+| `snapshot_path` | `VARCHAR(500)` | `NULL` | Relative path to the stored JPEG snapshot image. |
+| `ai_verdict` | `TEXT` | `NULL` | Gemini Vision model's analysis explanation. |
+| `ai_confirmed` | `BOOLEAN` | `NULL` | Indicates whether the Gemini Vision model confirmed the anomaly. |
+| `created_at` | `TIMESTAMP WITH TIME ZONE` | Default `CURRENT_TIMESTAMP` | Time the alert was logged. |

@@ -516,6 +516,60 @@ async function submitMCQOption() {
   }
 }
 
+function updateProctorIndicator(status) {
+  const statusDiv = document.getElementById('proctor-status');
+  const bannerDiv = document.getElementById('proctor-warning-banner');
+  
+  if (statusDiv) {
+    statusDiv.className = 'proctor-indicator';
+    const textSpan = statusDiv.querySelector('.proctor-text');
+    
+    switch (status) {
+      case 'connecting':
+        statusDiv.classList.add('warning');
+        if (textSpan) textSpan.innerText = 'Connecting...';
+        break;
+      case 'ok':
+        statusDiv.classList.add('ok');
+        if (textSpan) textSpan.innerText = 'Monitoring Active';
+        break;
+      case 'warning':
+        statusDiv.classList.add('warning');
+        if (textSpan) textSpan.innerText = 'Attention';
+        break;
+      case 'critical':
+        statusDiv.classList.add('critical');
+        if (textSpan) textSpan.innerText = 'Suspicion Alert';
+        break;
+      case 'error':
+      default:
+        statusDiv.classList.add('error');
+        if (textSpan) textSpan.innerText = 'Monitoring Stopped';
+        break;
+    }
+  }
+
+  if (bannerDiv) {
+    bannerDiv.className = ''; // Reset class
+    const iconSpan = bannerDiv.querySelector('.proctor-banner-icon');
+    const msgSpan = bannerDiv.querySelector('.proctor-banner-message');
+
+    if (status === 'warning') {
+      bannerDiv.style.display = 'flex';
+      bannerDiv.classList.add('proctor-banner-warning');
+      if (iconSpan) iconSpan.innerText = '⚠️';
+      if (msgSpan) msgSpan.innerText = 'Attention: Please look at the screen and remain visible.';
+    } else if (status === 'critical') {
+      bannerDiv.style.display = 'flex';
+      bannerDiv.classList.add('proctor-banner-critical');
+      if (iconSpan) iconSpan.innerText = '🚨';
+      if (msgSpan) msgSpan.innerText = 'CRITICAL WARNING: Integrity anomaly detected! Please correct immediately.';
+    } else {
+      bannerDiv.style.display = 'none';
+    }
+  }
+}
+
 // Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
 
@@ -529,6 +583,13 @@ window.addEventListener('DOMContentLoaded', () => {
       pollStatus();
       pollInterval = setInterval(pollStatus, 3000);
       pollMCQState();
+
+      // Start webcam proctoring
+      if (window.initProctor) {
+        window.initProctor(sessionId, (status) => {
+          updateProctorIndicator(status);
+        });
+      }
     }
   }
 });
@@ -544,6 +605,16 @@ async function transitionToCompleted(immediate = false) {
 
   // Shut down screen sharing
   stopScreenShare();
+  
+  // Stop webcam proctoring
+  if (window.destroyProctor) {
+    window.destroyProctor();
+  }
+  
+  const proctorIndicator = document.getElementById('proctor-status');
+  if (proctorIndicator) {
+    proctorIndicator.style.display = 'none';
+  }
   
   // Reset buttons status
   const headerBtn = document.getElementById('end-interview-header-btn');

@@ -1331,3 +1331,125 @@ header {
 .back-link:hover {
   color: var(--color-accent);
 }
+
+/* Proctoring System Styles */
+.proctor-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 20px;
+  font-weight: 500;
+  transition: var(--transition-smooth);
+}
+
+.proctor-indicator.ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.proctor-indicator.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: hsl(38, 95%, 50%);
+}
+
+.proctor-indicator.critical {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.proctor-indicator.error {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--color-text-muted);
+}
+
+.proctor-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: var(--transition-smooth);
+}
+
+.proctor-indicator.ok .proctor-dot {
+  background-color: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+}
+
+.proctor-indicator.warning .proctor-dot {
+  background-color: hsl(38, 95%, 50%);
+  box-shadow: 0 0 8px hsl(38, 95%, 50%);
+  animation: proctor-pulse-warning 1.5s infinite;
+}
+
+.proctor-indicator.critical .proctor-dot {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 8px var(--color-danger);
+  animation: proctor-pulse-critical 1.5s infinite;
+}
+
+.proctor-indicator.error .proctor-dot {
+  background-color: var(--color-text-muted);
+}
+
+@keyframes proctor-pulse-warning {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes proctor-pulse-critical {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Proctoring Warning Banner Styles */
+#proctor-warning-banner.proctor-banner-warning {
+  display: flex !important;
+  background: hsl(38, 95%, 45%);
+  color: #fff;
+  animation: proctor-slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#proctor-warning-banner.proctor-banner-critical {
+  display: flex !important;
+  background: var(--color-danger);
+  color: #fff;
+  animation: proctor-slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1), proctor-banner-shake 0.5s ease 0.3s;
+}
+
+.proctor-banner-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+@keyframes proctor-slide-down {
+  from { transform: translate(-50%, -40px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes proctor-banner-shake {
+  0%, 100% { transform: translateX(-50%); }
+  20%, 60% { transform: translateX(calc(-50% - 6px)); }
+  40%, 80% { transform: translateX(calc(-50% + 6px)); }
+}
+
