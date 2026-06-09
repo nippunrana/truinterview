@@ -306,6 +306,7 @@ async function toggleScreenShare() {
       mediaState.screen = true;
       btn.classList.add('active');
       submitBtn.removeAttribute('disabled');
+      if (window.setSecurityIndicator) window.setSecurityIndicator('screen', true);
       
       let screenVideo = document.getElementById('screen-video-element');
       if (!screenVideo) {
@@ -365,6 +366,7 @@ function stopScreenShare() {
   submitBtn.setAttribute('disabled', 'true');
   placeholder.style.display = 'flex';
   
+  if (window.setSecurityIndicator) window.setSecurityIndicator('screen', false);
   stopPassivePolling();
 }
 
@@ -807,6 +809,9 @@ window.addEventListener('DOMContentLoaded', () => {
             updateWebcamMonitorStatus(status);
             if (status === 'ok') {
               bindWebcamStreamToVideo();
+              if (window.setSecurityIndicator) window.setSecurityIndicator('webcam', true);
+            } else if (status === 'warning' || status === 'critical' || status === 'error') {
+              if (window.setSecurityIndicator) window.setSecurityIndicator('webcam', false);
             }
           },
           (landmarks) => {

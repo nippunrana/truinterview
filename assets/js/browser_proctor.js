@@ -12,6 +12,36 @@ const listeners = {};
 // Tracking variables for tab/app focus loss
 let lastFocusLostTime = null;
 
+// Global helper to update visual security indicators on the UI
+window.setSecurityIndicator = function(indicatorId, isSecure) {
+    const node = document.getElementById(`sec-node-${indicatorId}`);
+    if (!node) return;
+    const dot = node.querySelector('.status-glow-dot');
+    if (!dot) return;
+    
+    if (isSecure) {
+        dot.className = 'status-glow-dot status-green';
+        node.style.color = 'var(--color-success)';
+        node.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+        node.style.background = 'var(--color-success-bg)';
+        if (indicatorId === 'webcam') node.title = "Webcam Monitoring: Active";
+        if (indicatorId === 'screen') node.title = "Screen Sharing: Active";
+        if (indicatorId === 'fullscreen') node.title = "Fullscreen Environment: Active";
+        if (indicatorId === 'focus') node.title = "Tab Focus: Active";
+        if (indicatorId === 'cursor') node.title = "Cursor Boundary: Secure";
+    } else {
+        dot.className = 'status-glow-dot status-red';
+        node.style.color = 'var(--color-danger)';
+        node.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+        node.style.background = 'var(--color-danger-bg)';
+        if (indicatorId === 'webcam') node.title = "Webcam Monitoring: Anomaly/Inactive";
+        if (indicatorId === 'screen') node.title = "Screen Sharing: Inactive";
+        if (indicatorId === 'fullscreen') node.title = "Fullscreen Environment: Escaped/Inactive";
+        if (indicatorId === 'focus') node.title = "Tab Focus: Background state";
+        if (indicatorId === 'cursor') node.title = "Cursor Boundary: Outside Page";
+    }
+};
+
 export function initBrowserProctor(sessionId) {
     if (isInitialized) {
         console.warn("Browser proctoring already initialized.");
@@ -48,11 +78,21 @@ export function initBrowserProctor(sessionId) {
     listeners.mouseout = (e) => handleMouseOut(e);
     document.addEventListener('mouseout', listeners.mouseout);
 
+    // Mousemove to restore green cursor state when mouse returns to page
+    listeners.mousemove = () => {
+        window.setSecurityIndicator('cursor', true);
+    };
+    document.addEventListener('mousemove', listeners.mousemove);
+
     // Hardware/Device connection change tracking
     listeners.devicechange = () => handleDeviceChange();
     if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
         navigator.mediaDevices.addEventListener('devicechange', listeners.devicechange);
     }
+
+    // Set initial active indicator states
+    window.setSecurityIndicator('focus', document.visibilityState === 'visible' && document.hasFocus());
+    window.setSecurityIndicator('cursor', true);
 
     isInitialized = true;
     console.log("Browser proctoring initialized.");
@@ -77,6 +117,7 @@ export function destroyBrowserProctor() {
     if (listeners.cut) document.removeEventListener('cut', listeners.cut);
     if (listeners.paste) document.removeEventListener('paste', listeners.paste);
     if (listeners.mouseout) document.removeEventListener('mouseout', listeners.mouseout);
+    if (listeners.mousemove) document.removeEventListener('mousemove', listeners.mousemove);
 
     if (navigator.mediaDevices && navigator.mediaDevices.removeEventListener && listeners.devicechange) {
         navigator.mediaDevices.removeEventListener('devicechange', listeners.devicechange);
@@ -89,6 +130,13 @@ export function destroyBrowserProctor() {
     // Hide overlay
     const overlay = document.getElementById('fullscreen-block-overlay');
     if (overlay) overlay.style.display = 'none';
+
+    // Reset indicator status to red
+    window.setSecurityIndicator('webcam', false);
+    window.setSecurityIndicator('screen', false);
+    window.setSecurityIndicator('fullscreen', false);
+    window.setSecurityIndicator('focus', false);
+    window.setSecurityIndicator('cursor', false);
 
     console.log("Browser proctoring destroyed.");
 }
@@ -121,8 +169,10 @@ function setupFullscreenEnforcement() {
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
         if (isFullscreen) {
             overlay.style.display = 'none';
+            window.setSecurityIndicator('fullscreen', true);
         } else {
             overlay.style.display = 'flex';
+            window.setSecurityIndicator('fullscreen', false);
             // Trigger exit fullscreen infraction
             triggerBrowserAlert('fullscreen_exit', 'warning', { reason: 'User exited fullscreen window.' });
         }
@@ -131,26 +181,36 @@ function setupFullscreenEnforcement() {
 
     // Initial check on initialization (only if session active)
     const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!isFullscreen && activeSessionId) {
-        overlay.style.display = 'flex';
+    if (isFullscreen) {
+        window.setSecurityIndicator('fullscreen', true);
+    } else {
+        window.setSecurityIndicator('fullscreen', false);
+        if (activeSessionId) {
+            overlay.style.display = 'flex';
+        }
     }
 }
 
 function handleVisibilityChange() {
     if (document.visibilityState === 'hidden') {
         lastFocusLostTime = Date.now();
+        window.setSecurityIndicator('focus', false);
         triggerBrowserAlert('tab_switch', 'warning', { reason: 'Candidate switched tabs or minimized browser.' });
+    } else {
+        window.setSecurityIndicator('focus', true);
     }
 }
 
 function handleFocusLoss() {
     if (!lastFocusLostTime) {
         lastFocusLostTime = Date.now();
+        window.setSecurityIndicator('focus', false);
         triggerBrowserAlert('tab_switch', 'warning', { reason: 'Candidate clicked away from browser window.' });
     }
 }
 
 function handleFocusGain() {
+    window.setSecurityIndicator('focus', true);
     if (lastFocusLostTime) {
         const durationMs = Date.now() - lastFocusLostTime;
         const durationSecs = Math.round(durationMs / 100) / 10;
@@ -221,6 +281,7 @@ function handleMouseOut(e) {
         
         const isNearEdge = x <= buffer || y <= buffer || (window.innerWidth - x) <= buffer || (window.innerHeight - y) <= buffer;
         if (isNearEdge) {
+            window.setSecurityIndicator('cursor', false);
             triggerBrowserAlert('cursor_left_screen', 'warning', { 
                 reason: `Mouse cursor moved outside the browser page. coordinates: (${x}, ${y})`,
                 screen_width: window.innerWidth,

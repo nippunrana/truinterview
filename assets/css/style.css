@@ -1719,4 +1719,41 @@ header {
   border-left: 4px solid var(--color-accent) !important;
 }
 
+/* Security Integrity Monitor Bar styling */
+.security-status-node {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.2);
+  background: var(--color-danger-bg);
+  transition: var(--transition-smooth);
+}
+
+.status-glow-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-bg-app);
+}
+
+.status-glow-dot.status-green {
+  background-color: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+.status-glow-dot.status-red {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 6px var(--color-danger);
+}
+
 

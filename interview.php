@@ -365,7 +365,38 @@ if (!empty($inviteCode)) {
           
           <!-- Screen Capture Preview Row -->
           <div class="console-section">
-            <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Screen Context Share</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+              <h4 style="font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary); margin: 0;">Screen Context Share</h4>
+              
+              <!-- Security Integrity Monitor Lights Bar -->
+              <div class="security-monitor-bar" style="display: flex; gap: var(--space-2); align-items: center; background: rgba(0,0,0,0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--glass-border);">
+                <!-- Webcam status -->
+                <div class="security-status-node" id="sec-node-webcam" title="Webcam Feed: Inactive">
+                  <div class="status-glow-dot status-red"></div>
+                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+                </div>
+                <!-- Screen Share status -->
+                <div class="security-status-node" id="sec-node-screen" title="Screen Context Share: Inactive">
+                  <div class="status-glow-dot status-red"></div>
+                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 21h6l-.75-4M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <!-- Fullscreen status -->
+                <div class="security-status-node" id="sec-node-fullscreen" title="Fullscreen Environment: Inactive">
+                  <div class="status-glow-dot status-red"></div>
+                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </div>
+                <!-- Tab focus status -->
+                <div class="security-status-node" id="sec-node-focus" title="Tab Focus state: Focused">
+                  <div class="status-glow-dot status-green"></div>
+                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12h9.75c1.05 0 2 .922 2 2v9.75c0 1.05-.95 2-2 2H7.5a2 2 0 01-2-2V8c0-1.05.95-2 2-2z"></path></svg>
+                </div>
+                <!-- Mouse Cursor status -->
+                <div class="security-status-node" id="sec-node-cursor" title="Cursor Position: Inside Screen">
+                  <div class="status-glow-dot status-green"></div>
+                  <svg style="width: 13px; height: 13px;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"></path></svg>
+                </div>
+              </div>
+            </div>
             <div class="screen-capture-container">
               <div class="screen-preview" id="screen-preview">
                 <div class="screen-placeholder">
