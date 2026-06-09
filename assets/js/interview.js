@@ -8,12 +8,210 @@ let isTransitionedToCompleted = false;
 // Media Streams References
 let screenStream = null;
 
+// Webcam Monitor References
+let meshAnimFrame = null;
+let latestLandmarks = [];
+
 // Local media states
 const mediaState = {
   screen: false
 };
 
+// Curated Face Mesh Connections (~100 lines)
+const FACE_CONNECTIONS = [
+  // Oval
+  [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], [389, 356], [356, 454], 
+  [454, 323], [323, 361], [361, 288], [288, 397], [397, 365], [365, 379], [379, 378], [378, 400], 
+  [400, 377], [377, 152], [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], 
+  [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], [162, 21], [21, 54], 
+  [54, 103], [103, 67], [67, 109], [109, 10],
+  // Left eye
+  [33, 7], [7, 163], [163, 144], [144, 145], [145, 153], [153, 154], [154, 155], [155, 133], 
+  [33, 246], [246, 161], [161, 160], [160, 159], [159, 158], [158, 157], [157, 173], [173, 133],
+  // Right eye
+  [263, 249], [249, 390], [390, 373], [373, 374], [374, 380], [380, 381], [381, 382], [382, 362], 
+  [263, 466], [466, 388], [388, 387], [387, 386], [386, 385], [385, 384], [384, 398], [398, 362],
+  // Left Eyebrow
+  [70, 63], [63, 105], [105, 66], [66, 107], [107, 9],
+  // Right Eyebrow
+  [300, 293], [293, 334], [334, 296], [296, 336], [336, 9],
+  // Lips
+  [61, 185], [185, 40], [40, 37], [37, 0], [0, 267], [267, 270], [270, 409], [409, 291], 
+  [291, 375], [375, 321], [321, 405], [405, 314], [314, 17], [17, 84], [84, 91], [91, 146], [146, 61],
+  // Nose
+  [168, 6], [6, 197], [197, 195], [195, 5],
+  [98, 97], [97, 2], [2, 326], [326, 327],
+  [5, 4], [4, 2]
+];
 
+function bindWebcamStreamToVideo() {
+  const video = document.getElementById('webcam-display-video');
+  const placeholder = document.getElementById('webcam-monitor-placeholder');
+  if (!video) return;
+
+  if (window.getWebcamStream) {
+    const stream = window.getWebcamStream();
+    if (stream && video.srcObject !== stream) {
+      video.srcObject = stream;
+      video.play().then(() => {
+        if (placeholder) {
+          placeholder.style.opacity = '0';
+          setTimeout(() => { placeholder.style.display = 'none'; }, 300);
+        }
+      }).catch(err => console.error("Error playing webcam video:", err));
+      
+      startMeshCanvasLoop();
+    }
+  }
+}
+
+function startMeshCanvasLoop() {
+  if (meshAnimFrame) return;
+
+  const canvas = document.getElementById('webcam-mesh-canvas');
+  const video = document.getElementById('webcam-display-video');
+  if (!canvas || !video) return;
+
+  const ctx = canvas.getContext('2d');
+
+  function tick() {
+    if (video.paused || video.ended) {
+      meshAnimFrame = requestAnimationFrame(tick);
+      return;
+    }
+
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (latestLandmarks && latestLandmarks.length > 0) {
+      drawFaceMesh(ctx, latestLandmarks[0], canvas.width, canvas.height);
+    }
+
+    meshAnimFrame = requestAnimationFrame(tick);
+  }
+
+  meshAnimFrame = requestAnimationFrame(tick);
+}
+
+function drawFaceMesh(ctx, landmarks, w, h) {
+  if (!landmarks) return;
+
+  // 1. Draw connections
+  ctx.strokeStyle = 'rgba(0, 255, 200, 0.55)';
+  ctx.lineWidth = 1.6;
+
+  for (let i = 0; i < FACE_CONNECTIONS.length; i++) {
+    const pt1_idx = FACE_CONNECTIONS[i][0];
+    const pt2_idx = FACE_CONNECTIONS[i][1];
+
+    const pt1 = landmarks[pt1_idx];
+    const pt2 = landmarks[pt2_idx];
+
+    if (pt1 && pt2) {
+      ctx.beginPath();
+      ctx.moveTo(pt1.x * w, pt1.y * h);
+      ctx.lineTo(pt2.x * w, pt2.y * h);
+      ctx.stroke();
+    }
+  }
+
+  // 2. Draw key landmarks
+  const drawDot = (idx, color, radius) => {
+    const pt = landmarks[idx];
+    if (pt) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pt.x * w, pt.y * h, radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  };
+
+  // Cyan iris glows
+  drawDot(468, 'rgba(0, 240, 255, 0.95)', 3.5);
+  drawDot(473, 'rgba(0, 240, 255, 0.95)', 3.5);
+
+  // Nose tip
+  drawDot(4, 'rgba(255, 230, 100, 0.95)', 4);
+
+  // Mouth corners
+  drawDot(61, 'rgba(255, 120, 150, 0.95)', 3);
+  drawDot(291, 'rgba(255, 120, 150, 0.95)', 3);
+}
+
+function updateWebcamMonitorStatus(status) {
+  const block = document.getElementById('webcam-monitor-block');
+  const pill = document.getElementById('webcam-status-pill');
+  const badge = document.getElementById('webcam-alert-badge');
+
+  if (block) {
+    block.setAttribute('data-status', status);
+  }
+
+  if (pill) {
+    switch (status) {
+      case 'connecting':
+        pill.innerText = 'Connecting';
+        break;
+      case 'ok':
+        pill.innerText = 'Monitoring Active';
+        break;
+      case 'warning':
+        pill.innerText = 'Attention';
+        break;
+      case 'critical':
+        pill.innerText = 'Suspicion Alert';
+        break;
+      case 'error':
+        pill.innerText = 'Offline';
+        break;
+      case 'completed':
+        pill.innerText = 'Closed';
+        break;
+      default:
+        pill.innerText = status;
+        break;
+    }
+  }
+
+  if (badge) {
+    if (status === 'warning') {
+      badge.className = 'webcam-alert-badge warning';
+      badge.innerHTML = `
+        <span class="webcam-alert-icon">⚠️</span>
+        <span class="webcam-alert-text">Remain visible & focused</span>
+      `;
+      badge.style.display = 'flex';
+    } else if (status === 'critical') {
+      badge.className = 'webcam-alert-badge';
+      badge.innerHTML = `
+        <span class="webcam-alert-icon">🚨</span>
+        <span class="webcam-alert-text">Integrity Anomaly Detected</span>
+      `;
+      badge.style.display = 'flex';
+    } else if (status === 'connecting') {
+      badge.className = 'webcam-alert-badge warning';
+      badge.innerHTML = `
+        <span class="webcam-alert-icon">🔄</span>
+        <span class="webcam-alert-text">Initializing stream...</span>
+      `;
+      badge.style.display = 'flex';
+    } else if (status === 'error') {
+      badge.className = 'webcam-alert-badge';
+      badge.innerHTML = `
+        <span class="webcam-alert-icon">❌</span>
+        <span class="webcam-alert-text">Monitoring offline</span>
+      `;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+      badge.innerHTML = '';
+    }
+  }
+}
 
 // Toggle Theme (Light/Dark)
 function toggleTheme() {
@@ -586,9 +784,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
       // Start webcam proctoring
       if (window.initProctor) {
-        window.initProctor(sessionId, (status) => {
-          updateProctorIndicator(status);
-        });
+        window.initProctor(sessionId, 
+          (status) => {
+            updateProctorIndicator(status);
+            updateWebcamMonitorStatus(status);
+            if (status === 'ok') {
+              bindWebcamStreamToVideo();
+            }
+          },
+          (landmarks) => {
+            latestLandmarks = landmarks;
+          }
+        );
       }
     }
   }
@@ -609,6 +816,35 @@ async function transitionToCompleted(immediate = false) {
   // Stop webcam proctoring
   if (window.destroyProctor) {
     window.destroyProctor();
+  }
+
+  // Release camera/microphone by destroying the agent iframe from DOM
+  const agentIframe = document.querySelector('#agent-video-container iframe');
+  if (agentIframe) {
+    agentIframe.src = 'about:blank';
+    agentIframe.remove();
+  }
+
+  if (meshAnimFrame) {
+    cancelAnimationFrame(meshAnimFrame);
+    meshAnimFrame = null;
+  }
+  const displayVideo = document.getElementById('webcam-display-video');
+  if (displayVideo) {
+    displayVideo.srcObject = null;
+  }
+  const canvas = document.getElementById('webcam-mesh-canvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  updateWebcamMonitorStatus('completed');
+  const placeholder = document.getElementById('webcam-monitor-placeholder');
+  if (placeholder) {
+    placeholder.style.display = 'flex';
+    placeholder.style.opacity = '1';
+    const textEl = placeholder.querySelector('p');
+    if (textEl) textEl.innerText = "Webcam Monitoring Closed";
   }
   
   const proctorIndicator = document.getElementById('proctor-status');

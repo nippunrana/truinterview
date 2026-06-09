@@ -278,6 +278,26 @@ if (!empty($inviteCode)) {
           Webcam is being monitored locally to verify interview integrity.
         </div>
         
+        <div class="webcam-monitor-block" data-status="connecting" id="webcam-monitor-block">
+          <div class="webcam-monitor-header">
+            <span class="webcam-monitor-title">Candidate Webcam Monitor</span>
+            <span class="webcam-status-pill" id="webcam-status-pill">Connecting</span>
+          </div>
+          <div class="webcam-monitor-viewport">
+            <div class="webcam-monitor-placeholder" id="webcam-monitor-placeholder">
+              <svg style="width: 28px; height: 28px; opacity: 0.5; color: var(--color-text-muted);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+              <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1);">Webcam feed initializing...</p>
+            </div>
+            <video id="webcam-display-video" autoplay playsinline muted></video>
+            <canvas id="webcam-mesh-canvas"></canvas>
+            <div class="webcam-alert-badge" id="webcam-alert-badge" style="display: none;"></div>
+            <div class="webcam-scan-corner top-left"></div>
+            <div class="webcam-scan-corner top-right"></div>
+            <div class="webcam-scan-corner bottom-left"></div>
+            <div class="webcam-scan-corner bottom-right"></div>
+          </div>
+        </div>
+        
 
 
         <div class="media-controls">
@@ -352,9 +372,10 @@ if (!empty($inviteCode)) {
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
   </script>
   <script type="module">
-    import { initProctor, destroyProctor } from './assets/js/proctor.js';
+    import { initProctor, destroyProctor, getWebcamStream } from './assets/js/proctor.js';
     window.initProctor = initProctor;
     window.destroyProctor = destroyProctor;
+    window.getWebcamStream = getWebcamStream;
   </script>
   <script src="assets/js/interview.js" defer></script>
 </body>

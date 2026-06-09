@@ -15,13 +15,18 @@ let noFaceStart = null;
 let gazeAwayStart = null;
 
 let statusCallback = null;
+let landmarksCallback = null;
 let activeSessionId = null;
 
 // Hidden video/canvas for tracking
 let trackingVideo = null;
 let trackingCanvas = null;
 
-export async function initProctor(sessionId, onStatusChange) {
+export function getWebcamStream() {
+    return webcamStream;
+}
+
+export async function initProctor(sessionId, onStatusChange, onLandmarks) {
     if (isInitialized) {
         console.warn("Proctoring is already initialized.");
         return;
@@ -29,6 +34,7 @@ export async function initProctor(sessionId, onStatusChange) {
     
     activeSessionId = sessionId;
     statusCallback = onStatusChange;
+    landmarksCallback = onLandmarks;
     
     if (statusCallback) {
         statusCallback('connecting');
@@ -142,6 +148,7 @@ export function destroyProctor() {
     isInitialized = false;
     activeSessionId = null;
     statusCallback = null;
+    landmarksCallback = null;
     noFaceStart = null;
     gazeAwayStart = null;
     
@@ -183,6 +190,15 @@ function estimateGaze(landmarks) {
  */
 function processProctorResult(result) {
     const faces = result.faceLandmarks || [];
+    
+    if (landmarksCallback) {
+        try {
+            landmarksCallback(faces);
+        } catch (err) {
+            console.error("Error in proctor landmarks callback:", err);
+        }
+    }
+
     const faceCount = faces.length;
     const now = Date.now();
     let currentStatus = 'ok';
