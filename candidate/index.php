@@ -2,6 +2,7 @@
 // candidate/index.php - Candidate Dashboard
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../ai_service.php';
 
 // Enforce Candidate role
 requireAuth(['candidate']);
@@ -12,6 +13,168 @@ $db = getDB();
 $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
 $stmt->execute(['id' => $user['id']]);
 $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Check for AJAX actions
+if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
+    $ajaxAction = $_GET['ajax_action'] ?? $_POST['ajax_action'] ?? '';
+    header('Content-Type: application/json');
+
+    if ($ajaxAction === 'check_resume') {
+        if (!isset($_FILES['resume_file']) || $_FILES['resume_file']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error_type' => 'upload_error', 'message' => 'File upload error. Please select a valid file.']);
+            exit;
+        }
+
+        $tmpName = $_FILES['resume_file']['tmp_name'];
+        $fileName = $_FILES['resume_file']['name'];
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $allowed = ['pdf', 'doc', 'docx', 'csv', 'md', 'markdown'];
+
+        if (!in_array($ext, $allowed)) {
+            echo json_encode(['success' => false, 'error_type' => 'invalid_type', 'message' => 'Invalid file type. Allowed: PDF, DOC/DOCX, CSV, MD.']);
+            exit;
+        }
+
+        $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+        if (count($resumes) >= 5) {
+            echo json_encode(['success' => false, 'error_type' => 'limit_exceeded', 'message' => 'Maximum limit of 5 resumes reached. Please delete an older resume before uploading a new one.']);
+            exit;
+        }
+
+        $uploadDir = __DIR__ . '/../uploads/resumes/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $tempFileName = 'temp_' . $user['id'] . '_' . time() . '.' . $ext;
+        $dest = $uploadDir . $tempFileName;
+
+        if (!move_uploaded_file($tmpName, $dest)) {
+            echo json_encode(['success' => false, 'error_type' => 'move_error', 'message' => 'Failed to store temporary file.']);
+            exit;
+        }
+
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+        $profileName = $userFull['full_name'];
+
+        $verification = verifyUploadedResume($dest, $ext, $profileName, $model, $apiKey);
+
+        if (!$verification || isset($verification['error'])) {
+            @unlink($dest);
+            $errMessage = $verification['error'] ?? 'AI verification failed.';
+            echo json_encode(['success' => false, 'error_type' => 'ai_error', 'message' => 'AI verification failed: ' . $errMessage]);
+            exit;
+        }
+
+        if (!$verification['is_valid_resume']) {
+            @unlink($dest);
+            echo json_encode([
+                'success' => false,
+                'error_type' => 'invalid_resume',
+                'message' => 'It is not a valid resume, please upload the correct file.'
+            ]);
+            exit;
+        }
+
+        if (!$verification['is_name_match']) {
+            echo json_encode([
+                'success' => false,
+                'error_type' => 'name_mismatch',
+                'extracted_name' => $verification['extracted_name'] ?? 'Unknown Name',
+                'temp_filename' => $tempFileName
+            ]);
+            exit;
+        }
+
+        // Name matches, finalize immediately
+        $finalFileName = $user['id'] . '_' . time() . '.' . $ext;
+        $finalDest = $uploadDir . $finalFileName;
+        
+        if (rename($dest, $finalDest)) {
+            $resumePath = 'uploads/resumes/' . $finalFileName;
+            $resumes[] = [
+                'path' => $resumePath,
+                'date' => time()
+            ];
+            $jsonVal = json_encode(array_values($resumes));
+            
+            $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+            $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Resume uploaded successfully.'
+            ]);
+            exit;
+        } else {
+            @unlink($dest);
+            echo json_encode(['success' => false, 'error_type' => 'rename_error', 'message' => 'Failed to finalize file storage.']);
+            exit;
+        }
+    }
+
+    if ($ajaxAction === 'commit_resume') {
+        $tempFileName = $_POST['temp_filename'] ?? '';
+        if (empty($tempFileName) || strpos($tempFileName, 'temp_' . $user['id']) !== 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid file access request.']);
+            exit;
+        }
+
+        $uploadDir = __DIR__ . '/../uploads/resumes/';
+        $tempPath = $uploadDir . $tempFileName;
+
+        if (!file_exists($tempPath)) {
+            echo json_encode(['success' => false, 'message' => 'Temporary file not found.']);
+            exit;
+        }
+
+        $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+        if (count($resumes) >= 5) {
+            @unlink($tempPath);
+            echo json_encode(['success' => false, 'message' => 'Maximum limit of 5 resumes reached.']);
+            exit;
+        }
+
+        $ext = pathinfo($tempFileName, PATHINFO_EXTENSION);
+        $finalFileName = $user['id'] . '_' . time() . '.' . $ext;
+        $finalDest = $uploadDir . $finalFileName;
+
+        if (rename($tempPath, $finalDest)) {
+            $resumePath = 'uploads/resumes/' . $finalFileName;
+            $resumes[] = [
+                'path' => $resumePath,
+                'date' => time()
+            ];
+            $jsonVal = json_encode(array_values($resumes));
+
+            $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+            $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Resume uploaded successfully.'
+            ]);
+            exit;
+        } else {
+            @unlink($tempPath);
+            echo json_encode(['success' => false, 'message' => 'Failed to save resume.']);
+            exit;
+        }
+    }
+
+    if ($ajaxAction === 'cancel_resume') {
+        $tempFileName = $_POST['temp_filename'] ?? '';
+        if (!empty($tempFileName) && strpos($tempFileName, 'temp_' . $user['id']) === 0) {
+            $tempPath = __DIR__ . '/../uploads/resumes/' . $tempFileName;
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+        echo json_encode(['success' => true, 'message' => 'Upload discarded.']);
+        exit;
+    }
+}
 
 $error = '';
 $success = '';
@@ -161,6 +324,76 @@ $initials = substr($initials, 0, 2);
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Candidate Dashboard - TruInterview</title>
   <link rel="stylesheet" href="../assets/css/candidate.css">
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Modal Overlay CSS */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    .custom-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .custom-modal {
+      background: #ffffff;
+      border-radius: var(--radius-outer);
+      border: 1px solid var(--color-border);
+      max-width: 450px;
+      width: 90%;
+      padding: 28px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    
+    .custom-modal-overlay.active .custom-modal {
+      transform: translateY(0);
+    }
+    
+    .custom-modal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ef4444;
+      margin-top: 0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .custom-modal-body {
+      font-size: 0.9rem;
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .custom-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+  </style>
 </head>
 <body class="dashboard-body">
 
@@ -438,11 +671,18 @@ $initials = substr($initials, 0, 2);
           <?php endif; ?>
           
           <?php if (count($resumes) < 5): ?>
-            <form action="index.php" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
-              <input type="hidden" name="action" value="upload_resume">
-              <input type="file" name="resume_file" accept=".pdf,.doc,.docx,.csv,.md,.markdown" class="form-input" required style="font-size: 0.85rem; padding: 8px;">
-              <button type="submit" class="btn-secondary-action">Upload Resume</button>
-            </form>
+            <div style="position: relative;">
+              <form id="resume-upload-form" action="index.php" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="hidden" name="action" value="upload_resume">
+                <input type="file" name="resume_file" accept=".pdf,.doc,.docx,.csv,.md,.markdown" class="form-input" required style="font-size: 0.85rem; padding: 8px;">
+                <button type="submit" class="btn-secondary-action">Upload Resume</button>
+              </form>
+              <!-- Resume Loading Overlay -->
+              <div id="resume-loading-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); border-radius: var(--radius-inner); z-index: 10; flex-direction: column; align-items: center; justify-content: center; gap: 12px; backdrop-filter: blur(4px);">
+                <div style="width: 36px; height: 36px; border: 4px solid var(--color-border); border-top-color: var(--color-indigo); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--color-text-secondary);">Analyzing with Gemini AI...</div>
+              </div>
+            </div>
           <?php else: ?>
             <div style="font-size: 0.8rem; color: var(--color-text-muted); padding: 12px; border: 1px dashed var(--color-border); border-radius: var(--radius-inner); text-align: center; background: #fff; line-height: 1.4;">
               Maximum limit of 5 resumes reached.<br>Please delete an older one to upload.
@@ -484,6 +724,177 @@ $initials = substr($initials, 0, 2);
       switchTab('settings');
     });
     <?php endif; ?>
+
+    // Resume AJAX Upload Flow
+    document.addEventListener('DOMContentLoaded', () => {
+      const uploadForm = document.getElementById('resume-upload-form');
+      if (!uploadForm) return;
+
+      const fileInput = uploadForm.querySelector('input[type="file"]');
+      const loaderOverlay = document.getElementById('resume-loading-overlay');
+      const mismatchModal = document.getElementById('mismatch-modal-overlay');
+      const mismatchText = document.getElementById('mismatch-modal-text');
+      const btnSkip = document.getElementById('btn-mismatch-skip');
+      const btnConfirm = document.getElementById('btn-mismatch-confirm');
+      
+      const alertModal = document.getElementById('general-alert-modal-overlay');
+      const alertTitle = document.getElementById('general-alert-modal-title').querySelector('span');
+      const alertText = document.getElementById('general-alert-modal-text');
+      const btnAlertClose = document.getElementById('btn-general-alert-close');
+
+      let pendingTempFilename = '';
+
+      function showCustomAlert(title, message) {
+        alertTitle.textContent = title;
+        alertText.innerHTML = message;
+        alertModal.classList.add('active');
+      }
+
+      btnAlertClose.addEventListener('click', () => {
+        alertModal.classList.remove('active');
+      });
+
+      uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Show Loader
+        loaderOverlay.style.display = 'flex';
+
+        const formData = new FormData(uploadForm);
+        formData.append('ajax_action', 'check_resume');
+
+        try {
+          const response = await fetch('index.php', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await response.json();
+
+          if (result.success) {
+            window.location.reload();
+          } else {
+            loaderOverlay.style.display = 'none';
+
+            if (result.error_type === 'name_mismatch') {
+              pendingTempFilename = result.temp_filename;
+              const profileName = <?php echo json_encode($userFull['full_name']); ?>;
+              const extractedName = result.extracted_name;
+              
+              mismatchText.innerHTML = `The resume uploaded is not for <strong>${escapeHTML(profileName)}</strong> but instead it is showing the name <strong>${escapeHTML(extractedName)}</strong>.<br><br>Do you really want to upload this to your profile or want to skip it?`;
+              mismatchModal.classList.add('active');
+            } else {
+              const errTitle = result.error_type === 'invalid_resume' ? 'Invalid Resume' : 'Verification Error';
+              showCustomAlert(errTitle, result.message || 'Error occurred during resume analysis.');
+              fileInput.value = '';
+            }
+          }
+        } catch (err) {
+          loaderOverlay.style.display = 'none';
+          showCustomAlert('Connection Error', 'Network or server error during resume upload verification.');
+          fileInput.value = '';
+        }
+      });
+
+      // Handle Skip / Cancel
+      btnSkip.addEventListener('click', async () => {
+        mismatchModal.classList.remove('active');
+        fileInput.value = '';
+        
+        if (pendingTempFilename) {
+          const formData = new FormData();
+          formData.append('ajax_action', 'cancel_resume');
+          formData.append('temp_filename', pendingTempFilename);
+          pendingTempFilename = '';
+          
+          await fetch('index.php', {
+            method: 'POST',
+            body: formData
+          });
+        }
+      });
+
+      // Handle Confirm / Upload Anyway
+      btnConfirm.addEventListener('click', async () => {
+        mismatchModal.classList.remove('active');
+        loaderOverlay.style.display = 'flex';
+
+        if (pendingTempFilename) {
+          const formData = new FormData();
+          formData.append('ajax_action', 'commit_resume');
+          formData.append('temp_filename', pendingTempFilename);
+          pendingTempFilename = '';
+
+          try {
+            const response = await fetch('index.php', {
+              method: 'POST',
+              body: formData
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+              window.location.reload();
+            } else {
+              loaderOverlay.style.display = 'none';
+              showCustomAlert('Upload Failed', result.message || 'Failed to complete resume upload.');
+              fileInput.value = '';
+            }
+          } catch (err) {
+            loaderOverlay.style.display = 'none';
+            showCustomAlert('Upload Error', 'Error completing resume upload.');
+            fileInput.value = '';
+          }
+        }
+      });
+
+      function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+          tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+          }[tag] || tag)
+        );
+      }
+    });
   </script>
+
+  <!-- Mismatch Confirmation Modal -->
+  <div id="mismatch-modal-overlay" class="custom-modal-overlay">
+    <div class="custom-modal">
+      <h3 class="custom-modal-title">
+        <svg style="width: 24px; height: 24px; color: #ef4444;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        Name Mismatch Detected
+      </h3>
+      <div id="mismatch-modal-text" class="custom-modal-body">
+        The uploaded resume is not for [Profile Name] but instead shows the name [X]. Do you really want to upload this to your profile or want to skip it?
+      </div>
+      <div class="custom-modal-actions">
+        <button id="btn-mismatch-skip" class="btn-secondary-action" style="padding: 8px 16px; font-size: 0.85rem;">Skip / Cancel</button>
+        <button id="btn-mismatch-confirm" class="btn-primary-action" style="padding: 8px 16px; font-size: 0.85rem; background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">Yes, Upload Anyway</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- General Alert Modal -->
+  <div id="general-alert-modal-overlay" class="custom-modal-overlay">
+    <div class="custom-modal">
+      <h3 class="custom-modal-title" style="color: #ef4444;" id="general-alert-modal-title">
+        <svg style="width: 24px; height: 24px; color: #ef4444;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <span>Error Detected</span>
+      </h3>
+      <div id="general-alert-modal-text" class="custom-modal-body">
+        Message goes here.
+      </div>
+      <div class="custom-modal-actions">
+        <button id="btn-general-alert-close" class="btn-secondary-action" style="padding: 8px 24px; font-size: 0.85rem;">OK</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

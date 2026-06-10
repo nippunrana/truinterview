@@ -196,4 +196,185 @@ function getInterviewSystemPrompt() {
 - Use standard punctuation to introduce brief pauses for natural turn-taking.";
 }
 
+/**
+ * Extract text from DOCX files
+ */
+function extractTextFromDocx($filePath) {
+    if (!class_exists('ZipArchive')) {
+        return "";
+    }
+    $zip = new ZipArchive();
+    if ($zip->open($filePath) === true) {
+        if (($index = $zip->locateName('word/document.xml')) !== false) {
+            $data = $zip->getFromIndex($index);
+            $zip->close();
+            preg_match_all('/<w:t[^>]*>(.*?)<\/w:t>/', $data, $matches);
+            $text = implode(" ", $matches[1]);
+            return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        $zip->close();
+    }
+    return "";
+}
+
+/**
+ * Extract readable text from old binary DOC files
+ */
+function extractTextFromDoc($filePath) {
+    $file_content = @file_get_contents($filePath);
+    if ($file_content === false) {
+        return "";
+    }
+    $lines = explode("\n", $file_content);
+    $extracted_text = "";
+    foreach ($lines as $line) {
+        $line = preg_replace('/[^a-zA-Z0-9\s,\.\-\_\@\:\/\(\)\'\"]/', '', $line);
+        $line = trim(preg_replace('/\s+/', ' ', $line));
+        if (strlen($line) > 10) {
+            $extracted_text .= $line . "\n";
+        }
+    }
+    return $extracted_text;
+}
+
+/**
+ * Robust system prompt for checking resumes, built following context engineering guidelines (SKILL.md)
+ */
+function getResumeAnalyzerSystemPrompt($profileName) {
+    return "<context>
+You are an expert resume analyzer. Your job is to inspect an uploaded document, verify if it is indeed a resume/CV (and not some other file type), extract the candidate's name, and compare it with the candidate's profile name.
+</context>
+
+<task>
+Analyze the uploaded document contents.
+1. Determine if the document represents a professional resume or curriculum vitae (CV).
+2. If it is a valid resume/CV, extract the full name of the candidate as written in the resume.
+3. Compare the extracted name from the resume with the profile name: \"" . $profileName . "\". Check if they match.
+</task>
+
+<constraints>
+- A valid resume must contain sections like work experience, education, skills, contact info, or summary. If the file is just code, a generic text file, list of tasks, essay, or other unrelated document, classify it as NOT a valid resume.
+- For name matching:
+  - First name match is critical.
+  - A first name match should be case-insensitive.
+  - Nicknames or shortened names that refer to the same name should count as matching (e.g. \"Mike\" matches \"Michael\", \"Dave\" matches \"David\", \"Rob\" matches \"Robert\").
+  - Do not require a 100% exact full name match (e.g. middle names or last names might be slightly different or missing, and that is okay, but the first name must match).
+- Return ONLY a valid JSON object. Do not include any explanation or markdown formatting outside the JSON block.
+</constraints>
+
+<output_format>
+Return ONLY this JSON (no prose):
+{
+  \"is_valid_resume\": boolean,
+  \"extracted_name\": string | null, // The full name extracted from the resume, or null if invalid
+  \"is_name_match\": boolean,       // true if first name matches, false otherwise
+  \"confidence\": number            // 0-1, your confidence rating in this analysis
+}
+</output_format>
+
+<verification>
+- If the document is not a resume/CV, set is_valid_resume to false and extracted_name to null.
+- Be honest with the confidence score. If the name is missing or extremely ambiguous, keep confidence low.
+</verification>";
+}
+
+/**
+ * Verify uploaded resume using Gemini
+ */
+function verifyUploadedResume($filePath, $ext, $profileName, $model = 'gemini-3.5-flash', $apiKey = null) {
+    if (!file_exists($filePath)) {
+        return [
+            'is_valid_resume' => false,
+            'extracted_name' => null,
+            'is_name_match' => false,
+            'confidence' => 0,
+            'error' => 'File not found on server.'
+        ];
+    }
+    
+    $prompt = "Please analyze the uploaded document and verify if it matches the profile name: \"$profileName\".";
+    
+    if ($ext === 'pdf') {
+        $pdfData = base64_encode(file_get_contents($filePath));
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    [
+                        "text" => $prompt
+                    ],
+                    [
+                        "inlineData" => [
+                            "mimeType" => "application/pdf",
+                            "data" => $pdfData
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    } else {
+        $text = "";
+        if ($ext === 'docx') {
+            $text = extractTextFromDocx($filePath);
+        } elseif ($ext === 'doc') {
+            $text = extractTextFromDoc($filePath);
+        } else {
+            $text = file_get_contents($filePath);
+        }
+        
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    [
+                        "text" => $prompt . "\n\nDocument Content:\n" . $text
+                    ]
+                ]
+            ]
+        ];
+    }
+    
+    $systemPrompt = getResumeAnalyzerSystemPrompt($profileName);
+    
+    $payload = [
+        "contents" => $contents,
+        "systemInstruction" => [
+            "parts" => [
+                [
+                    "text" => $systemPrompt
+                ]
+            ]
+        ],
+        "generationConfig" => [
+            "responseMimeType" => "application/json"
+        ]
+    ];
+    
+    try {
+        $responseJson = callGemini($payload, $model, $apiKey);
+        $result = json_decode($responseJson, true);
+        if (!$result || !isset($result['is_valid_resume'])) {
+            preg_match('/\{.*\}/s', $responseJson, $matches);
+            if (isset($matches[0])) {
+                $result = json_decode($matches[0], true);
+            }
+        }
+        return $result ?: [
+            'is_valid_resume' => false,
+            'extracted_name' => null,
+            'is_name_match' => false,
+            'confidence' => 0
+        ];
+    } catch (Exception $e) {
+        return [
+            'is_valid_resume' => false,
+            'extracted_name' => null,
+            'is_name_match' => false,
+            'confidence' => 0,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+
 
