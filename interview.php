@@ -256,6 +256,23 @@ if (!empty($inviteCode)) {
           <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
         </button>
       </div>
+
+      <div id="wizard-monitor-resume-view" style="display: none;">
+        <div class="modal-header" style="text-align: center;">
+          <div style="font-size: 48px; margin-bottom: var(--space-4);">🖥️</div>
+          <h2>Single Display Required</h2>
+          <p style="color: var(--color-danger); font-weight: 600; margin-top: var(--space-2);">Multiple Displays Detected</p>
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin: var(--space-3) 0; text-align: left;">
+          To secure the assessment environment, you must use only a single monitor/display. Connecting external screens or secondary monitors is strictly prohibited.
+          <br><br>
+          Please disconnect any external displays or screens to resume your assessment.
+        </div>
+        <button onclick="transitionToCompleted()" class="btn-action btn-danger" style="width: 100%; margin-top: var(--space-4); display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+          <span>End & Close Interview</span>
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
+        </button>
+      </div>
     </div>
   </div>
 

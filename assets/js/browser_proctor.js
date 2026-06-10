@@ -136,17 +136,32 @@ function updateMidInterviewOverlayState() {
     const wizardView = document.getElementById('wizard-setup-view');
     const resumeView = document.getElementById('wizard-resume-view');
     const screenShareResumeView = document.getElementById('wizard-screen-share-resume-view');
+    const monitorResumeView = document.getElementById('wizard-monitor-resume-view');
 
-    if (!overlay || !wizardView || !resumeView || !screenShareResumeView) return;
+    if (!overlay || !wizardView || !resumeView || !screenShareResumeView || !monitorResumeView) return;
 
     const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const isSingleMonitor = !(screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended));
 
-    if (!screenDone) {
+    if (!isSingleMonitor) {
+        // Multiple monitors connected: lock and show monitor resume view
+        overlay.style.display = 'flex';
+        wizardView.style.display = 'none';
+        resumeView.style.display = 'none';
+        screenShareResumeView.style.display = 'none';
+        monitorResumeView.style.display = 'block';
+
+        triggerBrowserAlert('device_change', 'critical', {
+            reason: 'Candidate connected a secondary monitor during the active session.',
+            screen_count: screenDetailsObj ? screenDetailsObj.screens.length : 2
+        });
+    } else if (!screenDone) {
         // Screen sharing is stopped: force screen share view
         overlay.style.display = 'flex';
         wizardView.style.display = 'none';
         resumeView.style.display = 'none';
         screenShareResumeView.style.display = 'block';
+        monitorResumeView.style.display = 'none';
 
         // Trigger proctor alert (with cooldown)
         triggerBrowserAlert('screen_share_stopped', 'critical', { reason: 'Candidate stopped screen sharing.' });
@@ -156,14 +171,16 @@ function updateMidInterviewOverlayState() {
         wizardView.style.display = 'none';
         screenShareResumeView.style.display = 'none';
         resumeView.style.display = 'block';
+        monitorResumeView.style.display = 'none';
 
         triggerBrowserAlert('fullscreen_exit', 'warning', { reason: 'Candidate exited fullscreen mode.' });
     } else {
-        // Both are active: hide overlay
+        // All checks are secure: hide overlay
         overlay.style.display = 'none';
         wizardView.style.display = 'none';
         resumeView.style.display = 'none';
         screenShareResumeView.style.display = 'none';
+        monitorResumeView.style.display = 'none';
     }
 }
 
@@ -194,6 +211,7 @@ function setupIntegrityWizard() {
     const wizardView = document.getElementById('wizard-setup-view');
     const resumeView = document.getElementById('wizard-resume-view');
     const screenShareResumeView = document.getElementById('wizard-screen-share-resume-view');
+    const monitorResumeView = document.getElementById('wizard-monitor-resume-view');
     
     const fseBtn = document.getElementById('setup-btn-fullscreen');
     const fseResumeBtn = document.getElementById('enter-fullscreen-resume-btn');
@@ -209,6 +227,7 @@ function setupIntegrityWizard() {
     wizardView.style.display = 'block';
     resumeView.style.display = 'none';
     if (screenShareResumeView) screenShareResumeView.style.display = 'none';
+    if (monitorResumeView) monitorResumeView.style.display = 'none';
 
     // Reset setup visual step nodes (Step 1: Screen, Step 2: Webcam, Step 3: Fullscreen)
     resetStepUI('screen', 1);
@@ -299,6 +318,9 @@ function setupIntegrityWizard() {
                         reason: 'Candidate connected a secondary monitor during the active session.',
                         screen_count: screenDetailsObj.screens.length
                     });
+                }
+                if (setupWizardComplete) {
+                    updateMidInterviewOverlayState();
                 }
             };
             screenDetailsObj.addEventListener('screenschange', listeners.screenschange);
