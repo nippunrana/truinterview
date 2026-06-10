@@ -82,12 +82,17 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
 
         if ($action === 'optimizer_save_profile') {
             $optimizedMarkdown = $_POST['optimized_markdown'] ?? '';
+            $profileId = $_POST['profile_id'] ?? null;
             if (empty($optimizedMarkdown)) {
                 echo json_encode(['success' => false, 'message' => 'Optimized markdown content is required.']);
                 exit;
             }
 
-            $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown);
+            if (!empty($profileId)) {
+                $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown);
+            } else {
+                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown);
+            }
             echo json_encode(['success' => true, 'data' => $result]);
             exit;
         }
@@ -106,18 +111,22 @@ if (empty($resumePath)) {
     exit;
 }
 
-// Ensure the resume path exists in user's profile database
-$resumes = getCandidateResumes($userFull['resume_path'] ?? '');
-$valid = false;
-foreach ($resumes as $r) {
-    if ($r['path'] === $resumePath) {
-        $valid = true;
-        break;
+$profileId = $_GET['profile_id'] ?? $_POST['profile_id'] ?? null;
+
+// Ensure the resume path exists in user's profile database, if not V2 profile
+if (empty($profileId)) {
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    $valid = false;
+    foreach ($resumes as $r) {
+        if ($r['path'] === $resumePath) {
+            $valid = true;
+            break;
+        }
     }
-}
-if (!$valid) {
-    header("Location: index.php");
-    exit;
+    if (!$valid) {
+        header("Location: index.php");
+        exit;
+    }
 }
 
 $words = explode(" ", $user['full_name']);
@@ -794,6 +803,7 @@ $initials = substr($initials, 0, 2);
     // State machine matching the implementation plan
     const state = {
       resumePath: <?php echo json_encode($resumePath); ?>,
+      profileId: <?php echo json_encode($_GET['profile_id'] ?? null); ?>,
       resumeText: '',
       currentStep: 1,
 
@@ -1236,10 +1246,15 @@ $initials = substr($initials, 0, 2);
       btn.textContent = 'Saving...';
 
       try {
+        let bodyStr = 'ajax_action=optimizer_save_profile&optimized_markdown=' + encodeURIComponent(state.finalResult.rewritten_resume_markdown);
+        if (state.profileId) {
+            bodyStr += '&profile_id=' + encodeURIComponent(state.profileId);
+        }
+        
         const response = await fetch('resume_optimizer.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'ajax_action=optimizer_save_profile&optimized_markdown=' + encodeURIComponent(state.finalResult.rewritten_resume_markdown)
+          body: bodyStr
         });
         const result = await response.json();
         
@@ -1247,7 +1262,11 @@ $initials = substr($initials, 0, 2);
           btn.textContent = 'Saved!';
           btn.style.background = 'var(--color-emerald)';
           setTimeout(() => {
-            window.location.href = 'index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
+            if (state.profileId) {
+                window.location.href = '../candidate-v2/index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
+            } else {
+                window.location.href = 'index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
+            }
           }, 1500);
         } else {
           btn.disabled = false;

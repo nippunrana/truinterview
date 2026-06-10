@@ -529,3 +529,31 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown) {
         'filename' => $finalFileName
     ];
 }
+
+/**
+ * Save optimized resume to V2 candidate profile and create a Markdown file on disk.
+ */
+function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown) {
+    $db = getDB();
+    $uploadDir = __DIR__ . '/uploads/resumes/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $finalFileName = 'optimized_v2_' . $userId . '_' . time() . '.md';
+    $finalDest = $uploadDir . $finalFileName;
+
+    // Write markdown to disk
+    if (file_put_contents($finalDest, $optimizedMarkdown) === false) {
+        throw new Exception("Failed to write optimized resume file on disk.");
+    }
+
+    $resumePath = 'uploads/resumes/' . $finalFileName;
+    updateCandidateProfileResume($profileId, $userId, $resumePath);
+
+    return [
+        'success' => true,
+        'path' => $resumePath,
+        'filename' => $finalFileName
+    ];
+}

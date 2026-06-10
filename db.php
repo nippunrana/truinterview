@@ -216,6 +216,15 @@ function initSchema() {
         ai_confirmed BOOLEAN,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Create candidate_profiles table for V2 role-based profiles
+    $db->exec("CREATE TABLE IF NOT EXISTS candidate_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        role_title VARCHAR(150) NOT NULL,
+        optimized_resume_path TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
 }
 
 function seedQuestions() {
@@ -664,6 +673,47 @@ function getCandidateResumes($rawPath) {
             'date' => time()
         ]
     ];
+}
+
+// V2 Candidate Dashboard Helpers
+function getCandidateProfiles($userId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id ORDER BY created_at ASC");
+    $stmt->execute(['user_id' => $userId]);
+    return $stmt->fetchAll();
+}
+
+function getCandidateProfile($profileId, $userId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
+    $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
+    return $stmt->fetch();
+}
+
+function createCandidateProfile($userId, $roleTitle) {
+    $db = getDB();
+    // Check limit
+    $stmt = $db->prepare("SELECT COUNT(*) FROM candidate_profiles WHERE user_id = :user_id");
+    $stmt->execute(['user_id' => $userId]);
+    if ($stmt->fetchColumn() >= 3) {
+        return false; // Max 3 profiles
+    }
+    
+    $stmt = $db->prepare("INSERT INTO candidate_profiles (user_id, role_title) VALUES (:user_id, :role_title) RETURNING id");
+    $stmt->execute(['user_id' => $userId, 'role_title' => $roleTitle]);
+    return $stmt->fetchColumn();
+}
+
+function deleteCandidateProfile($profileId, $userId) {
+    $db = getDB();
+    $stmt = $db->prepare("DELETE FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
+    return $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
+}
+
+function updateCandidateProfileResume($profileId, $userId, $resumePath) {
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path WHERE id = :id AND user_id = :user_id");
+    return $stmt->execute(['path' => $resumePath, 'id' => $profileId, 'user_id' => $userId]);
 }
 
 // Auto-init and seed tables on load
