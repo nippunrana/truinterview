@@ -104,7 +104,8 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             
             echo json_encode([
                 'success' => true,
-                'message' => 'Resume uploaded successfully.'
+                'message' => 'Resume uploaded successfully.',
+                'resume_path' => $resumePath
             ]);
             exit;
         } else {
@@ -153,7 +154,8 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Resume uploaded successfully.'
+                'message' => 'Resume uploaded successfully.',
+                'resume_path' => $resumePath
             ]);
             exit;
         } else {
@@ -659,6 +661,8 @@ $initials = substr($initials, 0, 2);
                   <div style="display: flex; gap: 8px; align-items: center;">
                     <a href="../<?php echo htmlspecialchars($resume['path']); ?>" target="_blank" style="color: var(--color-indigo); font-weight: 500; text-decoration: none; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--color-border); background: #fff; transition: all 0.2s; font-size: 0.8rem;">View</a>
                     
+                    <a href="resume_optimizer.php?resume_path=<?php echo urlencode($resume['path']); ?>" style="color: #06b6d4; font-weight: 500; text-decoration: none; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(6, 182, 212, 0.2); background: rgba(6, 182, 212, 0.05); transition: all 0.2s; font-size: 0.8rem;">Optimize</a>
+                    
                     <form action="index.php" method="POST" onsubmit="return confirm('Are you sure you want to delete this resume?');" style="margin: 0;">
                       <input type="hidden" name="action" value="delete_resume">
                       <input type="hidden" name="path" value="<?php echo htmlspecialchars($resume['path']); ?>">
@@ -771,7 +775,7 @@ $initials = substr($initials, 0, 2);
           const result = await response.json();
 
           if (result.success) {
-            window.location.reload();
+            window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(result.resume_path);
           } else {
             loaderOverlay.style.display = 'none';
 
@@ -832,7 +836,7 @@ $initials = substr($initials, 0, 2);
             const result = await response.json();
             
             if (result.success) {
-              window.location.reload();
+              window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(result.resume_path);
             } else {
               loaderOverlay.style.display = 'none';
               showCustomAlert('Upload Failed', result.message || 'Failed to complete resume upload.');
