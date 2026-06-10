@@ -54,7 +54,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             exit;
         }
 
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.1-flash-lite';
         $apiKey = $userFull['custom_gemini_api_key'] ?? null;
         $profileName = $userFull['full_name'];
 
@@ -187,9 +187,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'update_settings') {
         $apiKey = $_POST['custom_gemini_api_key'] ?? '';
-        $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.5-flash';
-        $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.5-flash';
-        $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.5-flash';
+        $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.1-flash-lite';
+        $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.1-flash-lite';
+        $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.1-flash-lite';
         $modelOptimizer = $_POST['model_optimizer_task'] ?? 'gemini-3.5-flash';
         
         try {

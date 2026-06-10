@@ -38,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_settings') {
         $agentId = $_POST['custom_trugen_agent_id'] ?? '';
         $apiKey = $_POST['custom_gemini_api_key'] ?? '';
-        $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.5-flash';
-        $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.5-flash';
-        $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.5-flash';
+        $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.1-flash-lite';
+        $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.1-flash-lite';
+        $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.1-flash-lite';
         
         try {
             $stmt = $db->prepare("UPDATE users SET 

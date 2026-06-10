@@ -39,9 +39,9 @@ $prefEmail = '';
 
 // Check if candidate is logged in to prefill name/email
 $currentUser = getCurrentUser();
-$modelChatPref = 'gemini-3.5-flash';
-$modelVisionPref = 'gemini-3.5-flash';
-$modelEvalPref = 'gemini-3.1-pro-preview';
+$modelChatPref = 'gemini-3.1-flash-lite';
+$modelVisionPref = 'gemini-3.1-flash-lite';
+$modelEvalPref = 'gemini-3.1-flash-lite';
 
 if ($currentUser && $currentUser['role'] === 'candidate') {
     $prefName = $currentUser['full_name'];

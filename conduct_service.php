@@ -192,7 +192,7 @@ function executeInterviewTool($toolName, $args, $sessionId) {
 /**
  * Custom wrapper that executes a tool loop server-side when Gemini returns function calls.
  */
-function callGeminiWithTools($contents, $model = 'gemini-3.5-flash', $apiKeyOverride = null, $sessionId) {
+function callGeminiWithTools($contents, $model = 'gemini-3.1-flash-lite', $apiKeyOverride = null, $sessionId) {
     $systemPrompt = buildInterviewSystemPrompt(getSession($sessionId));
     $tools = getInterviewTools();
     

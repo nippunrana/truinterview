@@ -310,9 +310,9 @@ try {
             }
         }
 
-        if (empty($modelChat)) $modelChat = 'gemini-3.5-flash';
-        if (empty($modelVision)) $modelVision = 'gemini-3.5-flash';
-        if (empty($modelEval)) $modelEval = 'gemini-3.5-flash';
+        if (empty($modelChat)) $modelChat = 'gemini-3.1-flash-lite';
+        if (empty($modelVision)) $modelVision = 'gemini-3.1-flash-lite';
+        if (empty($modelEval)) $modelEval = 'gemini-3.1-flash-lite';
 
         if (!empty($inviteCode)) {
             $link = getInterviewLinkByCode($inviteCode);

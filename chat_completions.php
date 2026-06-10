@@ -35,7 +35,7 @@ function mapMessagesForGemini($messages) {
     return $mapped;
 }
 
-function streamOpenAIResponse($text, $model = 'gemini-3.5-flash') {
+function streamOpenAIResponse($text, $model = 'gemini-3.1-flash-lite') {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
@@ -138,8 +138,8 @@ try {
     $pref = $session['mcq_preference'];
     
     // Model task overrides
-    $chatModel = $session['model_chat_task'] ?? 'gemini-3.5-flash';
-    $visionModel = $session['model_vision_task'] ?? 'gemini-3.5-flash';
+    $chatModel = $session['model_chat_task'] ?? 'gemini-3.1-flash-lite';
+    $visionModel = $session['model_vision_task'] ?? 'gemini-3.1-flash-lite';
     
     // Recruiter custom API Key override
     $customApiKey = getSessionApiKey($session);

@@ -7,7 +7,7 @@ require_once __DIR__ . '/ai_service.php';
 /**
  * Analyzes the candidate's screenshot using Gemini vision capabilities.
  */
-function analyzeScreenshotForEvaluation($imagePath, $customApiKey = null, $model = 'gemini-3.5-flash') {
+function analyzeScreenshotForEvaluation($imagePath, $customApiKey = null, $model = 'gemini-3.1-flash-lite') {
     if (!file_exists($imagePath)) {
         return "No screenshot was uploaded.";
     }
@@ -46,8 +46,8 @@ function generateGeminiEvaluation($sessionId) {
     }
     
     // Resolve model tasks and custom API keys
-    $evalModel = $session['model_eval_task'] ?? 'gemini-3.5-flash';
-    $visionModel = $session['model_vision_task'] ?? 'gemini-3.5-flash';
+    $evalModel = $session['model_eval_task'] ?? 'gemini-3.1-flash-lite';
+    $visionModel = $session['model_vision_task'] ?? 'gemini-3.1-flash-lite';
     $customApiKey = getSessionApiKey($session);
     
     // 1. Gather transcripts

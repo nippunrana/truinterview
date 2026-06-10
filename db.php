@@ -83,10 +83,13 @@ function initSchema() {
     // Add custom settings columns to users table
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_agent_id VARCHAR(100)");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_gemini_api_key VARCHAR(255)");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_optimizer_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE users ALTER COLUMN model_chat_task SET DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE users ALTER COLUMN model_vision_task SET DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE users ALTER COLUMN model_eval_task SET DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path TEXT");
     $db->exec("ALTER TABLE users ALTER COLUMN resume_path TYPE TEXT");
 
@@ -161,9 +164,12 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) DEFAULT 'practice'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions ALTER COLUMN model_chat_task SET DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions ALTER COLUMN model_vision_task SET DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions ALTER COLUMN model_eval_task SET DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS conduct_warnings INTEGER DEFAULT 0");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS closure_reason VARCHAR(50)");
 
@@ -253,7 +259,7 @@ function seedQuestions() {
     }
 }
 
-function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.5-flash', $modelVision = 'gemini-3.5-flash', $modelEval = 'gemini-3.5-flash') {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite') {
     $db = getDB();
     $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval) RETURNING id");
     $stmt->execute([
