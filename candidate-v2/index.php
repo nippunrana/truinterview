@@ -23,6 +23,8 @@ foreach ($words as $w) {
     if (!empty($w)) $initials .= strtoupper($w[0]);
 }
 $initials = substr($initials, 0, 2);
+$firstName = !empty($words[0]) ? $words[0] : 'Candidate';
+$profileCount = count($profiles);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -157,8 +159,18 @@ $initials = substr($initials, 0, 2);
     </header>
 
     <main>
-      <h1 class="title-main">Your Career Profiles</h1>
-      <p class="subtitle-main">Create up to 3 distinct role profiles. Tailor your resume for each role and practice role-specific technical interviews to perfect your pitch.</p>
+      <h1 class="title-main">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's get you hired.</h1>
+      <p class="subtitle-main">
+        <?php if ($profileCount === 0): ?>
+          Your interview prep starts here. Create your first role profile so you can get an AI-tailored resume and start practicing live mock interviews.
+        <?php elseif ($profileCount === 1): ?>
+          You're on the board. You can add 2 more distinct roles. Upload a resume to get it optimized, then jump into a practice interview to sharpen your pitch.
+        <?php elseif ($profileCount === 2): ?>
+          You're building your range with room for 1 more role. Keep refining your resumes and practicing so you can walk into your real interviews completely prepared.
+        <?php else: ?>
+          Your target roles are locked in. Focus on perfecting your optimized resumes and mastering your mock interviews for these 3 positions.
+        <?php endif; ?>
+      </p>
 
       <div class="bento-grid">
         
