@@ -241,6 +241,21 @@ if (!empty($inviteCode)) {
           <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
         </button>
       </div>
+
+      <div id="wizard-screen-share-resume-view" style="display: none;">
+        <div class="modal-header" style="text-align: center;">
+          <div style="font-size: 48px; margin-bottom: var(--space-4);">🖥️</div>
+          <h2>Screen Share Required</h2>
+          <p style="color: var(--color-accent); font-weight: 600; margin-top: var(--space-2);">Screen Sharing Stopped</p>
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin: var(--space-3) 0;">
+          To proceed with your technical assessment, you must share your entire screen.
+        </div>
+        <button id="screen-share-resume-btn" class="btn-action" style="width: 100%; margin-top: var(--space-2);">
+          <span>Share Entire Screen</span>
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -453,15 +468,7 @@ if (!empty($inviteCode)) {
                   </div>
                   <canvas id="capture-canvas" style="display: none;"></canvas>
                 </div>
-                <div class="screen-controls-row" style="display: flex; gap: var(--space-2); margin-top: auto;">
-                  <button id="screen-share-btn" class="btn-action btn-secondary" onclick="toggleScreenShare()" style="padding: 6px 12px; font-size: var(--text-xs); flex: 1;">
-                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
-                    <span>Share Screen</span>
-                  </button>
-                  <button id="submit-screenshot-btn" class="btn-action" onclick="submitAnswer()" disabled style="padding: 6px 12px; font-size: var(--text-xs); flex: 1;">
-                    <span>Submit</span>
-                  </button>
-                </div>
+
               </div>
 
               <!-- Security Checks Division -->

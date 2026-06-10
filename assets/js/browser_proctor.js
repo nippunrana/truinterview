@@ -80,6 +80,10 @@ export function destroyBrowserProctor() {
     if (startBtn && listeners.startBtnClick) {
         startBtn.removeEventListener('click', listeners.startBtnClick);
     }
+    const resumeScreenBtn = document.getElementById('screen-share-resume-btn');
+    if (resumeScreenBtn && listeners.screenShareResumeBtnClick) {
+        resumeScreenBtn.removeEventListener('click', listeners.screenShareResumeBtnClick);
+    }
     if (listeners.fullscreenchange) {
         document.removeEventListener('fullscreenchange', listeners.fullscreenchange);
     }
@@ -125,6 +129,44 @@ export function destroyBrowserProctor() {
 // INTEGRITY SETUP WIZARD PIPELINE
 // ----------------------------------------------------
 
+function updateMidInterviewOverlayState() {
+    if (!setupWizardComplete) return;
+
+    const overlay = document.getElementById('integrity-setup-modal');
+    const wizardView = document.getElementById('wizard-setup-view');
+    const resumeView = document.getElementById('wizard-resume-view');
+    const screenShareResumeView = document.getElementById('wizard-screen-share-resume-view');
+
+    if (!overlay || !wizardView || !resumeView || !screenShareResumeView) return;
+
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+    if (!screenDone) {
+        // Screen sharing is stopped: force screen share view
+        overlay.style.display = 'flex';
+        wizardView.style.display = 'none';
+        resumeView.style.display = 'none';
+        screenShareResumeView.style.display = 'block';
+
+        // Trigger proctor alert (with cooldown)
+        triggerBrowserAlert('screen_share_stopped', 'critical', { reason: 'Candidate stopped screen sharing.' });
+    } else if (!isFullscreen) {
+        // Screen sharing is active but fullscreen exited: force fullscreen resume view
+        overlay.style.display = 'flex';
+        wizardView.style.display = 'none';
+        screenShareResumeView.style.display = 'none';
+        resumeView.style.display = 'block';
+
+        triggerBrowserAlert('fullscreen_exit', 'warning', { reason: 'Candidate exited fullscreen mode.' });
+    } else {
+        // Both are active: hide overlay
+        overlay.style.display = 'none';
+        wizardView.style.display = 'none';
+        resumeView.style.display = 'none';
+        screenShareResumeView.style.display = 'none';
+    }
+}
+
 function completeWizardAndStart() {
     if (setupWizardComplete) return;
     setupWizardComplete = true;
@@ -151,9 +193,11 @@ function setupIntegrityWizard() {
     const overlay = document.getElementById('integrity-setup-modal');
     const wizardView = document.getElementById('wizard-setup-view');
     const resumeView = document.getElementById('wizard-resume-view');
+    const screenShareResumeView = document.getElementById('wizard-screen-share-resume-view');
     
     const fseBtn = document.getElementById('setup-btn-fullscreen');
     const fseResumeBtn = document.getElementById('enter-fullscreen-resume-btn');
+    const resumeScreenBtn = document.getElementById('screen-share-resume-btn');
     const screenBtn = document.getElementById('setup-btn-screen');
     const webcamBtn = document.getElementById('setup-btn-webcam');
     const startBtn = document.getElementById('setup-start-btn');
@@ -164,6 +208,7 @@ function setupIntegrityWizard() {
     overlay.style.display = 'flex';
     wizardView.style.display = 'block';
     resumeView.style.display = 'none';
+    if (screenShareResumeView) screenShareResumeView.style.display = 'none';
 
     // Reset setup visual step nodes (Step 1: Screen, Step 2: Webcam, Step 3: Fullscreen)
     resetStepUI('screen', 1);
@@ -280,6 +325,14 @@ function setupIntegrityWizard() {
     };
     if (startBtn) startBtn.addEventListener('click', listeners.startBtnClick);
 
+    // Resume screen share button handler
+    listeners.screenShareResumeBtnClick = () => {
+        if (window.toggleScreenShare) {
+            window.toggleScreenShare();
+        }
+    };
+    if (resumeScreenBtn) resumeScreenBtn.addEventListener('click', listeners.screenShareResumeBtnClick);
+
     // Resume button link (exclusively active when escaping fullscreen mid-interview)
     listeners.resumeBtnClick = async () => {
         if (screenDetailsObj) {
@@ -309,18 +362,7 @@ function setupIntegrityWizard() {
         
         if (setupWizardComplete) {
             // Mid-interview layout checks
-            if (isFullscreen) {
-                overlay.style.display = 'none';
-                window.setSecurityIndicator('fullscreen', true);
-            } else {
-                // Exited fullscreen: show resume block overlay
-                overlay.style.display = 'flex';
-                wizardView.style.display = 'none';
-                resumeView.style.display = 'block';
-                
-                window.setSecurityIndicator('fullscreen', false);
-                triggerBrowserAlert('fullscreen_exit', 'warning', { reason: 'Candidate exited fullscreen mode.' });
-            }
+            updateMidInterviewOverlayState();
         } else {
             // Setup wizard layout checks
             if (isFullscreen) {
@@ -358,6 +400,10 @@ window.onScreenShareSuccess = function(isSuccess) {
         disableStep('webcam');
         disableStep('fullscreen');
         window.setSecurityIndicator('screen', false);
+    }
+
+    if (setupWizardComplete) {
+        updateMidInterviewOverlayState();
     }
 };
 

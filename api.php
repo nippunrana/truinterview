@@ -520,7 +520,7 @@ try {
         $aiVerdict = 'AI analysis skipped.';
         $aiConfirmed = true; // default to true if no snapshot is available for analysis
         
-        $browserAlerts = ['tab_switch', 'fullscreen_exit', 'copy_paste_attempt', 'cursor_left_screen', 'device_change'];
+        $browserAlerts = ['tab_switch', 'fullscreen_exit', 'copy_paste_attempt', 'cursor_left_screen', 'device_change', 'screen_share_stopped'];
         
         if ($snapshotPath) {
             if (in_array($alertType, $browserAlerts)) {

@@ -286,10 +286,8 @@ function handleRegister(event) {
 
 // Toggle desktop screen sharing
 async function toggleScreenShare() {
-  const btn = document.getElementById('screen-share-btn');
-  const submitBtn = document.getElementById('submit-screenshot-btn');
   const previewDiv = document.getElementById('screen-preview');
-  const placeholder = previewDiv.querySelector('.screen-placeholder');
+  const placeholder = previewDiv ? previewDiv.querySelector('.screen-placeholder') : null;
 
   if (!mediaState.screen) {
     try {
@@ -307,8 +305,6 @@ async function toggleScreenShare() {
       }
 
       mediaState.screen = true;
-      btn.classList.add('active');
-      submitBtn.removeAttribute('disabled');
       if (window.setSecurityIndicator) window.setSecurityIndicator('screen', true);
       if (window.onScreenShareSuccess) window.onScreenShareSuccess(true);
       
@@ -326,8 +322,8 @@ async function toggleScreenShare() {
       screenVideo.style.objectFit = 'contain';
       screenVideo.style.display = 'block';
       
-      placeholder.style.display = 'none';
-      previewDiv.appendChild(screenVideo);
+      if (placeholder) placeholder.style.display = 'none';
+      if (previewDiv) previewDiv.appendChild(screenVideo);
 
       // Listen for browser "Stop Sharing" button click
       screenStream.getVideoTracks()[0].onended = () => {
@@ -339,8 +335,6 @@ async function toggleScreenShare() {
       console.error('Error starting screen share:', err);
       alert('Could not start screen share: ' + err.message);
       mediaState.screen = false;
-      btn.classList.remove('active');
-      submitBtn.setAttribute('disabled', 'true');
       if (window.onScreenShareSuccess) window.onScreenShareSuccess(false);
     }
   } else {
@@ -350,10 +344,8 @@ async function toggleScreenShare() {
 
 // Clean up screen sharing
 function stopScreenShare() {
-  const btn = document.getElementById('screen-share-btn');
-  const submitBtn = document.getElementById('submit-screenshot-btn');
   const previewDiv = document.getElementById('screen-preview');
-  const placeholder = previewDiv.querySelector('.screen-placeholder');
+  const placeholder = previewDiv ? previewDiv.querySelector('.screen-placeholder') : null;
   const screenVideo = document.getElementById('screen-video-element');
 
   if (screenStream) {
@@ -367,9 +359,7 @@ function stopScreenShare() {
   }
 
   mediaState.screen = false;
-  btn.classList.remove('active');
-  submitBtn.setAttribute('disabled', 'true');
-  placeholder.style.display = 'flex';
+  if (placeholder) placeholder.style.display = 'flex';
   
   if (window.setSecurityIndicator) window.setSecurityIndicator('screen', false);
   if (window.onScreenShareSuccess) window.onScreenShareSuccess(false);
@@ -430,81 +420,7 @@ function stopPassivePolling() {
   }
 }
 
-// Active Submission of answer/code with skeleton state
-async function submitAnswer() {
-  const submitBtn = document.getElementById('submit-screenshot-btn');
-  if (!submitBtn || submitBtn.disabled || !mediaState.screen) return;
 
-  const mcqContainer = document.getElementById('mcq-container');
-  const originalMCQHtml = mcqContainer.innerHTML;
-
-  // Enter loading state
-  submitBtn.disabled = true;
-  const originalText = submitBtn.innerHTML;
-  submitBtn.innerHTML = `
-    <svg style="width: 16px; height: 16px; animation: spin 1s linear infinite;" fill="none" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" style="opacity: 0.25;"></circle>
-      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" style="opacity: 0.75;"></path>
-    </svg>
-    <span>Submitting...</span>
-  `;
-
-  // Inject a pulsing skeleton to replace options dynamically
-  mcqContainer.innerHTML = `
-    <div class="skeleton-mcq">
-      <div class="skeleton-line skeleton-title"></div>
-      <div class="skeleton-line skeleton-option"></div>
-      <div class="skeleton-line skeleton-option"></div>
-      <div class="skeleton-line skeleton-option"></div>
-      <div class="skeleton-line skeleton-option"></div>
-    </div>
-  `;
-  mcqContainer.classList.add('loading');
-
-  const frameData = captureFrame();
-  if (!frameData) {
-    alert('Failed to capture high-resolution screen snapshot.');
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
-    mcqContainer.innerHTML = originalMCQHtml;
-    mcqContainer.classList.remove('loading');
-    return;
-  }
-
-  try {
-    const response = await fetch('api.php?action=upload_frame', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        frame: frameData
-      })
-    });
-    
-    const data = await response.json();
-    if (data.status === 'success') {
-      console.log('Active submission success:', data);
-      
-      // Keep loading shown for a short period to allow visual transition feedback
-      setTimeout(() => {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-        mcqContainer.innerHTML = originalMCQHtml;
-        mcqContainer.classList.remove('loading');
-      }, 2000);
-    } else {
-      throw new Error(data.message || 'Upload endpoint error');
-    }
-  } catch (err) {
-    console.error('Active submission failed:', err);
-    alert('Submission failed: ' + err.message);
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
-    mcqContainer.innerHTML = originalMCQHtml;
-    mcqContainer.classList.remove('loading');
-  }
-}
 
 // Timer and status polling mechanics
 function updateTimer() {
