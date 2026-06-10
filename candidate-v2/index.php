@@ -7,6 +7,11 @@ require_once __DIR__ . '/../db.php';
 requireAuth(['candidate']);
 $user = getCurrentUser();
 
+$db = getDB();
+$stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+$stmt->execute(['id' => $user['id']]);
+$userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+
 $profiles = getCandidateProfiles($user['id']);
 $maxProfiles = 3;
 $canAddProfile = count($profiles) < $maxProfiles;
@@ -40,6 +45,9 @@ $initials = substr($initials, 0, 2);
       </a>
       
       <div class="user-nav">
+        <button id="btn-open-settings-modal" class="btn btn-outline" style="padding: 6px; border: none; background: transparent; color: var(--color-text-secondary);" title="Settings">
+          <svg style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        </button>
         <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
         <a href="../logout.php" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
@@ -145,6 +153,65 @@ $initials = substr($initials, 0, 2);
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <h2 style="margin-bottom: var(--space-4); display: flex; align-items: center; gap: 8px;">
+        <svg style="width: 24px; height: 24px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        AI Brain Settings
+      </h2>
+      
+      <form id="form-settings" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Custom Gemini API Key</label>
+          <input type="password" name="custom_gemini_api_key" class="form-input" placeholder="e.g. AIzaSy..." value="<?php echo htmlspecialchars($userFull['custom_gemini_api_key'] ?? ''); ?>">
+          <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">If empty, the platform global API key is used.</div>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Dialogue (Chat) Model Override</label>
+          <select name="model_chat_task" class="form-input">
+            <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, conversational)</option>
+            <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-low latency dialog)</option>
+            <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep, rich answers)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Screen Context (Vision) Model Override</label>
+          <select name="model_vision_task" class="form-input">
+            <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed)</option>
+            <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (High intelligence code understanding)</option>
+            <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fastest processing)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Evaluation (Grading) Model Override</label>
+          <select name="model_eval_task" class="form-input">
+            <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Advanced grading report evaluation)</option>
+            <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard grading evaluation)</option>
+            <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fast grading evaluation)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Resume Optimizer Model Override</label>
+          <select name="model_optimizer_task" class="form-input">
+            <option value="gemini-3.5-flash" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, accurate optimization)</option>
+            <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-fast execution)</option>
+            <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Maximum alignment & deep quality rewrite)</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2);">
+          <button type="button" class="btn btn-outline" id="btn-close-settings-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-settings">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Create Profile Modal -->
   <div class="modal-overlay" id="create-modal">
     <div class="modal-content">
@@ -192,7 +259,59 @@ $initials = substr($initials, 0, 2);
       }, 3000);
     }
 
-    // Modal Logic
+    // Settings Modal Logic
+    const settingsModal = document.getElementById('settings-modal');
+    const btnOpenSettings = document.getElementById('btn-open-settings-modal');
+    const btnCloseSettings = document.getElementById('btn-close-settings-modal');
+    const formSettings = document.getElementById('form-settings');
+    
+    if (btnOpenSettings) {
+      btnOpenSettings.addEventListener('click', () => {
+        settingsModal.classList.add('active');
+      });
+    }
+    
+    if (btnCloseSettings) {
+      btnCloseSettings.addEventListener('click', () => {
+        settingsModal.classList.remove('active');
+      });
+    }
+
+    if (formSettings) {
+      formSettings.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btnSubmit = document.getElementById('btn-submit-settings');
+        btnSubmit.innerHTML = '<span class="spinner"></span> Saving...';
+        btnSubmit.disabled = true;
+
+        const formData = new URLSearchParams(new FormData(formSettings));
+        formData.append('action', 'update_settings');
+
+        try {
+          const res = await fetch('ajax.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            showToast(data.message || 'Error updating settings', 'error');
+            btnSubmit.innerHTML = 'Save Settings';
+            btnSubmit.disabled = false;
+          }
+        } catch (err) {
+          showToast('Network error', 'error');
+          btnSubmit.innerHTML = 'Save Settings';
+          btnSubmit.disabled = false;
+        }
+      });
+    }
+
+    // Create Profile Modal Logic
     const createModal = document.getElementById('create-modal');
     const btnOpenCreate = document.getElementById('btn-open-create-modal');
     const btnCloseCreate = document.getElementById('btn-close-create-modal');

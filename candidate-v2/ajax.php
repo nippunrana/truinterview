@@ -12,6 +12,37 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
 
+if ($action === 'update_settings') {
+    $apiKey = $_POST['custom_gemini_api_key'] ?? '';
+    $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.1-flash-lite';
+    $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.1-flash-lite';
+    $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.1-flash-lite';
+    $modelOptimizer = $_POST['model_optimizer_task'] ?? 'gemini-3.5-flash';
+    
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("UPDATE users SET 
+            custom_gemini_api_key = :api_key, 
+            model_chat_task = :model_chat, 
+            model_vision_task = :model_vision, 
+            model_eval_task = :model_eval,
+            model_optimizer_task = :model_optimizer
+            WHERE id = :id");
+        $stmt->execute([
+            'api_key' => empty($apiKey) ? null : trim($apiKey),
+            'model_chat' => $modelChat,
+            'model_vision' => $modelVision,
+            'model_eval' => $modelEval,
+            'model_optimizer' => $modelOptimizer,
+            'id' => $user['id']
+        ]);
+        echo json_encode(['success' => true, 'message' => 'Settings updated successfully.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'create_profile') {
     $roleTitle = trim($_POST['role_title'] ?? '');
     if (empty($roleTitle)) {
