@@ -86,7 +86,8 @@ function initSchema() {
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path VARCHAR(500)");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path TEXT");
+    $db->exec("ALTER TABLE users ALTER COLUMN resume_path TYPE TEXT");
 
 
     // Create companies table
@@ -637,6 +638,25 @@ function getProctorSummary($sessionId) {
     $stmt = $db->prepare("SELECT alert_type, COUNT(*) as count FROM proctor_alerts WHERE session_id = :session_id GROUP BY alert_type");
     $stmt->execute(['session_id' => $sessionId]);
     return $stmt->fetchAll();
+}
+
+function getCandidateResumes($rawPath) {
+    if (empty($rawPath)) {
+        return [];
+    }
+    $decoded = json_decode($rawPath, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        usort($decoded, function($a, $b) {
+            return ($b['date'] ?? 0) - ($a['date'] ?? 0);
+        });
+        return $decoded;
+    }
+    return [
+        [
+            'path' => $rawPath,
+            'date' => time()
+        ]
+    ];
 }
 
 // Auto-init and seed tables on load

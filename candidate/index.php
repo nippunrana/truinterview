@@ -51,48 +51,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'upload_resume') {
         if (isset($_FILES['resume_file']) && $_FILES['resume_file']['error'] === UPLOAD_ERR_OK) {
-            $tmpName = $_FILES['resume_file']['tmp_name'];
-            $fileName = $_FILES['resume_file']['name'];
-            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            
-            $allowed = ['pdf', 'doc', 'docx', 'csv', 'md', 'markdown'];
-            if (in_array($ext, $allowed)) {
-                $uploadDir = __DIR__ . '/../uploads/resumes/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
+            $resumes = getCandidateResumes($userFull['resume_path']);
+            if (count($resumes) >= 5) {
+                $error = "Maximum limit of 5 resumes reached. Please delete an older resume before uploading a new one.";
+            } else {
+                $tmpName = $_FILES['resume_file']['tmp_name'];
+                $fileName = $_FILES['resume_file']['name'];
+                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
                 
-                $newFileName = $user['id'] . '_' . time() . '.' . $ext;
-                $dest = $uploadDir . $newFileName;
-                
-                if (move_uploaded_file($tmpName, $dest)) {
-                    $resumePath = 'uploads/resumes/' . $newFileName;
-                    try {
-                        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
-                        $stmt->execute(['path' => $resumePath, 'id' => $user['id']]);
-                        $success = "Resume uploaded successfully.";
-                        
-                        // Re-fetch user profile
-                        $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
-                        $stmt->execute(['id' => $user['id']]);
-                        $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
-                    } catch (Exception $e) {
-                        $error = "Failed to update database: " . $e->getMessage();
+                $allowed = ['pdf', 'doc', 'docx', 'csv', 'md', 'markdown'];
+                if (in_array($ext, $allowed)) {
+                    $uploadDir = __DIR__ . '/../uploads/resumes/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $newFileName = $user['id'] . '_' . time() . '.' . $ext;
+                    $dest = $uploadDir . $newFileName;
+                    
+                    if (move_uploaded_file($tmpName, $dest)) {
+                        $resumePath = 'uploads/resumes/' . $newFileName;
+                        try {
+                            $resumes[] = [
+                                'path' => $resumePath,
+                                'date' => time()
+                            ];
+                            $jsonVal = json_encode(array_values($resumes));
+                            
+                            $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+                            $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+                            $success = "Resume uploaded successfully.";
+                            
+                            // Re-fetch user profile
+                            $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+                            $stmt->execute(['id' => $user['id']]);
+                            $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+                        } catch (Exception $e) {
+                            $error = "Failed to update database: " . $e->getMessage();
+                        }
+                    } else {
+                        $error = "Failed to move uploaded file.";
                     }
                 } else {
-                    $error = "Failed to move uploaded file.";
+                    $error = "Invalid file type. Allowed: PDF, DOC/DOCX, CSV, MD.";
                 }
-            } else {
-                $error = "Invalid file type. Allowed: PDF, DOC/DOCX, CSV, MD.";
             }
         } else {
             $error = "File upload error. Please select a valid file.";
+        }
+    } elseif ($action === 'delete_resume') {
+        $deletePath = $_POST['path'] ?? '';
+        if (!empty($deletePath)) {
+            try {
+                $resumes = getCandidateResumes($userFull['resume_path']);
+                $foundIndex = -1;
+                foreach ($resumes as $idx => $r) {
+                    if ($r['path'] === $deletePath) {
+                        $foundIndex = $idx;
+                        break;
+                    }
+                }
+                if ($foundIndex !== -1) {
+                    // Delete actual file from disk
+                    $fullPath = __DIR__ . '/../' . $deletePath;
+                    if (file_exists($fullPath)) {
+                        @unlink($fullPath);
+                    }
+                    
+                    // Remove from array
+                    array_splice($resumes, $foundIndex, 1);
+                    $jsonVal = empty($resumes) ? null : json_encode(array_values($resumes));
+                    
+                    $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+                    $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+                    $success = "Resume deleted successfully.";
+                    
+                    // Re-fetch user profile
+                    $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+                    $stmt->execute(['id' => $user['id']]);
+                    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+                } else {
+                    $error = "Resume file not found in database.";
+                }
+            } catch (Exception $e) {
+                $error = "Failed to delete database record: " . $e->getMessage();
+            }
+        } else {
+            $error = "Invalid delete request parameters.";
         }
     }
 }
 
 $stats = getCandidateStats($user['id']);
 $history = listCandidateHistory($user['id']);
+$resumes = getCandidateResumes($userFull['resume_path'] ?? '');
 
 // Get initials for avatar placeholder
 $words = explode(" ", $user['full_name']);
@@ -348,17 +400,54 @@ $initials = substr($initials, 0, 2);
           <p class="action-desc">
             Keep your profile up to date. Upload your latest resume (PDF, DOC/DOCX, CSV, Markdown).
           </p>
-          <?php if (!empty($userFull['resume_path'])): ?>
-            <div style="margin-bottom: 12px; font-size: 0.85rem; color: #059669; display: flex; align-items: center; gap: 6px;">
-              <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-              Resume uploaded. <a href="../<?php echo htmlspecialchars($userFull['resume_path']); ?>" target="_blank" style="color: var(--color-indigo); text-decoration: underline;">View File</a>
+          <?php if (!empty($resumes)): ?>
+            <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+              <?php foreach ($resumes as $index => $resume): 
+                $ext = strtoupper(pathinfo($resume['path'], PATHINFO_EXTENSION));
+                $isActive = ($index === 0); // The first/newest resume is dynamically active
+                $badgeColor = $isActive ? '#10b981' : '#64748b';
+                $badgeBg = $isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+                $badgeText = $isActive ? 'Active' : 'Previous';
+                $formattedDate = date('M d, Y', $resume['date']);
+              ?>
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid var(--color-border); padding: 10px 12px; border-radius: var(--radius-inner); font-size: 0.85rem;">
+                  <div style="display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
+                    <div style="font-weight: 600; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;">
+                      <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: <?php echo $badgeBg; ?>; color: <?php echo $badgeColor; ?>; font-weight: 700;">
+                        <?php echo $badgeText; ?>
+                      </span>
+                      <span>Resume (<?php echo $ext; ?>)</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">
+                      Uploaded on <?php echo $formattedDate; ?>
+                    </div>
+                  </div>
+                  
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <a href="../<?php echo htmlspecialchars($resume['path']); ?>" target="_blank" style="color: var(--color-indigo); font-weight: 500; text-decoration: none; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--color-border); background: #fff; transition: all 0.2s; font-size: 0.8rem;">View</a>
+                    
+                    <form action="index.php" method="POST" onsubmit="return confirm('Are you sure you want to delete this resume?');" style="margin: 0;">
+                      <input type="hidden" name="action" value="delete_resume">
+                      <input type="hidden" name="path" value="<?php echo htmlspecialchars($resume['path']); ?>">
+                      <button type="submit" style="color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500; font-family: inherit; transition: all 0.2s;">Delete</button>
+                    </form>
+                  </div>
+                </div>
+              <?php endforeach; ?>
             </div>
           <?php endif; ?>
-          <form action="index.php" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
-            <input type="hidden" name="action" value="upload_resume">
-            <input type="file" name="resume_file" accept=".pdf,.doc,.docx,.csv,.md,.markdown" class="form-input" required style="font-size: 0.85rem; padding: 8px;">
-            <button type="submit" class="btn-secondary-action">Upload Resume</button>
-          </form>
+          
+          <?php if (count($resumes) < 5): ?>
+            <form action="index.php" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
+              <input type="hidden" name="action" value="upload_resume">
+              <input type="file" name="resume_file" accept=".pdf,.doc,.docx,.csv,.md,.markdown" class="form-input" required style="font-size: 0.85rem; padding: 8px;">
+              <button type="submit" class="btn-secondary-action">Upload Resume</button>
+            </form>
+          <?php else: ?>
+            <div style="font-size: 0.8rem; color: var(--color-text-muted); padding: 12px; border: 1px dashed var(--color-border); border-radius: var(--radius-inner); text-align: center; background: #fff; line-height: 1.4;">
+              Maximum limit of 5 resumes reached.<br>Please delete an older one to upload.
+            </div>
+          <?php endif; ?>
         </div>
 
       </div>
