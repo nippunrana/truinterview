@@ -563,11 +563,22 @@ function handleVisibilityChange() {
 }
 
 function handleFocusLoss() {
-    if (!lastFocusLostTime) {
-        lastFocusLostTime = Date.now();
-        window.setSecurityIndicator('focus', false);
-        triggerBrowserAlert('tab_switch', 'warning', { reason: 'Candidate clicked away from browser window.' });
-    }
+    setTimeout(() => {
+        // If the browser window itself still has focus (focus is on an iframe inside the document), do not flag it
+        const activeEl = document.activeElement;
+        const isIframeFocus = activeEl && activeEl.tagName === 'IFRAME';
+        
+        if (document.hasFocus() || isIframeFocus) {
+            console.log("[Browser Proctor] Focus shifted internally (likely to iframe). Suppressing blur.");
+            return;
+        }
+
+        if (!lastFocusLostTime) {
+            lastFocusLostTime = Date.now();
+            window.setSecurityIndicator('focus', false);
+            triggerBrowserAlert('tab_switch', 'warning', { reason: 'Candidate clicked away from browser window.' });
+        }
+    }, 150);
 }
 
 function handleFocusGain() {
