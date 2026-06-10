@@ -49,6 +49,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $error = $e->getMessage();
         }
+    } elseif ($action === 'upload_resume') {
+        if (isset($_FILES['resume_file']) && $_FILES['resume_file']['error'] === UPLOAD_ERR_OK) {
+            $tmpName = $_FILES['resume_file']['tmp_name'];
+            $fileName = $_FILES['resume_file']['name'];
+            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            
+            $allowed = ['pdf', 'doc', 'docx', 'csv', 'md', 'markdown'];
+            if (in_array($ext, $allowed)) {
+                $uploadDir = __DIR__ . '/../uploads/resumes/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                $newFileName = $user['id'] . '_' . time() . '.' . $ext;
+                $dest = $uploadDir . $newFileName;
+                
+                if (move_uploaded_file($tmpName, $dest)) {
+                    $resumePath = 'uploads/resumes/' . $newFileName;
+                    try {
+                        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+                        $stmt->execute(['path' => $resumePath, 'id' => $user['id']]);
+                        $success = "Resume uploaded successfully.";
+                        
+                        // Re-fetch user profile
+                        $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
+                        $stmt->execute(['id' => $user['id']]);
+                        $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+                    } catch (Exception $e) {
+                        $error = "Failed to update database: " . $e->getMessage();
+                    }
+                } else {
+                    $error = "Failed to move uploaded file.";
+                }
+            } else {
+                $error = "Invalid file type. Allowed: PDF, DOC/DOCX, CSV, MD.";
+            }
+        } else {
+            $error = "File upload error. Please select a valid file.";
+        }
     }
 }
 
@@ -300,6 +339,25 @@ $initials = substr($initials, 0, 2);
           <form action="../interview.php" method="GET" style="display: flex; flex-direction: column; gap: 12px;">
             <input type="text" name="code" class="form-input" placeholder="e.g. TRU-8X2A" required style="text-align: center; text-transform: uppercase;">
             <button type="submit" class="btn-secondary-action">Launch Screening</button>
+          </form>
+        </div>
+
+        <!-- Resume Upload Widget -->
+        <div class="action-card">
+          <h4 class="action-title">Upload Resume</h4>
+          <p class="action-desc">
+            Keep your profile up to date. Upload your latest resume (PDF, DOC/DOCX, CSV, Markdown).
+          </p>
+          <?php if (!empty($userFull['resume_path'])): ?>
+            <div style="margin-bottom: 12px; font-size: 0.85rem; color: #059669; display: flex; align-items: center; gap: 6px;">
+              <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+              Resume uploaded. <a href="../<?php echo htmlspecialchars($userFull['resume_path']); ?>" target="_blank" style="color: var(--color-indigo); text-decoration: underline;">View File</a>
+            </div>
+          <?php endif; ?>
+          <form action="index.php" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="hidden" name="action" value="upload_resume">
+            <input type="file" name="resume_file" accept=".pdf,.doc,.docx,.csv,.md,.markdown" class="form-input" required style="font-size: 0.85rem; padding: 8px;">
+            <button type="submit" class="btn-secondary-action">Upload Resume</button>
           </form>
         </div>
 

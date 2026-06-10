@@ -86,6 +86,8 @@ function initSchema() {
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path VARCHAR(500)");
+
 
     // Create companies table
     $db->exec("CREATE TABLE IF NOT EXISTS companies (

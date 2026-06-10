@@ -69,7 +69,7 @@ function generateGeminiEvaluation($sessionId) {
     $mcqScoreStr = "{$correctMCQ} out of {$totalMCQ} correct";
     
     // 3. Gather Vision Notes Summary
-    $imagePath = __DIR__ . '/uploads/' . $sessionId . '/latest.jpg';
+    $imagePath = __DIR__ . '/uploads/sessions/' . $sessionId . '/latest.jpg';
     $visionNotes = "No screen capture shared.";
     if (file_exists($imagePath) && is_readable($imagePath)) {
         try {

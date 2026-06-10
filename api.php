@@ -428,7 +428,7 @@ try {
             throw new Exception("Unsupported file format: " . $type);
         }
         
-        $uploadDir = __DIR__ . '/uploads/' . $sessionId;
+        $uploadDir = __DIR__ . '/uploads/sessions/' . $sessionId;
         if (!file_exists($uploadDir)) {
             if (!mkdir($uploadDir, 0755, true)) {
                 throw new Exception("Failed to create upload directory");
@@ -444,7 +444,7 @@ try {
             "status" => "success",
             "message" => "Frame uploaded successfully",
             "session_id" => $sessionId,
-            "filepath" => "uploads/" . $sessionId . "/latest.jpg"
+            "filepath" => "uploads/sessions/" . $sessionId . "/latest.jpg"
         ]);
         exit;
     }
@@ -494,7 +494,7 @@ try {
                 throw new Exception("Unsupported file format: " . $type);
             }
             
-            $uploadDir = __DIR__ . '/uploads/' . $sessionId;
+            $uploadDir = __DIR__ . '/uploads/sessions/' . $sessionId;
             if (!file_exists($uploadDir)) {
                 if (!mkdir($uploadDir, 0755, true)) {
                     throw new Exception("Failed to create upload directory");
@@ -502,7 +502,7 @@ try {
             }
             
             $filename = 'proctor_' . time() . '_' . uniqid() . '.jpg';
-            $snapshotPath = 'uploads/' . $sessionId . '/' . $filename;
+            $snapshotPath = 'uploads/sessions/' . $sessionId . '/' . $filename;
             $filePath = __DIR__ . '/' . $snapshotPath;
             if (file_put_contents($filePath, $data) === false) {
                 throw new Exception("Failed to write snapshot file to disk");

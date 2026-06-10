@@ -259,7 +259,7 @@ try {
             $contextStr .= $msg['speaker'] . ": " . $msg['message'] . "\n";
         }
         
-        $imagePath = __DIR__ . '/uploads/' . $sessionId . '/latest.jpg';
+        $imagePath = __DIR__ . '/uploads/sessions/' . $sessionId . '/latest.jpg';
         if (file_exists($imagePath) && is_readable($imagePath)) {
             try {
                 $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $visionModel, $sessionId, $imagePath, $contextStr, $candidateText);
