@@ -17,7 +17,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
     $action = $_GET['ajax_action'] ?? $_POST['ajax_action'] ?? '';
     header('Content-Type: application/json');
 
-    $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+    $model = $userFull['model_optimizer_task'] ?? 'gemini-3.5-flash';
     $apiKey = $userFull['custom_gemini_api_key'] ?? null;
 
     try {

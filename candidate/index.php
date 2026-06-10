@@ -190,19 +190,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.5-flash';
         $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.5-flash';
         $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.5-flash';
+        $modelOptimizer = $_POST['model_optimizer_task'] ?? 'gemini-3.5-flash';
         
         try {
             $stmt = $db->prepare("UPDATE users SET 
                 custom_gemini_api_key = :api_key, 
                 model_chat_task = :model_chat, 
                 model_vision_task = :model_vision, 
-                model_eval_task = :model_eval 
+                model_eval_task = :model_eval,
+                model_optimizer_task = :model_optimizer
                 WHERE id = :id");
             $stmt->execute([
                 'api_key' => empty($apiKey) ? null : trim($apiKey),
                 'model_chat' => $modelChat,
                 'model_vision' => $modelVision,
                 'model_eval' => $modelEval,
+                'model_optimizer' => $modelOptimizer,
                 'id' => $user['id']
             ]);
             
@@ -595,6 +598,18 @@ $initials = substr($initials, 0, 2);
                     <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Advanced grading report evaluation)</option>
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard grading evaluation)</option>
                     <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Fast grading evaluation)</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <label style="font-size: 0.88rem; font-weight: 600; color: var(--color-text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                    <span>Resume Optimizer Model Override</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Flash for quick interactive analysis</span>
+                  </label>
+                  <select name="model_optimizer_task" class="form-input" style="padding: 10px 12px; background: #fff;">
+                    <option value="gemini-3.5-flash" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, accurate optimization)</option>
+                    <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.1-flash-lite') echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-fast execution)</option>
+                    <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_optimizer_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Maximum alignment & deep quality rewrite)</option>
                   </select>
                 </div>
               </div>
