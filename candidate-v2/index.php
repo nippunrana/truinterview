@@ -31,6 +31,102 @@ $initials = substr($initials, 0, 2);
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Candidate Hub - TruInterview</title>
   <link rel="stylesheet" href="../assets/css/candidate-v2.css">
+  
+  <!-- JOIN INTERVIEW STYLES (Modular options) -->
+  <style>
+    /* OPTION A: Command Center */
+    .join-hero-section {
+      background: var(--color-bg-surface, #ffffff);
+      border: 1px solid var(--color-border, #e5e7eb);
+      border-radius: var(--radius-outer, 16px);
+      padding: var(--space-6, 24px);
+      margin-top: var(--space-8, 32px);
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4, 16px);
+      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    }
+    @media (min-width: 640px) {
+      .join-hero-section {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+    .join-hero-content h2 {
+      font-size: var(--text-lg, 1.125rem);
+      font-weight: 600;
+      color: var(--color-text-primary, #111827);
+      margin-bottom: var(--space-1, 4px);
+      margin-top: 0;
+    }
+    .join-hero-content p {
+      font-size: var(--text-sm, 0.875rem);
+      color: var(--color-text-secondary, #4b5563);
+      margin: 0;
+    }
+    .join-hero-form {
+      display: flex;
+      gap: var(--space-2, 8px);
+      width: 100%;
+    }
+    @media (min-width: 640px) {
+      .join-hero-form {
+        max-width: 320px;
+      }
+    }
+    .join-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--color-border, #e5e7eb);
+      border-radius: var(--radius-inner, 8px);
+      font-size: var(--text-base, 1rem);
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      letter-spacing: 1px;
+      background: var(--color-bg-surface, #ffffff);
+      color: var(--color-text-primary, #111827);
+      box-sizing: border-box;
+    }
+    .join-input:focus {
+      border-color: var(--color-brand-primary, #4f46e5);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    /* OPTION C: Header Action */
+    .btn-header-join {
+      background: var(--color-brand-primary, #4f46e5);
+      color: #ffffff;
+      border: 1px solid var(--color-brand-primary, #4f46e5);
+      padding: 6px 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: var(--radius-inner, 8px);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+    }
+    .btn-header-join:hover {
+      background: #4338ca;
+      border-color: #4338ca;
+      box-shadow: 0 4px 6px rgba(79, 70, 229, 0.25);
+      transform: translateY(-1px);
+    }
+    .join-btn-text {
+      display: none;
+    }
+    @media (min-width: 640px) {
+      .join-btn-text {
+        display: inline;
+      }
+    }
+  </style>
+  <!-- END JOIN INTERVIEW STYLES -->
 </head>
 <body>
 
@@ -45,6 +141,13 @@ $initials = substr($initials, 0, 2);
       </a>
       
       <div class="user-nav">
+        <!-- OPTION C: Header Action Button -->
+        <button id="btn-open-join-modal" class="btn-header-join" title="Join Interview">
+          <svg style="width: 16px; height: 16px; color: currentColor;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+          <span class="join-btn-text">Join Interview</span>
+        </button>
+        <!-- END OPTION C -->
+
         <button id="btn-open-settings-modal" class="btn btn-outline" style="padding: 6px; border: none; background: transparent; color: var(--color-text-secondary);" title="Settings">
           <svg style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </button>
@@ -123,6 +226,19 @@ $initials = substr($initials, 0, 2);
         <?php endif; ?>
         
       </div>
+      
+      <!-- JOIN INTERVIEW BAR -->
+      <div class="join-hero-section" id="join-bottom-bar">
+        <div class="join-hero-content">
+          <h2>Got an interview code?</h2>
+          <p>Enter your 6-digit code to join a live session instantly.</p>
+        </div>
+        <form class="join-hero-form" onsubmit="event.preventDefault(); joinInterview('input-join-bar');">
+          <input type="text" id="input-join-bar" class="join-input" placeholder="e.g. 1A2B3C" autocomplete="off" maxlength="10">
+          <button type="submit" class="btn btn-primary" style="white-space: nowrap;">Join Now</button>
+        </form>
+      </div>
+      <!-- END JOIN INTERVIEW BAR -->
     </main>
   </div>
 
@@ -233,6 +349,32 @@ $initials = substr($initials, 0, 2);
       </form>
     </div>
   </div>
+
+  <!-- OPTION C: Join Interview Modal -->
+  <div class="modal-overlay" id="join-modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <h2 style="margin-bottom: var(--space-2); display: flex; align-items: center; gap: 8px;">
+        <svg style="width: 24px; height: 24px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+        Join Interview
+      </h2>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Enter your 6-digit access code below.</p>
+      
+      <form id="form-join-modal" onsubmit="event.preventDefault(); joinInterview('input-option-c');">
+        <div class="form-group">
+          <label class="form-label" for="input-option-c">Interview Code</label>
+          <input type="text" id="input-option-c" class="join-input" style="width: 100%; box-sizing: border-box;" placeholder="e.g. 1A2B3C" required autocomplete="off" maxlength="10">
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
+          <button type="button" class="btn btn-outline" id="btn-close-join-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span>Join Room</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- END OPTION C -->
 
   <div class="toast-container" id="toast-container"></div>
 
@@ -506,6 +648,43 @@ $initials = substr($initials, 0, 2);
           '"': '&quot;'
         }[tag] || tag)
       );
+    }
+
+    // --- OPTION C: Join Modal Logic ---
+    const joinModal = document.getElementById('join-modal');
+    const btnOpenJoin = document.getElementById('btn-open-join-modal');
+    const btnCloseJoin = document.getElementById('btn-close-join-modal');
+
+    if (btnOpenJoin) {
+      btnOpenJoin.addEventListener('click', () => {
+        joinModal.classList.add('active');
+        setTimeout(() => document.getElementById('input-option-c').focus(), 50);
+      });
+    }
+
+    if (btnCloseJoin) {
+      btnCloseJoin.addEventListener('click', () => {
+        joinModal.classList.remove('active');
+        document.getElementById('form-join-modal').reset();
+      });
+    }
+
+    // --- SHARED JOIN LOGIC (All Options) ---
+    function joinInterview(inputId) {
+      const inputEl = document.getElementById(inputId);
+      const code = inputEl.value.trim();
+      if (!code) {
+        showToast('Please enter an interview code', 'error');
+        inputEl.focus();
+        return;
+      }
+      
+      showToast('Joining interview room...', 'success');
+      
+      // Navigate to the interview room with the code
+      setTimeout(() => {
+        window.location.href = '../interview_room.php?code=' + encodeURIComponent(code);
+      }, 500);
     }
   </script>
 </body>
