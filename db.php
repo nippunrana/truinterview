@@ -223,8 +223,14 @@ function initSchema() {
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
         role_title VARCHAR(150) NOT NULL,
         optimized_resume_path TEXT,
+        text_version TEXT,
+        needs_human_review BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
+    
+    // Ensure column exists for existing tables
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS text_version TEXT");
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN DEFAULT FALSE");
 }
 
 function seedQuestions() {
@@ -710,10 +716,26 @@ function deleteCandidateProfile($profileId, $userId) {
     return $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
 }
 
-function updateCandidateProfileResume($profileId, $userId, $resumePath) {
+function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false) {
     $db = getDB();
-    $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path WHERE id = :id AND user_id = :user_id");
-    return $stmt->execute(['path' => $resumePath, 'id' => $profileId, 'user_id' => $userId]);
+    if ($textVersion !== null) {
+        $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path, text_version = :text_version, needs_human_review = :needs_human_review WHERE id = :id AND user_id = :user_id");
+        return $stmt->execute([
+            'path' => $resumePath,
+            'text_version' => $textVersion,
+            'needs_human_review' => $needsHumanReview ? 1 : 0,
+            'id' => $profileId,
+            'user_id' => $userId
+        ]);
+    } else {
+        $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path, needs_human_review = :needs_human_review WHERE id = :id AND user_id = :user_id");
+        return $stmt->execute([
+            'path' => $resumePath,
+            'needs_human_review' => $needsHumanReview ? 1 : 0,
+            'id' => $profileId,
+            'user_id' => $userId
+        ]);
+    }
 }
 
 // Auto-init and seed tables on load

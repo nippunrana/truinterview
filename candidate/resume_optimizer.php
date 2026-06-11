@@ -23,14 +23,37 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
     try {
         if ($action === 'optimizer_init') {
             $resumePath = $_POST['resume_path'] ?? '';
+            $profileId = $_POST['profile_id'] ?? null;
             if (empty($resumePath)) {
                 echo json_encode(['success' => false, 'message' => 'Resume path is required.']);
                 exit;
             }
-            $ext = strtolower(pathinfo($resumePath, PATHINFO_EXTENSION));
-            $fullPath = __DIR__ . '/../' . $resumePath;
+            
+            $text = null;
+            
+            if (!empty($profileId)) {
+                $stmt = $db->prepare("SELECT text_version FROM candidate_profiles WHERE id = :id AND user_id = :uid");
+                $stmt->execute(['id' => $profileId, 'uid' => $user['id']]);
+                $cachedText = $stmt->fetchColumn();
+                if (!empty($cachedText)) {
+                    $text = $cachedText;
+                }
+            } else {
+                $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+                foreach ($resumes as $r) {
+                    if ($r['path'] === $resumePath && !empty($r['text_version'])) {
+                        $text = $r['text_version'];
+                        break;
+                    }
+                }
+            }
 
-            $text = optimizer_extract_text($fullPath, $ext, $model, $apiKey);
+            if (empty($text)) {
+                $ext = strtolower(pathinfo($resumePath, PATHINFO_EXTENSION));
+                $fullPath = __DIR__ . '/../' . $resumePath;
+                $text = optimizer_extract_text($fullPath, $ext, $model, $apiKey);
+            }
+            
             echo json_encode(['success' => true, 'resume_text' => $text]);
             exit;
         }
@@ -1366,7 +1389,7 @@ $initials = substr($initials, 0, 2);
         const response = await fetch('resume_optimizer.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'ajax_action=optimizer_init&resume_path=' + encodeURIComponent(state.resumePath)
+          body: 'ajax_action=optimizer_init&resume_path=' + encodeURIComponent(state.resumePath) + (state.profileId ? '&profile_id=' + encodeURIComponent(state.profileId) : '')
         });
         const result = await response.json();
         

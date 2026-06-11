@@ -15,7 +15,20 @@ function optimizer_extract_text($filePath, $ext, $model = 'gemini-3.5-flash', $a
 
     if ($ext === 'pdf') {
         $pdfData = base64_encode(file_get_contents($filePath));
-        $prompt = "Convert this PDF resume into clean plain text Markdown format. Preserve all headings, dates, experience details, and lists exactly as written. Do not summarize or omit anything.";
+        $prompt = "<context>\n" .
+                  "You are a precision data-extraction engine. Your task is to convert a visual resume document into clean, structurally identical Markdown.\n" .
+                  "</context>\n" .
+                  "<task>\n" .
+                  "Transcribe the provided document exactly into Markdown. Preserve all headings, dates, experience details, and lists as written.\n" .
+                  "</task>\n" .
+                  "<constraints>\n" .
+                  "- Do NOT summarize, reword, or omit any professional experience, education, or skills.\n" .
+                  "- Ignore document headers, footers, and page numbers.\n" .
+                  "- If a word or phrase is completely illegible, output `[ILLEGIBLE]` rather than guessing.\n" .
+                  "</constraints>\n" .
+                  "<output_format>\n" .
+                  "Output ONLY valid Markdown text. Do not include conversational filler.\n" .
+                  "</output_format>";
         
         $contents = [
             [
@@ -510,7 +523,11 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown) {
     // Add to list and sort to make it active (active is index 0)
     $resumes[] = [
         'path' => $resumePath,
-        'date' => time()
+        'date' => time(),
+        'text_version' => $optimizedMarkdown,
+        'short_description' => 'AI Optimized Resume Version',
+        'detected_role' => 'Optimized Resume',
+        'is_base' => false
     ];
 
     // Re-sort to put newest first
@@ -549,7 +566,7 @@ function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMark
     }
 
     $resumePath = 'uploads/resumes/' . $finalFileName;
-    updateCandidateProfileResume($profileId, $userId, $resumePath);
+    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown);
 
     return [
         'success' => true,

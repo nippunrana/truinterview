@@ -250,9 +250,8 @@ Analyze the uploaded document contents.
 1. Determine if the document represents a professional resume or curriculum vitae (CV).
 2. If it is a valid resume/CV, extract the full name of the candidate as written in the resume.
 3. Compare the extracted name from the resume with the profile name: \"" . $profileName . "\". Check if they match.
-4. Extract the complete plain text version of the resume in clean, readable markdown format.
-5. Identify the primary job title or detected role (e.g., \"Senior Frontend Developer\", \"Full-Stack Engineer\").
-6. Generate a professional summary/short description (1-2 sentences summarizing their primary skills and background).
+4. Extract the primary job title or detected role (e.g., \"Senior Frontend Developer\", \"Full-Stack Engineer\").
+5. Generate a professional summary/short description (1-2 sentences summarizing their primary skills and background).
 </task>
 
 <constraints>
@@ -273,8 +272,7 @@ Return ONLY this JSON (no prose):
   \"is_name_match\": boolean,
   \"confidence\": number,
   \"detected_role\": string | null,
-  \"short_description\": string | null,
-  \"text_version\": string | null
+  \"short_description\": string | null
 }
 </output_format>
 
@@ -381,6 +379,177 @@ function verifyUploadedResume($filePath, $ext, $profileName, $model = 'gemini-3.
         ];
     }
 }
+
+/**
+ * Quality Assurance Assessor for resume text extraction
+ */
+function qa_assess_resume_extraction($filePath, $ext, $markdownText, $model = 'gemini-3.5-flash', $apiKey = null) {
+    if (!file_exists($filePath)) {
+        throw new Exception("Resume file not found: " . $filePath);
+    }
+    
+    $prompt = "<context>\n" .
+              "You are an automated Quality Assurance auditor. You verify if a Markdown transcription of a resume missed critical factual blocks from the original document.\n" .
+              "</context>\n" .
+              "<task>\n" .
+              "Compare the original document to the transcribed Markdown provided. Determine if there are SEVERE omissions or hallucinations.\n" .
+              "</task>\n" .
+              "<constraints>\n" .
+              "- IGNORE all styling, layout, formatting, bolding, bullet points, and font differences.\n" .
+              "- ONLY flag if a major factual block (an entire job role, company name, educational degree, or distinct skills section) was completely omitted or falsely invented.\n" .
+              "- If the transcription contains all factual blocks, set needs_fix to false.\n" .
+              "</constraints>\n" .
+              "<source>\n" .
+              "The attached document is the original.\n" .
+              "=== TRANSCRIBED MARKDOWN BELOW ===\n" .
+              $markdownText . "\n" .
+              "</source>\n" .
+              "<output_format>\n" .
+              "Return ONLY this JSON (no prose):\n" .
+              "{\n" .
+              "  \"needs_fix\": boolean,\n" .
+              "  \"issues\": [\n" .
+              "    \"Describe the specific missing/hallucinated block (e.g., 'Missing the 2018-2020 Software Engineer role at Google')\"\n" .
+              "  ]\n" .
+              "}\n" .
+              "</output_format>";
+
+    if ($ext === 'pdf') {
+        $pdfData = base64_encode(file_get_contents($filePath));
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    ["text" => $prompt],
+                    [
+                        "inlineData" => [
+                            "mimeType" => "application/pdf",
+                            "data" => $pdfData
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    } else {
+        $text = "";
+        if ($ext === 'docx') {
+            $text = extractTextFromDocx($filePath);
+        } elseif ($ext === 'doc') {
+            $text = extractTextFromDoc($filePath);
+        } else {
+            $text = file_get_contents($filePath);
+        }
+        
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    ["text" => $prompt . "\n\nOriginal Document Plain Text:\n" . $text]
+                ]
+            ]
+        ];
+    }
+
+    $payload = [
+        "contents" => $contents,
+        "generationConfig" => [
+            "responseMimeType" => "application/json"
+        ]
+    ];
+
+    try {
+        $responseJson = callGemini($payload, $model, $apiKey);
+        $result = json_decode($responseJson, true);
+        if (!$result || !isset($result['needs_fix'])) {
+            preg_match('/\{.*\}/s', $responseJson, $matches);
+            if (isset($matches[0])) {
+                $result = json_decode($matches[0], true);
+            }
+        }
+        return $result ?: ['needs_fix' => false, 'issues' => []];
+    } catch (Exception $e) {
+        return ['needs_fix' => false, 'issues' => [], 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * Fixer for resume text extraction based on QA issues
+ */
+function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model = 'gemini-3.5-flash', $apiKey = null) {
+    if (!file_exists($filePath)) {
+        throw new Exception("Resume file not found: " . $filePath);
+    }
+
+    $issuesText = is_array($issues) ? implode("\n- ", $issues) : $issues;
+    
+    $prompt = "<context>\n" .
+              "You are a precision Markdown editor. A QA auditor found critical omissions in a resume transcription.\n" .
+              "</context>\n" .
+              "<task>\n" .
+              "Produce a revised version of the Markdown transcription that integrates the missing information identified in the issues list.\n" .
+              "</task>\n" .
+              "<constraints>\n" .
+              "- Do NOT rewrite or alter the parts of the Markdown that are already correct.\n" .
+              "- Only insert the missing blocks or correct the specific hallucinations identified by the auditor.\n" .
+              "</constraints>\n" .
+              "<source>\n" .
+              "The attached document is the original.\n" .
+              "=== CURRENT TRANSCRIBED MARKDOWN ===\n" .
+              $markdownText . "\n" .
+              "=== ISSUES TO FIX ===\n" .
+              "- " . $issuesText . "\n" .
+              "</source>\n" .
+              "<output_format>\n" .
+              "Output ONLY valid Markdown text. Do not include conversational filler.\n" .
+              "</output_format>";
+
+    if ($ext === 'pdf') {
+        $pdfData = base64_encode(file_get_contents($filePath));
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    ["text" => $prompt],
+                    [
+                        "inlineData" => [
+                            "mimeType" => "application/pdf",
+                            "data" => $pdfData
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    } else {
+        $text = "";
+        if ($ext === 'docx') {
+            $text = extractTextFromDocx($filePath);
+        } elseif ($ext === 'doc') {
+            $text = extractTextFromDoc($filePath);
+        } else {
+            $text = file_get_contents($filePath);
+        }
+        
+        $contents = [
+            [
+                "role" => "user",
+                "parts" => [
+                    ["text" => $prompt . "\n\nOriginal Document Plain Text:\n" . $text]
+                ]
+            ]
+        ];
+    }
+
+    $payload = [
+        "contents" => $contents
+    ];
+
+    try {
+        return callGemini($payload, $model, $apiKey);
+    } catch (Exception $e) {
+        return $markdownText;
+    }
+}
+
 
 
 

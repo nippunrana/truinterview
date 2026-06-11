@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../ai_service.php';
+require_once __DIR__ . '/../optimizer_service.php';
 
 // Enforce Candidate role
 requireAuth(['candidate']);
@@ -167,7 +168,17 @@ if ($action === 'upload_resume') {
                 }
             }
 
-            updateCandidateProfileResume($profileId, $user['id'], $resumePath);
+            $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
+            
+            // Run QA check
+            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+            $needsHumanReview = false;
+            if (!empty($qa['needs_fix'])) {
+                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+                $needsHumanReview = true;
+            }
+            
+            updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
             echo json_encode(['success' => true, 'path' => $resumePath]);
         } else {
             @unlink($dest);
@@ -216,7 +227,24 @@ if ($action === 'commit_resume') {
             }
         }
 
-        updateCandidateProfileResume($profileId, $user['id'], $resumePath);
+        $db = getDB();
+        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+        $stmt->execute(['id' => $user['id']]);
+        $userFull = $stmt->fetch();
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+        
+        $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
+        
+        // Run QA check
+        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+        $needsHumanReview = false;
+        if (!empty($qa['needs_fix'])) {
+            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+            $needsHumanReview = true;
+        }
+        
+        updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
         echo json_encode(['success' => true, 'path' => $resumePath]);
     } else {
         @unlink($tempPath);
@@ -307,16 +335,14 @@ if ($action === 'upload_global_resume') {
         if (rename($dest, $finalDest)) {
             $resumePath = 'uploads/resumes/' . $finalFileName;
             
-            // Extract text version if not PDF and not returned by verification
-            $textVersion = $verification['text_version'] ?? '';
-            if (empty($textVersion)) {
-                if ($ext === 'docx') {
-                    $textVersion = extractTextFromDocx($finalDest);
-                } elseif ($ext === 'doc') {
-                    $textVersion = extractTextFromDoc($finalDest);
-                } else {
-                    $textVersion = file_get_contents($finalDest);
-                }
+            $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
+            
+            // Run QA check
+            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+            $needsHumanReview = false;
+            if (!empty($qa['needs_fix'])) {
+                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+                $needsHumanReview = true;
             }
 
             foreach ($resumes as &$r) {
@@ -329,7 +355,8 @@ if ($action === 'upload_global_resume') {
                 'text_version' => $textVersion,
                 'short_description' => $verification['short_description'] ?? 'No description generated.',
                 'detected_role' => $verification['detected_role'] ?? 'Resume',
-                'is_base' => true
+                'is_base' => true,
+                'needs_human_review' => $needsHumanReview
             ];
 
             $jsonVal = json_encode(array_values($resumes));
@@ -392,14 +419,14 @@ if ($action === 'commit_global_resume') {
             $shortDescription = $verification['short_description'] ?? 'Bypassed name mismatch verification.';
         }
         
-        if (empty($textVersion)) {
-            if ($ext === 'docx') {
-                $textVersion = extractTextFromDocx($finalDest);
-            } elseif ($ext === 'doc') {
-                $textVersion = extractTextFromDoc($finalDest);
-            } else {
-                $textVersion = file_get_contents($finalDest);
-            }
+        $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
+        
+        // Run QA check
+        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+        $needsHumanReview = false;
+        if (!empty($qa['needs_fix'])) {
+            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+            $needsHumanReview = true;
         }
 
         foreach ($resumes as &$r) {
@@ -412,7 +439,8 @@ if ($action === 'commit_global_resume') {
             'text_version' => $textVersion,
             'short_description' => $shortDescription,
             'detected_role' => $verification['detected_role'] ?? 'Resume',
-            'is_base' => true
+            'is_base' => true,
+            'needs_human_review' => $needsHumanReview
         ];
 
         $jsonVal = json_encode(array_values($resumes));
