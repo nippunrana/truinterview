@@ -223,12 +223,14 @@ if ($baseResume) {
                 <?php 
                 // Variables are already defined above
                 ?>
-                <?php if ($hasResume && $isOptimized): ?>
+                <?php if ($hasResume && $isOptimized): 
+                  $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Optimized Resume';
+                ?>
                   <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                   <div>
-                    <strong>Resume Optimized</strong>
+                    <strong><?php echo htmlspecialchars($displayRole); ?></strong>
                     <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
                       <a href="optimized_resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Optimized</a>
                       <?php if (!empty($profileChanges)): ?>

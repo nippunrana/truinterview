@@ -552,7 +552,7 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null,
 /**
  * Save optimized resume to V2 candidate profile and create a Markdown file on disk.
  */
-function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown, $changes = null) {
+function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown, $changes = null, $detectedRole = null, $originalPath = null) {
     $db = getDB();
     $uploadDir = __DIR__ . '/uploads/resumes/';
     if (!is_dir($uploadDir)) {
@@ -568,7 +568,7 @@ function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMark
     }
 
     $resumePath = 'uploads/resumes/' . $finalFileName;
-    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown, false, $changes);
+    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown, false, $changes, $detectedRole, $originalPath);
 
     return [
         'success' => true,

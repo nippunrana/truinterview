@@ -717,7 +717,7 @@ function deleteCandidateProfile($profileId, $userId) {
     return $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
 }
 
-function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null, $detectedRole = null) {
+function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null, $detectedRole = null, $originalPath = null) {
     $db = getDB();
     
     // Fetch current resume_data JSON if exists to preserve other keys
@@ -739,6 +739,9 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
     }
     if ($detectedRole !== null) {
         $resumeData['detected_role'] = $detectedRole;
+    }
+    if ($originalPath !== null) {
+        $resumeData['original_path'] = $originalPath;
     }
     
     $jsonVal = json_encode($resumeData);

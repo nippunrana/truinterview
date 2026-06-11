@@ -32,6 +32,23 @@ foreach ($resumes as $r) {
 }
 
 if (!$optimizedResume) {
+    // Look in candidate_profiles for this user
+    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id AND optimized_resume_path = :path");
+    $stmt->execute(['user_id' => $userId, 'path' => $path]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($profile) {
+        $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+        $optimizedResume = [
+            'path' => $profile['optimized_resume_path'],
+            'text_version' => $profile['text_version'] ?? '',
+            'optimization_changes' => $profileResumeData['optimization_changes'] ?? [],
+            'original_path' => $profileResumeData['original_path'] ?? null,
+            'detected_role' => $profileResumeData['detected_role'] ?? 'Optimized Resume'
+        ];
+    }
+}
+
+if (!$optimizedResume) {
     die("Error: Optimized resume not found.");
 }
 
@@ -43,6 +60,12 @@ if (!empty($optimizedResume['original_path'])) {
             $originalResume = $r;
             break;
         }
+    }
+    if (!$originalResume) {
+        $originalResume = [
+            'path' => $optimizedResume['original_path'],
+            'text_version' => ''
+        ];
     }
 }
 
