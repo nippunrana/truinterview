@@ -501,6 +501,54 @@ if ($action === 'set_base_resume') {
     exit;
 }
 
+if ($action === 'update_resume_text') {
+    $resumePath = $_POST['resume_path'] ?? '';
+    $textVersion = $_POST['text_version'] ?? '';
+    
+    if (empty($resumePath)) {
+        echo json_encode(['success' => false, 'message' => 'Resume path is required.']);
+        exit;
+    }
+    
+    $db = getDB();
+    // 1. Try updating global resume
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmt->execute(['id' => $user['id']]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    $updated = false;
+    foreach ($resumes as &$r) {
+        if ($r['path'] === $resumePath) {
+            $r['text_version'] = $textVersion;
+            $updated = true;
+            break;
+        }
+    }
+    
+    if ($updated) {
+        $jsonVal = json_encode(array_values($resumes));
+        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+        $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+        echo json_encode(['success' => true]);
+        exit;
+    }
+    
+    // 2. Try updating profile resume
+    $stmt = $db->prepare("UPDATE candidate_profiles SET text_version = :text_version WHERE user_id = :uid AND optimized_resume_path = :path");
+    $stmt->execute([
+        'text_version' => $textVersion,
+        'uid' => $user['id'],
+        'path' => $resumePath
+    ]);
+    if ($stmt->rowCount() > 0) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Resume not found or no changes made.']);
+    }
+    exit;
+}
+
 if ($action === 'delete_global_resume') {
     $deletePath = $_POST['resume_path'] ?? '';
     if (empty($deletePath)) {

@@ -1,0 +1,254 @@
+/* assets/css/resume-viewer.css - Resume Split View Layout */
+
+.viewer-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-base);
+  overflow: hidden;
+}
+
+.viewer-header {
+  height: 64px;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--space-5);
+  flex-shrink: 0;
+}
+
+.viewer-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.viewer-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: var(--text-lg);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.viewer-subtitle {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.viewer-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Split container */
+.viewer-split-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .viewer-split-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Left Panel: Document Iframe Preview */
+.viewer-preview-panel {
+  background: var(--color-bg-subtle);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  height: 50vh;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .viewer-preview-panel {
+    border-bottom: none;
+    border-right: 1px solid var(--color-border);
+    height: 100%;
+  }
+}
+
+.viewer-preview-panel iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: var(--color-bg-surface);
+}
+
+/* Document Fallback View */
+.viewer-preview-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6);
+  height: 100%;
+  color: var(--color-text-secondary);
+}
+
+.viewer-preview-fallback svg {
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.viewer-preview-fallback h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.viewer-preview-fallback p {
+  font-size: var(--text-sm);
+  max-width: 320px;
+  margin-bottom: var(--space-4);
+  line-height: 1.5;
+}
+
+/* Right Panel: Text Editor */
+.viewer-editor-panel {
+  background: var(--color-bg-surface);
+  display: flex;
+  flex-direction: column;
+  height: 50vh;
+  overflow: hidden;
+  padding: var(--space-5);
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .viewer-editor-panel {
+    height: 100%;
+  }
+}
+
+.editor-info-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--color-brand-light);
+  color: var(--color-brand-primary);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-inner);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  border: 1px solid rgba(79, 70, 229, 0.1);
+  flex-shrink: 0;
+}
+
+.editor-info-alert svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.editor-textarea-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fbfbfb;
+}
+
+.editor-textarea-wrapper:focus-within {
+  border-color: var(--color-brand-primary);
+  box-shadow: 0 0 0 3px var(--color-brand-light);
+  background: #ffffff;
+}
+
+.editor-textarea {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-4);
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background: transparent;
+  box-sizing: border-box;
+  /* Default: No wrap, horizontal scroll to prevent layout breakout */
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.editor-textarea.word-wrapped {
+  white-space: pre-wrap;
+  overflow-x: hidden;
+}
+
+/* Controls header above textarea */
+.editor-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+  flex-shrink: 0;
+}
+
+.editor-controls-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.wordwrap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+.wordwrap-toggle input {
+  cursor: pointer;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--color-brand-primary);
+}
+
+/* Scrollbars */
+.editor-textarea::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.editor-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-textarea::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.editor-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
