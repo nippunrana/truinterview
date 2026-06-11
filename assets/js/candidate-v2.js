@@ -584,4 +584,50 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '../interview_room.php?code=' + encodeURIComponent(code);
     }, 500);
   }
+
+  // --- View Rationale Modal Logic ---
+  const rationaleModal = document.getElementById('rationale-modal');
+  const btnCloseRationale = document.getElementById('btn-close-rationale-modal');
+  const rationaleTableBody = document.getElementById('rationale-table-body');
+
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.view-rationale-trigger');
+    if (trigger) {
+      e.preventDefault();
+      try {
+        const changes = JSON.parse(trigger.getAttribute('data-changes'));
+        if (!changes || changes.length === 0) {
+          rationaleTableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--color-text-muted); padding: 12px;">No modifications recorded.</td></tr>`;
+        } else {
+          rationaleTableBody.innerHTML = '';
+          changes.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td style="padding: 12px; border-bottom: 1px solid var(--color-border); font-size: 0.85rem; color: var(--color-text-secondary);">
+                <span class="change-badge change-badge-before" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(244,63,94,0.08); color: var(--color-rose); font-weight: 700; display: inline-block; margin-bottom: 6px;">Original</span>
+                <div>${escapeHTML(c.original_point)}</div>
+              </td>
+              <td style="padding: 12px; border-bottom: 1px solid var(--color-border); font-size: 0.85rem; color: var(--color-text-primary); font-weight: 500;">
+                <span class="change-badge change-badge-after" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(16,185,129,0.08); color: var(--color-emerald); font-weight: 700; display: inline-block; margin-bottom: 6px;">Optimized</span>
+                <div>${escapeHTML(c.optimized_point)}</div>
+              </td>
+              <td style="padding: 12px; border-bottom: 1px solid var(--color-border); font-size: 0.82rem; color: var(--color-text-muted); font-style: italic;">
+                ${escapeHTML(c.reasoning)}
+              </td>
+            `;
+            rationaleTableBody.appendChild(tr);
+          });
+        }
+        rationaleModal.classList.add('active');
+      } catch (err) {
+        showToast('Error displaying rationale details.', 'error');
+      }
+    }
+  });
+
+  if (btnCloseRationale) {
+    btnCloseRationale.addEventListener('click', () => {
+      rationaleModal.classList.remove('active');
+    });
+  }
 });

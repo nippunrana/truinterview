@@ -231,6 +231,7 @@ function initSchema() {
     // Ensure column exists for existing tables
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS text_version TEXT");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN DEFAULT FALSE");
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_data JSONB");
 }
 
 function seedQuestions() {
@@ -716,22 +717,54 @@ function deleteCandidateProfile($profileId, $userId) {
     return $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
 }
 
-function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false) {
+function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null) {
     $db = getDB();
+    
+    // Fetch current resume_data JSON if exists to preserve other keys
+    $stmt = $db->prepare("SELECT resume_data FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
+    $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
+    $existingJson = $stmt->fetchColumn();
+    $resumeData = !empty($existingJson) ? json_decode($existingJson, true) : [];
+    if (!is_array($resumeData)) {
+        $resumeData = [];
+    }
+    
+    $resumeData['optimized_resume_path'] = $resumePath;
     if ($textVersion !== null) {
-        $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path, text_version = :text_version, needs_human_review = :needs_human_review WHERE id = :id AND user_id = :user_id");
+        $resumeData['text_version'] = $textVersion;
+    }
+    $resumeData['needs_human_review'] = $needsHumanReview ? true : false;
+    if ($optimizationChanges !== null) {
+        $resumeData['optimization_changes'] = $optimizationChanges;
+    }
+    
+    $jsonVal = json_encode($resumeData);
+    
+    if ($textVersion !== null) {
+        $stmt = $db->prepare("UPDATE candidate_profiles SET 
+            optimized_resume_path = :path, 
+            text_version = :text_version, 
+            needs_human_review = :needs_human_review, 
+            resume_data = :resume_data 
+            WHERE id = :id AND user_id = :user_id");
         return $stmt->execute([
             'path' => $resumePath,
             'text_version' => $textVersion,
             'needs_human_review' => $needsHumanReview ? 1 : 0,
+            'resume_data' => $jsonVal,
             'id' => $profileId,
             'user_id' => $userId
         ]);
     } else {
-        $stmt = $db->prepare("UPDATE candidate_profiles SET optimized_resume_path = :path, needs_human_review = :needs_human_review WHERE id = :id AND user_id = :user_id");
+        $stmt = $db->prepare("UPDATE candidate_profiles SET 
+            optimized_resume_path = :path, 
+            needs_human_review = :needs_human_review, 
+            resume_data = :resume_data 
+            WHERE id = :id AND user_id = :user_id");
         return $stmt->execute([
             'path' => $resumePath,
             'needs_human_review' => $needsHumanReview ? 1 : 0,
+            'resume_data' => $jsonVal,
             'id' => $profileId,
             'user_id' => $userId
         ]);

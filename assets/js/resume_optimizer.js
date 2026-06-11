@@ -454,6 +454,9 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
     if (state.profileId) {
         bodyStr += '&profile_id=' + encodeURIComponent(state.profileId);
     }
+    if (state.finalResult && state.finalResult.changes) {
+        bodyStr += '&changes=' + encodeURIComponent(JSON.stringify(state.finalResult.changes));
+    }
     
     const response = await fetch('api/resume_optimizer_ajax.php', {
       method: 'POST',

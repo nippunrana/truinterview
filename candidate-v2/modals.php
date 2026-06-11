@@ -194,3 +194,35 @@
   </div>
 </div>
 
+<!-- View AI Rationale Modal -->
+<div class="modal-overlay" id="rationale-modal">
+  <div class="modal-content" style="max-width: 800px; width: 90%;">
+    <h2 style="margin-bottom: var(--space-2); display: flex; align-items: center; gap: 8px;">
+      <svg style="width: 24px; height: 24px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+      </svg>
+      AI Optimization Rationale
+    </h2>
+    <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-4);">Review exactly what bullet points the AI rewrote to align with ATS filters and recruiter standards.</p>
+    
+    <div style="overflow-y: auto; max-height: 400px; border: 1px solid var(--color-border); border-radius: var(--radius-inner); background: #fff; margin-bottom: var(--space-6);">
+      <table class="changes-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead style="background: var(--color-bg-subtle); position: sticky; top: 0; z-index: 10;">
+          <tr>
+            <th style="padding: 12px; font-size: 0.78rem; text-transform: uppercase; color: var(--color-text-secondary); font-weight: 700; width: 35%; border-bottom: 1px solid var(--color-border);">Original Text</th>
+            <th style="padding: 12px; font-size: 0.78rem; text-transform: uppercase; color: var(--color-text-secondary); font-weight: 700; width: 40%; border-bottom: 1px solid var(--color-border);">Optimized XYZ Version</th>
+            <th style="padding: 12px; font-size: 0.78rem; text-transform: uppercase; color: var(--color-text-secondary); font-weight: 700; width: 25%; border-bottom: 1px solid var(--color-border);">Recruiter Rationale</th>
+          </tr>
+        </thead>
+        <tbody id="rationale-table-body">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end;">
+      <button type="button" class="btn btn-primary" id="btn-close-rationale-modal">Close</button>
+    </div>
+  </div>
+</div>
+

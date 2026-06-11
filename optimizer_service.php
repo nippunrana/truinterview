@@ -492,7 +492,7 @@ Use the mathematically verified experience details provided to set accurate date
 /**
  * Save optimized resume to database and create a Markdown file on disk.
  */
-function optimizer_save_to_profile($userId, $optimizedMarkdown) {
+function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null) {
     $db = getDB();
     
     // Fetch current user details
@@ -527,7 +527,8 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown) {
         'text_version' => $optimizedMarkdown,
         'short_description' => 'AI Optimized Resume Version',
         'detected_role' => 'Optimized Resume',
-        'is_base' => false
+        'is_base' => false,
+        'optimization_changes' => $changes
     ];
 
     // Re-sort to put newest first
@@ -550,7 +551,7 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown) {
 /**
  * Save optimized resume to V2 candidate profile and create a Markdown file on disk.
  */
-function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown) {
+function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown, $changes = null) {
     $db = getDB();
     $uploadDir = __DIR__ . '/uploads/resumes/';
     if (!is_dir($uploadDir)) {
@@ -566,7 +567,7 @@ function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMark
     }
 
     $resumePath = 'uploads/resumes/' . $finalFileName;
-    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown);
+    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown, false, $changes);
 
     return [
         'success' => true,

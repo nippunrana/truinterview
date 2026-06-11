@@ -105,15 +105,18 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
         if ($action === 'optimizer_save_profile') {
             $optimizedMarkdown = $_POST['optimized_markdown'] ?? '';
             $profileId = $_POST['profile_id'] ?? null;
+            $changesRaw = $_POST['changes'] ?? '';
+            $changes = !empty($changesRaw) ? json_decode($changesRaw, true) : null;
+
             if (empty($optimizedMarkdown)) {
                 echo json_encode(['success' => false, 'message' => 'Optimized markdown content is required.']);
                 exit;
             }
 
             if (!empty($profileId)) {
-                $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown);
+                $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown, $changes);
             } else {
-                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown);
+                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes);
             }
             echo json_encode(['success' => true, 'data' => $result]);
             exit;

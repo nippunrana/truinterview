@@ -109,14 +109,21 @@ if (!$baseResume && !empty($resumes)) {
 
             <div class="card-body">
               <div class="status-item">
-                <?php if (!empty($profile['optimized_resume_path'])): ?>
+                <?php if (!empty($profile['optimized_resume_path'])): 
+                  $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                  $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                ?>
                   <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                   <div>
                     <strong>Resume Optimized</strong>
-                    <div style="font-size: 0.75rem; margin-top: 2px;">
+                    <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
                       <a href="../<?php echo htmlspecialchars($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View File</a>
+                      <?php if (!empty($profileChanges)): ?>
+                        <span style="color: var(--color-text-muted);">•</span>
+                        <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
+                      <?php endif; ?>
                     </div>
                   </div>
                 <?php else: ?>
@@ -194,7 +201,12 @@ if (!$baseResume && !empty($resumes)) {
                 </div>
 
                 <div class="resume-summary-box">
-                  <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 6px; letter-spacing: 0.05em;">AI Profile Analysis</div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--color-text-secondary); letter-spacing: 0.05em;">AI Profile Analysis</div>
+                    <?php if (!empty($baseResume['optimization_changes'])): ?>
+                      <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($baseResume['optimization_changes'])); ?>" style="font-size: 11px; color: var(--color-brand-primary); text-decoration: none; font-weight: 600;">View AI Rationale &rarr;</a>
+                    <?php endif; ?>
+                  </div>
                   <div><?php echo htmlspecialchars($baseResume['short_description'] ?? 'No description parsed yet.'); ?></div>
                 </div>
 
