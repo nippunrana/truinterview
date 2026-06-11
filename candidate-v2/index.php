@@ -187,11 +187,38 @@ if (!$baseResume && !empty($resumes)) {
             <div class="resume-base-body">
               <?php if ($baseResume): 
                 $ext = strtoupper(pathinfo($baseResume['path'], PATHINFO_EXTENSION));
+                $isBaseOpt = !empty($baseResume['optimization_changes']);
                 $displayRole = !empty($baseResume['detected_role']) ? $baseResume['detected_role'] : 'Resume';
+                
+                if ($isBaseOpt) {
+                    $origName = '';
+                    if (!empty($baseResume['original_path'])) {
+                        foreach ($resumes as $orig) {
+                            if ($orig['path'] === $baseResume['original_path']) {
+                                $origName = $orig['detected_role'] ?? '';
+                                break;
+                            }
+                        }
+                    }
+                    if (empty($origName)) {
+                        foreach ($resumes as $orig) {
+                            if (empty($orig['optimization_changes'])) {
+                                $origName = $orig['detected_role'] ?? '';
+                                break;
+                            }
+                        }
+                    }
+                    if (!empty($origName)) {
+                        $displayRole = $origName;
+                    }
+                }
               ?>
                 <div>
                   <div style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
                     <svg style="width: 18px; height: 18px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <?php if ($isBaseOpt): ?>
+                      <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px; background: rgba(79, 70, 229, 0.1); color: var(--color-brand-primary); text-transform: uppercase;">Optimized</span>
+                    <?php endif; ?>
                     <span><?php echo htmlspecialchars($displayRole); ?></span>
                     <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
                   </div>
