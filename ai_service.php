@@ -208,9 +208,22 @@ function extractTextFromDocx($filePath) {
         if (($index = $zip->locateName('word/document.xml')) !== false) {
             $data = $zip->getFromIndex($index);
             $zip->close();
-            preg_match_all('/<w:t[^>]*>(.*?)<\/w:t>/', $data, $matches);
-            $text = implode(" ", $matches[1]);
-            return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            
+            preg_match_all('/<w:t[^>]*>([^<]*)<\/w:t>|<\/w:p>|<w:br\s*\/?>|<w:tab\s*\/?>/i', $data, $matches, PREG_SET_ORDER);
+            $text = "";
+            foreach ($matches as $match) {
+                $full = strtolower($match[0]);
+                if ($full === '</w:p>' || strpos($full, '<w:br') === 0) {
+                    $text .= "\n";
+                } elseif (strpos($full, '<w:tab') === 0) {
+                    $text .= "\t";
+                } elseif (isset($match[1])) {
+                    $text .= $match[1];
+                }
+            }
+            
+            $text = preg_replace("/\n{3,}/", "\n\n", $text);
+            return trim(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
         $zip->close();
     }
