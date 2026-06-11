@@ -211,10 +211,33 @@ if (!$baseResume && !empty($resumes)) {
                 </div>
 
                 <div style="display: flex; gap: var(--space-3); margin-top: auto; padding-top: var(--space-4);">
-                  <a href="resume_optimizer.php?resume_path=<?php echo urlencode($baseResume['path']); ?>" class="btn btn-primary" style="flex: 1;">
-                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                    Optimize Base
-                  </a>
+                  <?php 
+                    $hasOptimized = false;
+                    $optResumePath = '';
+                    if (!empty($baseResume['optimization_changes'])) {
+                        $hasOptimized = true;
+                        $optResumePath = $baseResume['path'];
+                    } else {
+                        foreach ($resumes as $r) {
+                            if (!empty($r['optimization_changes'])) {
+                                $hasOptimized = true;
+                                $optResumePath = $r['path'];
+                                break;
+                            }
+                        }
+                    }
+                  ?>
+                  <?php if ($hasOptimized): ?>
+                    <a href="optimized_resume_viewer.php?path=<?php echo urlencode($optResumePath); ?>" class="btn btn-primary" style="flex: 1; background-color: var(--color-emerald); border-color: var(--color-emerald);">
+                      <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      View Optimized
+                    </a>
+                  <?php else: ?>
+                    <a href="resume_optimizer.php?resume_path=<?php echo urlencode($baseResume['path']); ?>" class="btn btn-primary" style="flex: 1;">
+                      <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                      Optimize Base
+                    </a>
+                  <?php endif; ?>
                   <a href="resume_viewer.php?path=<?php echo urlencode($baseResume['path']); ?>" class="btn btn-outline" style="flex: 1;">
                     <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     View Document

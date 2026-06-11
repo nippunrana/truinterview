@@ -1,0 +1,168 @@
+/* assets/css/optimized-viewer.css - Styles for Optimized Resume Viewer */
+
+/* Highlighting styles */
+mark.highlight-change {
+  background-color: rgba(16, 185, 129, 0.15); /* Tailwind emerald-500 with opacity */
+  color: var(--color-emerald);
+  padding: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-bottom: 1px dashed rgba(16, 185, 129, 0.4);
+}
+
+mark.highlight-change:hover {
+  background-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+}
+
+/* Collapsible Rationale Bar */
+.rationale-accordion {
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rationale-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  cursor: pointer;
+  user-select: none;
+  background: var(--color-bg-subtle);
+}
+
+.rationale-header:hover {
+  background: #f8fafc;
+}
+
+.rationale-title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rationale-badge {
+  background: var(--color-brand-primary);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.rationale-toggle-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-muted);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rationale-accordion.is-open .rationale-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.rationale-content {
+  max-height: 0;
+  overflow-y: auto;
+  transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  opacity: 0;
+  background: var(--color-bg-surface);
+}
+
+.rationale-accordion.is-open .rationale-content {
+  max-height: 300px;
+  opacity: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Rationale List Items */
+.rationale-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.rationale-item {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.rationale-item:last-child {
+  border-bottom: none;
+}
+
+.rationale-col-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.rationale-original-text {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.rationale-optimized-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+
+.rationale-reason {
+  font-size: var(--text-xs);
+  color: var(--color-brand-primary);
+  background: var(--color-brand-light);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-inner);
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: var(--space-2);
+}
+
+.rationale-reason svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Update split view right panel to hold accordion and text */
+.viewer-optimized-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-surface);
+}
+
+.optimized-markdown-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8);
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .rationale-item {
+    grid-template-columns: 1fr;
+  }
+}
