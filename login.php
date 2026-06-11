@@ -7,6 +7,8 @@ if (isLoggedIn()) {
     $user = getCurrentUser();
     if ($user['role'] === 'candidate') {
         header('Location: candidate-v2/index.php');
+    } elseif ($user['role'] === 'admin') {
+        header('Location: admin/index.php');
     } else {
         header('Location: recruiter/index.php');
     }
@@ -30,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Redirect based on role
         if ($user['role'] === 'candidate') {
             header('Location: candidate-v2/index.php');
+        } elseif ($user['role'] === 'admin') {
+            header('Location: admin/index.php');
         } else {
             header('Location: recruiter/index.php');
         }
@@ -97,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST" action="login.php">
           <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" name="email" id="email" class="form-input" placeholder="e.g. john@example.com" required autocomplete="email">
+            <label for="email">Email Address or Username</label>
+            <input type="text" name="email" id="email" class="form-input" placeholder="e.g. john@example.com or admin_username" required autocomplete="username">
           </div>
 
           <div class="form-group">
