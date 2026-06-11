@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data.error_type === 'name_mismatch') {
             window.pendingTempFilename = data.temp_filename;
             window.pendingProfileId = profileId;
+            window.pendingDetectedRole = data.detected_role;
             const profileName = window.CANDIDATE_USER_NAME || 'Candidate';
             const extractedName = data.extracted_name || 'Unknown Name';
             
@@ -566,8 +567,12 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('temp_filename', window.pendingTempFilename);
         if (!window.isGlobalUpload) {
           formData.append('profile_id', window.pendingProfileId);
+          if (window.pendingDetectedRole) {
+            formData.append('detected_role', window.pendingDetectedRole);
+          }
         }
         window.pendingTempFilename = null;
+        window.pendingDetectedRole = null;
 
         try {
           const res = await fetch('ajax.php', {

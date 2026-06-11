@@ -149,7 +149,8 @@ if ($action === 'upload_resume') {
                 'success' => false,
                 'error_type' => 'name_mismatch',
                 'extracted_name' => $verification['extracted_name'] ?? 'Unknown Name',
-                'temp_filename' => $tempFileName
+                'temp_filename' => $tempFileName,
+                'detected_role' => $verification['detected_role'] ?? 'Resume'
             ]);
             exit;
         }
@@ -178,7 +179,8 @@ if ($action === 'upload_resume') {
                 $needsHumanReview = true;
             }
             
-            updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
+            $detectedRole = $verification['detected_role'] ?? null;
+            updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview, null, $detectedRole);
             echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
         } else {
             @unlink($dest);
@@ -244,7 +246,8 @@ if ($action === 'commit_resume') {
             $needsHumanReview = true;
         }
         
-        updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
+        $detectedRole = $_POST['detected_role'] ?? null;
+        updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview, null, $detectedRole);
         echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
     } else {
         @unlink($tempPath);

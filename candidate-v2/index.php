@@ -13,6 +13,48 @@ $stmt->execute(['id' => $user['id']]);
 $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $profiles = getCandidateProfiles($user['id']);
+
+// Retroactively backfill detected_role for profiles missing the key in JSON
+$profilesUpdated = false;
+foreach ($profiles as $idx => $profile) {
+    if (!empty($profile['optimized_resume_path'])) {
+        $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+        if (!isset($profileResumeData['detected_role'])) {
+            try {
+                require_once __DIR__ . '/../ai_service.php';
+                $fullPath = __DIR__ . '/../' . $profile['optimized_resume_path'];
+                if (file_exists($fullPath)) {
+                    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+                    $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+                    $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+                    
+                    $verification = verifyUploadedResume($fullPath, $ext, $user['full_name'], $model, $apiKey);
+                    if ($verification && !isset($verification['error'])) {
+                        $detectedRole = $verification['detected_role'] ?? 'Resume';
+                        $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                        
+                        updateCandidateProfileResume(
+                            $profile['id'],
+                            $user['id'],
+                            $profile['optimized_resume_path'],
+                            $profile['text_version'] ?? null,
+                            !empty($profile['needs_human_review']),
+                            $profileChanges,
+                            $detectedRole
+                        );
+                        $profilesUpdated = true;
+                    }
+                }
+            } catch (Exception $e) {
+                // Fail silently
+            }
+        }
+    }
+}
+if ($profilesUpdated) {
+    $profiles = getCandidateProfiles($user['id']);
+}
+
 $maxProfiles = 3;
 $canAddProfile = count($profiles) < $maxProfiles;
 
@@ -129,10 +171,17 @@ if ($baseResume) {
 
             <div class="card-body">
               <div class="status-item">
-                <?php if (!empty($profile['optimized_resume_path'])): 
-                  $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-                  $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                <?php 
+                $hasResume = !empty($profile['optimized_resume_path']);
+                $isOptimized = false;
+                $profileChanges = null;
+                if ($hasResume) {
+                    $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                    $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                    $isOptimized = !empty($profileChanges);
+                }
                 ?>
+                <?php if ($hasResume && $isOptimized): ?>
                   <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
@@ -144,6 +193,18 @@ if ($baseResume) {
                         <span style="color: var(--color-text-muted);">•</span>
                         <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
                       <?php endif; ?>
+                    </div>
+                  </div>
+                <?php elseif ($hasResume && !$isOptimized): 
+                  $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Resume';
+                ?>
+                  <svg class="status-icon status-pending" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div>
+                    <strong><?php echo htmlspecialchars($displayRole); ?></strong>
+                    <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
+                      <a href="../<?php echo htmlspecialchars($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View File</a>
                     </div>
                   </div>
                 <?php else: ?>
@@ -159,18 +220,27 @@ if ($baseResume) {
             </div>
 
             <div class="card-actions">
-              <button class="btn btn-outline btn-choose-resume" 
-                data-profile-id="<?php echo $profile['id']; ?>"
-                data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
-                data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
-                data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"
-                data-opt-path="<?php echo htmlspecialchars($baseResumeOptPath); ?>"
-                style="flex: 1; text-align: center; padding: 10px 0;">
-                <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                Upload Resume
-              </button>
+              <?php if ($hasResume && !$isOptimized): ?>
+                <a href="resume_optimizer.php?resume_path=<?php echo urlencode($profile['optimized_resume_path']); ?>&profile_id=<?php echo urlencode($profile['id']); ?>" 
+                  class="btn btn-outline" 
+                  style="flex: 1; text-align: center; padding: 10px 0; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none;">
+                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                  Optimize Resume
+                </a>
+              <?php else: ?>
+                <button class="btn btn-outline btn-choose-resume" 
+                  data-profile-id="<?php echo $profile['id']; ?>"
+                  data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
+                  data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
+                  data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"
+                  data-opt-path="<?php echo htmlspecialchars($baseResumeOptPath); ?>"
+                  style="flex: 1; text-align: center; padding: 10px 0;">
+                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                  Upload Resume
+                </button>
+              <?php endif; ?>
 
-              <?php if (!empty($profile['optimized_resume_path'])): ?>
+              <?php if ($hasResume && $isOptimized): ?>
               <a href="../interview.php?practice_role=<?php echo urlencode($profile['role_title']); ?>" class="btn btn-primary" style="flex: 1;">
                 <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Practice
