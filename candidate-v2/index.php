@@ -159,6 +159,17 @@ if ($baseResume) {
         
         <?php foreach ($profiles as $idx => $profile): ?>
           <div class="bento-card" data-profile-id="<?php echo $profile['id']; ?>">
+            <?php
+            $hasResume = !empty($profile['optimized_resume_path']);
+            $isOptimized = false;
+            $profileChanges = null;
+            $profileResumeData = [];
+            if ($hasResume) {
+                $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                $isOptimized = !empty($profileChanges);
+            }
+            ?>
             <div class="card-header">
               <div class="role-title"><?php echo htmlspecialchars($profile['role_title']); ?></div>
               <div style="display: flex; align-items: center; gap: var(--space-2);">
@@ -169,17 +180,48 @@ if ($baseResume) {
               </div>
             </div>
 
+            <?php if (!$isOptimized): 
+              if (!$hasResume) {
+                  $progressPercent = 15;
+                  $progressText = "Step 1/2: Upload base resume to unlock optimizations";
+                  $progressClass = "step-upload";
+              } else {
+                  $progressPercent = 50;
+                  $progressText = "Step 2/2: Optimize resume to unlock practice interview";
+                  $progressClass = "step-optimize";
+              }
+            ?>
+              <div class="profile-progress-tracker <?php echo $progressClass; ?>">
+                <div class="progress-info">
+                  <span class="progress-label"><?php echo htmlspecialchars($progressText); ?></span>
+                  <span class="progress-percentage"><?php echo $progressPercent; ?>%</span>
+                </div>
+                <div class="progress-track-wrapper">
+                  <div class="progress-track-bar">
+                    <div class="progress-track-fill" style="width: <?php echo $progressPercent; ?>%;"></div>
+                  </div>
+                  <div class="progress-steps-nodes">
+                    <div class="progress-node node-upload <?php echo $hasResume ? 'completed' : 'active'; ?>" title="Upload Resume">
+                      <span class="node-dot"></span>
+                      <span class="node-text">Upload</span>
+                    </div>
+                    <div class="progress-node node-optimize <?php echo $isOptimized ? 'completed' : ($hasResume ? 'active' : 'upcoming'); ?>" title="Optimize Resume">
+                      <span class="node-dot"></span>
+                      <span class="node-text">Optimize</span>
+                    </div>
+                    <div class="progress-node node-ready <?php echo $isOptimized ? 'completed' : 'upcoming'; ?>" title="Ready to Practice">
+                      <span class="node-dot"></span>
+                      <span class="node-text">Ready</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <?php endif; ?>
+
             <div class="card-body">
               <div class="status-item">
                 <?php 
-                $hasResume = !empty($profile['optimized_resume_path']);
-                $isOptimized = false;
-                $profileChanges = null;
-                if ($hasResume) {
-                    $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-                    $profileChanges = $profileResumeData['optimization_changes'] ?? null;
-                    $isOptimized = !empty($profileChanges);
-                }
+                // Variables are already defined above
                 ?>
                 <?php if ($hasResume && $isOptimized): ?>
                   <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
