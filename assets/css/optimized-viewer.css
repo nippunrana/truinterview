@@ -145,12 +145,24 @@ mark.highlight-change:hover {
   margin-top: 2px;
 }
 
+:root {
+  --color-emerald: #10b981;
+}
+
 /* Update split view right panel to hold accordion and text */
 .viewer-optimized-panel {
+  background: var(--color-bg-surface);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: var(--color-bg-surface);
+  height: 50vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .viewer-optimized-panel {
+    height: 100%;
+  }
 }
 
 .optimized-markdown-container {

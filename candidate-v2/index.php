@@ -275,15 +275,43 @@ if (!$baseResume && !empty($resumes)) {
                 <div class="resume-list">
                   <?php foreach ($resumes as $idx => $res): 
                     $isResBase = !empty($res['is_base']);
+                    $isOptimized = !empty($res['optimization_changes']);
                     $fileName = basename($res['path']);
                     $displayRole = !empty($res['detected_role']) ? $res['detected_role'] : 'Resume';
+                    
+                    if ($isOptimized) {
+                        $origName = '';
+                        if (!empty($res['original_path'])) {
+                            foreach ($resumes as $orig) {
+                                if ($orig['path'] === $res['original_path']) {
+                                    $origName = $orig['detected_role'] ?? '';
+                                    break;
+                                }
+                            }
+                        }
+                        if (empty($origName)) {
+                            foreach ($resumes as $orig) {
+                                if (empty($orig['optimization_changes'])) {
+                                    $origName = $orig['detected_role'] ?? '';
+                                    break;
+                                }
+                            }
+                        }
+                        if (!empty($origName)) {
+                            $displayRole = $origName;
+                        }
+                    }
+                    
                     $ext = strtoupper(pathinfo($res['path'], PATHINFO_EXTENSION));
                   ?>
                     <div class="resume-item <?php echo $isResBase ? 'active' : ''; ?>">
-                      <div class="resume-item-info" style="max-width: 60%;">
+                       <div class="resume-item-info" style="max-width: 60%;">
                         <div class="resume-item-title" style="display: flex; align-items: center; gap: 8px;" title="<?php echo htmlspecialchars($displayRole); ?>">
                           <?php if ($isResBase): ?>
                             <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px;">Base</span>
+                          <?php endif; ?>
+                          <?php if ($isOptimized): ?>
+                            <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px; background: rgba(79, 70, 229, 0.1); color: var(--color-brand-primary);">Optimized Resume</span>
                           <?php endif; ?>
                           <span style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden;"><?php echo htmlspecialchars($displayRole); ?></span>
                           <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
