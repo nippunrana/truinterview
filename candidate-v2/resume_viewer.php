@@ -54,6 +54,38 @@ if (!$found) {
 if (!$found) {
     die("Error: Resume document not found.");
 }
+
+function parseMarkdownToHtml($markdown) {
+    $html = htmlspecialchars($markdown);
+    
+    // Headers (#, ##, ###)
+    $html = preg_replace('/^# (.*?)$/m', '<h1 class="md-h1">$1</h1>', $html);
+    $html = preg_replace('/^## (.*?)$/m', '<h2 class="md-h2">$1</h2>', $html);
+    $html = preg_replace('/^### (.*?)$/m', '<h3 class="md-h3">$1</h3>', $html);
+    
+    // Bold (**text**)
+    $html = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $html);
+    
+    // Unordered lists (- item or * item)
+    $html = preg_replace('/^\* (.*?)$/m', '<li>$1</li>', $html);
+    $html = preg_replace('/^- (.*?)$/m', '<li>$1</li>', $html);
+    
+    // Group list items and handle line breaks
+    $blocks = explode("\n\n", $html);
+    foreach ($blocks as &$block) {
+        $block = trim($block);
+        if ($block === '') continue;
+        
+        if (preg_match('/^<(h1|h2|h3|li)/', $block)) {
+            if (strpos($block, '<li>') !== false) {
+                $block = '<ul class="md-ul">' . $block . '</ul>';
+            }
+        } else {
+            $block = '<p class="md-p">' . str_replace("\n", "<br>", $block) . '</p>';
+        }
+    }
+    return implode("\n", $blocks);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,6 +142,13 @@ if (!$found) {
       <div class="viewer-preview-panel">
         <?php if ($ext === 'PDF'): ?>
           <iframe src="../<?php echo htmlspecialchars($path); ?>#toolbar=0&navpanes=0&view=FitW"></iframe>
+        <?php elseif ($ext === 'MD'): 
+          $fullPath = __DIR__ . '/../' . $path;
+          $rawMarkdown = file_exists($fullPath) ? file_get_contents($fullPath) : '';
+        ?>
+          <div class="viewer-markdown-preview">
+            <?php echo parseMarkdownToHtml($rawMarkdown); ?>
+          </div>
         <?php else: ?>
           <div class="viewer-preview-fallback">
             <svg style="width: 48px; height: 48px;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
