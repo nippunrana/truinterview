@@ -175,6 +175,7 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS role_title_id VARCHAR(150)");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS q_a JSONB");
 
     // Reorder columns in sessions if level/role_title_id are not next to current_status
     try {
@@ -218,12 +219,13 @@ function initSchema() {
                     model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
                     conduct_warnings INTEGER DEFAULT 0,
                     closure_reason VARCHAR(50),
-                    profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL
+                    profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL,
+                    q_a JSONB
                 )");
                 
                 // Copy data from sessions_old to sessions
-                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id)
-                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id
+                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a)
+                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a
                     FROM sessions_old");
                 
                 // Re-add constraints pointing to sessions
@@ -427,7 +429,7 @@ function seedQuestions() {
     }
 }
 
-function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null) {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null, $qaJson = null, $targetLevel = null) {
     $db = getDB();
     $level = 0;
     $roleTitleId = null;
@@ -437,10 +439,13 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
         $profile = $stmtProfile->fetch();
         if ($profile) {
             $level = isset($profile['level']) ? (int)$profile['level'] : 0;
+            if ($targetLevel !== null) {
+                $level = $targetLevel;
+            }
             $roleTitleId = $profile['role_title_id'] ?? null;
         }
     }
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id, q_a) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id, :q_a) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
@@ -453,7 +458,8 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
         'model_eval' => $modelEval,
         'profile_id' => $profileId,
         'level' => $level,
-        'role_title_id' => $roleTitleId
+        'role_title_id' => $roleTitleId,
+        'q_a' => $qaJson
     ]);
     return $stmt->fetchColumn();
 }

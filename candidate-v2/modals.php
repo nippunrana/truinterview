@@ -11,6 +11,14 @@
   </div>
 </div>
 
+<!-- Loading Overlay for Practice Interview -->
+<div class="modal-overlay" id="practice-loading-overlay">
+  <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-4); background: var(--color-bg-surface); padding: var(--space-6) var(--space-8); border-radius: var(--radius-outer); box-shadow: var(--shadow-float);">
+    <div class="spinner" style="border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--color-brand-primary); width: 32px; height: 32px;"></div>
+    <div id="practice-loading-text" style="font-weight: 600; color: var(--color-text-primary);">Preparing AI Interview Questions... This may take a moment.</div>
+  </div>
+</div>
+
 <!-- Delete Profile Modal -->
 <div class="modal-overlay" id="delete-modal">
   <div class="modal-content">

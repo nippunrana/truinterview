@@ -347,12 +347,29 @@ try {
             }
         }
         
-        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval, $profileId);
-        
-        // Start session and set client cookie
+        // Start session to access pending QA data
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
+
+        $qaJson = null;
+        $targetLevel = null;
+        if ($profileId) {
+            $qaKey = 'pending_qa_' . $profileId;
+            $levelKey = 'pending_level_' . $profileId;
+            if (isset($_SESSION[$qaKey])) {
+                $qaJson = $_SESSION[$qaKey];
+                unset($_SESSION[$qaKey]);
+            }
+            if (isset($_SESSION[$levelKey])) {
+                $targetLevel = $_SESSION[$levelKey];
+                unset($_SESSION[$levelKey]);
+            }
+        }
+
+        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval, $profileId, $qaJson, $targetLevel);
+        
+        // Set client cookie
         $_SESSION['session_id'] = $sessionId;
         setcookie("session_id", $sessionId, time() + 86400, "/");
 

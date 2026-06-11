@@ -228,6 +228,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Handle Practice Interview preparation
+  document.querySelectorAll('.btn-prepare-practice').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const profileId = btn.getAttribute('data-profile-id');
+      
+      const overlay = document.getElementById('practice-loading-overlay');
+      if (overlay) overlay.classList.add('active');
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('profile_id', profileId);
+
+        const res = await fetch('../api/prepare_practice.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+          // Success: questions generated and saved to session, redirect to interview
+          window.location.href = '../interview.php?profile_id=' + encodeURIComponent(profileId);
+        } else {
+          if (overlay) overlay.classList.remove('active');
+          showToast(data.message || 'Error preparing practice interview', 'error');
+        }
+      } catch (err) {
+        if (overlay) overlay.classList.remove('active');
+        showToast('Network error while preparing interview', 'error');
+      }
+    });
+  });
+
   // Flag to differentiate global and profile uploads in the mismatch modal
   window.isGlobalUpload = false;
 
