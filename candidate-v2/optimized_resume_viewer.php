@@ -36,14 +36,27 @@ if (!$optimizedResume) {
 }
 
 // 2. Find the original resume. 
-// It should be the base resume being optimized. If the optimized resume is currently the base, find the original (oldest or first one without optimization_changes).
-foreach ($resumes as $r) {
-    if (!empty($r['is_base']) && $r['path'] !== $path) {
-        $originalResume = $r;
-        break;
+// It should be the base resume being optimized. If the optimized resume has original_path, look for it.
+if (!empty($optimizedResume['original_path'])) {
+    foreach ($resumes as $r) {
+        if ($r['path'] === $optimizedResume['original_path']) {
+            $originalResume = $r;
+            break;
+        }
     }
 }
-// Fallback: get the oldest resume
+
+// Fallback 1: look for any base resume that is not the optimized one
+if (!$originalResume) {
+    foreach ($resumes as $r) {
+        if (!empty($r['is_base']) && $r['path'] !== $path) {
+            $originalResume = $r;
+            break;
+        }
+    }
+}
+
+// Fallback 2: get the oldest resume
 if (!$originalResume && !empty($resumes)) {
     $originalResume = $resumes[count($resumes) - 1];
 }

@@ -106,6 +106,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             $optimizedMarkdown = $_POST['optimized_markdown'] ?? '';
             $profileId = $_POST['profile_id'] ?? null;
             $changesRaw = $_POST['changes'] ?? '';
+            $originalPath = $_POST['original_path'] ?? null;
             $changes = !empty($changesRaw) ? json_decode($changesRaw, true) : null;
 
             if (empty($optimizedMarkdown)) {
@@ -116,7 +117,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             if (!empty($profileId)) {
                 $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown, $changes);
             } else {
-                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes);
+                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes, $originalPath);
             }
             echo json_encode(['success' => true, 'data' => $result]);
             exit;

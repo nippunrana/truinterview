@@ -450,7 +450,8 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
   btn.textContent = 'Saving...';
 
   try {
-    let bodyStr = 'ajax_action=optimizer_save_profile&optimized_markdown=' + encodeURIComponent(state.finalResult.rewritten_resume_markdown);
+    let bodyStr = 'ajax_action=optimizer_save_profile&optimized_markdown=' + encodeURIComponent(state.finalResult.rewritten_resume_markdown) +
+                  '&original_path=' + encodeURIComponent(state.resumePath);
     if (state.profileId) {
         bodyStr += '&profile_id=' + encodeURIComponent(state.profileId);
     }

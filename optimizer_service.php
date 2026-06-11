@@ -492,7 +492,7 @@ Use the mathematically verified experience details provided to set accurate date
 /**
  * Save optimized resume to database and create a Markdown file on disk.
  */
-function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null) {
+function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null, $originalPath = null) {
     $db = getDB();
     
     // Fetch current user details
@@ -528,7 +528,8 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null)
         'short_description' => 'AI Optimized Resume Version',
         'detected_role' => 'Optimized Resume',
         'is_base' => false,
-        'optimization_changes' => $changes
+        'optimization_changes' => $changes,
+        'original_path' => $originalPath
     ];
 
     // Re-sort to put newest first

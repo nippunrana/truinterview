@@ -209,7 +209,6 @@ if (!$baseResume && !empty($resumes)) {
                   </div>
                   <div><?php echo htmlspecialchars($baseResume['short_description'] ?? 'No description parsed yet.'); ?></div>
                 </div>
-
                 <div style="display: flex; gap: var(--space-3); margin-top: auto; padding-top: var(--space-4);">
                   <?php 
                     $hasOptimized = false;
@@ -220,15 +219,19 @@ if (!$baseResume && !empty($resumes)) {
                     } else {
                         foreach ($resumes as $r) {
                             if (!empty($r['optimization_changes'])) {
-                                $hasOptimized = true;
-                                $optResumePath = $r['path'];
-                                break;
+                                // Match if original_path matches base resume path, or fallback to date comparison for older resumes
+                                if ((!empty($r['original_path']) && $r['original_path'] === $baseResume['path']) ||
+                                    (empty($r['original_path']) && $baseResume['date'] <= $r['date'])) {
+                                    $hasOptimized = true;
+                                    $optResumePath = $r['path'];
+                                    break;
+                                }
                             }
                         }
                     }
                   ?>
                   <?php if ($hasOptimized): ?>
-                    <a href="optimized_resume_viewer.php?path=<?php echo urlencode($optResumePath); ?>" class="btn btn-primary" style="flex: 1; background-color: var(--color-emerald); border-color: var(--color-emerald);">
+                    <a href="optimized_resume_viewer.php?path=<?php echo urlencode($optResumePath); ?>" class="btn btn-primary" style="flex: 1; background-color: var(--color-success); border-color: var(--color-success);">
                       <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                       View Optimized
                     </a>
