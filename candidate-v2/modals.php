@@ -174,3 +174,23 @@
   </div>
 </div>
 <!-- END OPTION C -->
+
+<!-- Post-Upload Success Modal -->
+<div class="modal-overlay" id="post-upload-modal">
+  <div class="modal-content" style="max-width: 440px;">
+    <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-brand-primary); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+      <svg style="width: 24px; height: 24px; color: var(--color-success);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      Upload Successful!
+    </h3>
+    <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+      Your base resume has been successfully uploaded and analyzed. Would you like to optimize this resume now, or finish and return to your dashboard?
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+      <button id="btn-post-upload-finish" class="btn btn-outline">Finish</button>
+      <button id="btn-post-upload-optimize" class="btn btn-primary">Optimize Resume</button>
+    </div>
+  </div>
+</div>
+

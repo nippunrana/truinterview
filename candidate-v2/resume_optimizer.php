@@ -19,6 +19,7 @@ if (empty($resumePath)) {
 }
 
 $profileId = $_GET['profile_id'] ?? $_POST['profile_id'] ?? null;
+$isProfileMode = !empty($profileId);
 
 // Ensure the resume path exists in user's profile database, if not V2 profile
 if (empty($profileId)) {
@@ -131,6 +132,7 @@ $initials = substr($initials, 0, 2);
           </div>
         </div>
 
+        <?php if ($isProfileMode): ?>
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <label style="font-weight: 700; color: var(--color-text-primary); font-size: 0.95rem;">Is this the role and seniority level you are targeting?</label>
           <div style="display: flex; gap: 16px;">
@@ -149,6 +151,20 @@ $initials = substr($initials, 0, 2);
             <textarea id="job-desc-input" class="form-input" style="min-height: 140px; resize: vertical;" placeholder="Paste the job requirements, duties, and qualifications here to optimize your resume keywords..."></textarea>
           </div>
         </div>
+        <?php else: ?>
+        <!-- Base Resume Mode: Informational note only -->
+        <div style="background: rgba(79, 70, 229, 0.04); border: 1px solid rgba(79, 70, 229, 0.15); padding: 18px; border-radius: var(--radius-inner); margin-top: 16px; display: flex; align-items: flex-start; gap: 12px;">
+          <svg style="width: 20px; height: 20px; color: var(--color-indigo); flex-shrink: 0; margin-top: 2px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <div>
+            <div style="font-weight: 700; color: var(--color-text-primary); font-size: 0.9rem;">Base Resume Optimization</div>
+            <div style="font-size: 0.82rem; color: var(--color-text-secondary); margin-top: 4px; line-height: 1.45;">
+              We will perform a general optimization on your base resume for the detected role above. You can customize target job descriptions later when creating specific profiles.
+            </div>
+          </div>
+        </div>
+        <?php endif; ?>
       </div>
 
       <!-- STEP 2: GAP ANALYSIS & QUESTIONNAIRE -->

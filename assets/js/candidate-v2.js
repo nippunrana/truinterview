@@ -231,6 +231,34 @@ document.addEventListener('DOMContentLoaded', () => {
   // Flag to differentiate global and profile uploads in the mismatch modal
   window.isGlobalUpload = false;
 
+  // Post-Upload Success Modal Logic
+  const postUploadModal = document.getElementById('post-upload-modal');
+  const btnPostUploadFinish = document.getElementById('btn-post-upload-finish');
+  const btnPostUploadOptimize = document.getElementById('btn-post-upload-optimize');
+  let uploadedResumePath = null;
+
+  function showPostUploadModal(resumePath) {
+    uploadedResumePath = resumePath;
+    if (postUploadModal) {
+      postUploadModal.classList.add('active');
+    }
+  }
+
+  if (btnPostUploadFinish) {
+    btnPostUploadFinish.addEventListener('click', () => {
+      postUploadModal.classList.remove('active');
+      window.location.reload();
+    });
+  }
+
+  if (btnPostUploadOptimize) {
+    btnPostUploadOptimize.addEventListener('click', () => {
+      if (uploadedResumePath) {
+        window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(uploadedResumePath);
+      }
+    });
+  }
+
   // Handle File Upload
   document.querySelectorAll('.resume-upload-input').forEach(input => {
     input.addEventListener('change', async (e) => {
@@ -309,7 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.success) {
           const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
           await stopLoadingText(msg, 2000);
-          window.location.reload();
+          document.getElementById('ai-loading-overlay').classList.remove('active');
+          showPostUploadModal(data.path);
         } else {
           await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
@@ -470,7 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
             await stopLoadingText(msg, 2000);
             if (window.isGlobalUpload) {
-              window.location.reload();
+              document.getElementById('ai-loading-overlay').classList.remove('active');
+              showPostUploadModal(data.path);
             } else {
               window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
             }

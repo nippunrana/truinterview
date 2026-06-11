@@ -72,8 +72,10 @@ function updateStepperUI() {
   if (state.currentStep === 1) {
     actionNext.innerHTML = 'Continue &rarr;';
     // Check if role or custom JD entered
-    const isJdOk = !document.getElementById('jd-customization-section').classList.contains('active') || 
-                   (document.getElementById('target-role-input').value.trim() !== '' && 
+    const jdSection = document.getElementById('jd-customization-section');
+    const isJdOk = !jdSection || !jdSection.classList.contains('active') || 
+                   (document.getElementById('target-role-input') && document.getElementById('job-desc-input') &&
+                    document.getElementById('target-role-input').value.trim() !== '' && 
                     document.getElementById('job-desc-input').value.trim() !== '');
     actionNext.disabled = !isJdOk;
   } else if (state.currentStep === 2) {
@@ -129,7 +131,10 @@ async function loadRealityCheck() {
       document.getElementById('guessed-summary').textContent = state.blindSummary;
 
       // Default set inputs in custom section
-      document.getElementById('target-role-input').value = state.targetRole;
+      const targetRoleInput = document.getElementById('target-role-input');
+      if (targetRoleInput) {
+        targetRoleInput.value = state.targetRole;
+      }
     } else {
       alert('Reality check failed: ' + (result.message || 'Unknown error'));
     }
@@ -143,7 +148,8 @@ async function loadRealityCheck() {
 async function runGapAnalysis() {
   showLoading('Analyzing Job Description requirements and mapping gaps...');
   
-  const customJdActive = document.getElementById('jd-customization-section').classList.contains('active');
+  const jdSection = document.getElementById('jd-customization-section');
+  const customJdActive = jdSection && jdSection.classList.contains('active');
   if (customJdActive) {
     state.targetRole = document.getElementById('target-role-input').value.trim();
     state.jobDescription = document.getElementById('job-desc-input').value.trim();
@@ -479,36 +485,54 @@ const btnRcYes = document.getElementById('btn-rc-yes');
 const btnRcNo = document.getElementById('btn-rc-no');
 const jdSection = document.getElementById('jd-customization-section');
 
-btnRcYes.addEventListener('click', () => {
-  btnRcYes.style.background = 'rgba(16, 185, 129, 0.08)';
-  btnRcYes.style.borderColor = 'var(--color-emerald)';
-  btnRcNo.style.background = '';
-  btnRcNo.style.borderColor = '';
-  jdSection.style.display = 'none';
-  jdSection.classList.remove('active');
-  actionNext.disabled = false;
-});
+if (btnRcYes) {
+  btnRcYes.addEventListener('click', () => {
+    btnRcYes.style.background = 'rgba(16, 185, 129, 0.08)';
+    btnRcYes.style.borderColor = 'var(--color-emerald)';
+    btnRcNo.style.background = '';
+    btnRcNo.style.borderColor = '';
+    if (jdSection) {
+      jdSection.style.display = 'none';
+      jdSection.classList.remove('active');
+    }
+    actionNext.disabled = false;
+  });
+}
 
-btnRcNo.addEventListener('click', () => {
-  btnRcNo.style.background = 'rgba(79, 70, 229, 0.05)';
-  btnRcNo.style.borderColor = 'var(--color-indigo)';
-  btnRcYes.style.background = '';
-  btnRcYes.style.borderColor = '';
-  jdSection.style.display = 'flex';
-  jdSection.classList.add('active');
-  
-  const title = document.getElementById('target-role-input').value.trim();
-  const jd = document.getElementById('job-desc-input').value.trim();
-  actionNext.disabled = (title === '' || jd === '');
-});
+if (btnRcNo) {
+  btnRcNo.addEventListener('click', () => {
+    btnRcNo.style.background = 'rgba(79, 70, 229, 0.05)';
+    btnRcNo.style.borderColor = 'var(--color-indigo)';
+    btnRcYes.style.background = '';
+    btnRcYes.style.borderColor = '';
+    if (jdSection) {
+      jdSection.style.display = 'flex';
+      jdSection.classList.add('active');
+    }
+    
+    const targetRoleInput = document.getElementById('target-role-input');
+    const jobDescInput = document.getElementById('job-desc-input');
+    const title = targetRoleInput ? targetRoleInput.value.trim() : '';
+    const jd = jobDescInput ? jobDescInput.value.trim() : '';
+    actionNext.disabled = (title === '' || jd === '');
+  });
+}
 
-document.getElementById('target-role-input').addEventListener('input', checkJdFormValidity);
-document.getElementById('job-desc-input').addEventListener('input', checkJdFormValidity);
+const targetRoleInput = document.getElementById('target-role-input');
+if (targetRoleInput) {
+  targetRoleInput.addEventListener('input', checkJdFormValidity);
+}
+const jobDescInput = document.getElementById('job-desc-input');
+if (jobDescInput) {
+  jobDescInput.addEventListener('input', checkJdFormValidity);
+}
 
 function checkJdFormValidity() {
-  if (!jdSection.classList.contains('active')) return;
-  const title = document.getElementById('target-role-input').value.trim();
-  const jd = document.getElementById('job-desc-input').value.trim();
+  if (!jdSection || !jdSection.classList.contains('active')) return;
+  const targetRoleInput = document.getElementById('target-role-input');
+  const jobDescInput = document.getElementById('job-desc-input');
+  const title = targetRoleInput ? targetRoleInput.value.trim() : '';
+  const jd = jobDescInput ? jobDescInput.value.trim() : '';
   actionNext.disabled = (title === '' || jd === '');
 }
 
