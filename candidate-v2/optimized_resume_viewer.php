@@ -170,12 +170,18 @@ $origExt = strtoupper(pathinfo($originalResume['path'], PATHINFO_EXTENSION));
         </div>
       </div>
       
-      <div class="viewer-header-right">
-        <a href="../<?php echo htmlspecialchars($optimizedResume['path']); ?>" download class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px;">
-          <svg style="width: 16px; height: 16px; margin-right: 4px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <div class="viewer-header-right" style="display: flex; gap: 8px; align-items: center;">
+        <a href="../<?php echo htmlspecialchars($optimizedResume['path']); ?>" download class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
           </svg>
           Download Optimized Markdown
+        </a>
+        <a href="export_pdf.php?path=<?php echo urlencode($path); ?>" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;">
+          <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+          </svg>
+          Download PDF
         </a>
       </div>
     </header>
