@@ -173,6 +173,71 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS conduct_warnings INTEGER DEFAULT 0");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS closure_reason VARCHAR(50)");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS role_title_id VARCHAR(150)");
+
+    // Reorder columns in sessions if level/role_title_id are not next to current_status
+    try {
+        $stmt = $db->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'sessions' ORDER BY ordinal_position");
+        $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($cols)) {
+            $currentStatusIdx = array_search('current_status', $cols);
+            $levelIdx = array_search('level', $cols);
+            $roleTitleIdIdx = array_search('role_title_id', $cols);
+            
+            if ($currentStatusIdx !== false && $levelIdx !== false && $roleTitleIdIdx !== false &&
+                ($levelIdx !== $currentStatusIdx + 1 || $roleTitleIdIdx !== $levelIdx + 1)) {
+                
+                // Drop constraints pointing to sessions
+                $db->exec("ALTER TABLE transcripts DROP CONSTRAINT IF EXISTS transcripts_session_id_fkey");
+                $db->exec("ALTER TABLE candidate_responses DROP CONSTRAINT IF EXISTS candidate_responses_session_id_fkey");
+                $db->exec("ALTER TABLE proctor_alerts DROP CONSTRAINT IF EXISTS proctor_alerts_session_id_fkey");
+                
+                // Rename sessions to sessions_old
+                $db->exec("ALTER TABLE sessions RENAME TO sessions_old");
+                
+                // Create sessions table in correct order
+                $db->exec("CREATE TABLE sessions (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    candidate_name VARCHAR(100) NOT NULL,
+                    email VARCHAR(100) NOT NULL,
+                    current_status VARCHAR(20) DEFAULT 'STARTED',
+                    level INTEGER DEFAULT 0,
+                    role_title_id VARCHAR(150),
+                    mcq_preference VARCHAR(15) DEFAULT 'PENDING',
+                    trugen_conversation_id VARCHAR(100),
+                    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP WITH TIME ZONE,
+                    final_score JSONB,
+                    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL,
+                    template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL,
+                    session_type VARCHAR(20) DEFAULT 'practice',
+                    model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
+                    model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
+                    model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
+                    conduct_warnings INTEGER DEFAULT 0,
+                    closure_reason VARCHAR(50),
+                    profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL
+                )");
+                
+                // Copy data from sessions_old to sessions
+                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id)
+                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id
+                    FROM sessions_old");
+                
+                // Re-add constraints pointing to sessions
+                $db->exec("ALTER TABLE transcripts ADD CONSTRAINT transcripts_session_id_fkey FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE");
+                $db->exec("ALTER TABLE candidate_responses ADD CONSTRAINT candidate_responses_session_id_fkey FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE");
+                $db->exec("ALTER TABLE proctor_alerts ADD CONSTRAINT proctor_alerts_session_id_fkey FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE");
+                
+                // Drop old table
+                $db->exec("DROP TABLE sessions_old");
+            }
+        }
+    } catch (Exception $e) {
+        // Fail silently
+    }
 
     // Create transcripts table
     $db->exec("CREATE TABLE IF NOT EXISTS transcripts (
@@ -228,6 +293,7 @@ function initSchema() {
         text_version TEXT,
         needs_human_review BOOLEAN DEFAULT FALSE,
         resume_data JSONB,
+        level INTEGER DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
     
@@ -236,17 +302,26 @@ function initSchema() {
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS text_version TEXT");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN DEFAULT FALSE");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_data JSONB");
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 0");
 
-    // Reorder columns in candidate_profiles if role_title_id is not next to role_title
+    // Reorder columns in candidate_profiles if role_title_id is not next to role_title, or level is not next to role_title_id
     try {
         $stmt = $db->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'candidate_profiles' ORDER BY ordinal_position");
         $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($cols)) {
             $roleTitleIdx = array_search('role_title', $cols);
             $roleTitleIdIdx = array_search('role_title_id', $cols);
+            $levelIdx = array_search('level', $cols);
             
-            // If role_title_id exists but is not right after role_title
+            $needsReorder = false;
             if ($roleTitleIdx !== false && $roleTitleIdIdx !== false && $roleTitleIdIdx !== $roleTitleIdx + 1) {
+                $needsReorder = true;
+            }
+            if ($roleTitleIdIdx !== false && $levelIdx !== false && $levelIdx !== $roleTitleIdIdx + 1) {
+                $needsReorder = true;
+            }
+            
+            if ($needsReorder) {
                 // Disassociate the sequence from the old column
                 $db->exec("ALTER SEQUENCE IF EXISTS candidate_profiles_id_seq OWNED BY NONE");
                 
@@ -262,6 +337,7 @@ function initSchema() {
                     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
                     role_title VARCHAR(150) NOT NULL,
                     role_title_id VARCHAR(150),
+                    level INTEGER DEFAULT 0,
                     optimized_resume_path TEXT,
                     text_version TEXT,
                     needs_human_review BOOLEAN DEFAULT FALSE,
@@ -273,8 +349,8 @@ function initSchema() {
                 $db->exec("ALTER SEQUENCE IF EXISTS candidate_profiles_id_seq OWNED BY candidate_profiles.id");
                 
                 // Copy data from candidate_profiles_old to candidate_profiles
-                $db->exec("INSERT INTO candidate_profiles (id, user_id, role_title, role_title_id, optimized_resume_path, text_version, needs_human_review, resume_data, created_at)
-                    SELECT id, user_id, role_title, role_title_id, optimized_resume_path, text_version, needs_human_review, resume_data, created_at
+                $db->exec("INSERT INTO candidate_profiles (id, user_id, role_title, role_title_id, level, optimized_resume_path, text_version, needs_human_review, resume_data, created_at)
+                    SELECT id, user_id, role_title, role_title_id, level, optimized_resume_path, text_version, needs_human_review, resume_data, created_at
                     FROM candidate_profiles_old");
                 
                 // Restore/sync the sequence value
@@ -353,7 +429,18 @@ function seedQuestions() {
 
 function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id) RETURNING id");
+    $level = 0;
+    $roleTitleId = null;
+    if ($profileId) {
+        $stmtProfile = $db->prepare("SELECT level, role_title_id FROM candidate_profiles WHERE id = :profile_id");
+        $stmtProfile->execute(['profile_id' => $profileId]);
+        $profile = $stmtProfile->fetch();
+        if ($profile) {
+            $level = isset($profile['level']) ? (int)$profile['level'] : 0;
+            $roleTitleId = $profile['role_title_id'] ?? null;
+        }
+    }
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
@@ -364,7 +451,9 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
         'model_chat' => $modelChat,
         'model_vision' => $modelVision,
         'model_eval' => $modelEval,
-        'profile_id' => $profileId
+        'profile_id' => $profileId,
+        'level' => $level,
+        'role_title_id' => $roleTitleId
     ]);
     return $stmt->fetchColumn();
 }
