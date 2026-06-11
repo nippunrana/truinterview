@@ -86,25 +86,46 @@ try {
         }
     }
 
+    $levelTaxonomy = [
+        1 => "Terminology & Recall: Focus on 'What is X?' - Baseline vocabulary and definitions.",
+        2 => "Basic Mechanics: Focus on 'How does X work?' - Understanding the underlying mechanism.",
+        3 => "Standard Implementation: Focus on 'How do you use X to do Y?' - Basic execution and coding patterns.",
+        4 => "Comparative Analysis: Focus on 'X vs Y?' - Understanding trade-offs and when *not* to use a tool.",
+        5 => "Troubleshooting: Focus on 'X is broken/slow, why?' - Debugging and root-cause analysis.",
+        6 => "Component Integration: Focus on 'Connect X and Y.' - Handling state, data handoffs, and API boundaries.",
+        7 => "Scale & Optimization: Focus on 'X under heavy load.' - Distributed systems, concurrency, and bottlenecks.",
+        8 => "Security & Constraints: Focus on 'Secure X for Enterprise.' - Compliance, zero-trust, and failure states.",
+        9 => "System Governance: Focus on 'Design a platform using X.' - Tech debt, CI/CD, and team velocity.",
+        10 => "Strategic Leadership: Focus on 'ROI and Build vs. Buy.' - Aligning tech with business survival/budget."
+    ];
+    $levelDescription = $levelTaxonomy[$targetLevel] ?? $levelTaxonomy[1];
+
     $prompt = <<<EOT
 <context>
-You are generating practice interview questions for a candidate.
-Target Level: {$targetLevel} out of 10.
+You are generating practice technical interview questions for a candidate.
 Candidate Profile:
 {$roleContext}
+
+Target Level: {$targetLevel} out of 10.
+Level {$targetLevel} Definition: {$levelDescription}
 </context>
 
 {$historyContext}<task>
-Generate exactly 10 interview questions appropriate for the candidate's target level.
-For each question, also provide an expected answer.
+Generate exactly 10 technical interview questions aligned strictly with the Level {$targetLevel} definition.
+For each question, also provide a crisp, factual expected answer.
 </task>
 
 <constraints>
-- If <history> is present, the new questions MUST be distinct from previous questions and cover more advanced concepts or different aspects of the role to ensure skill progression.
-- Answers must be concise, factual, and strictly under 100 words.
+- If <history> is present, ensure the new questions cover different TOPICS than those in <history>. Do not repeat concepts.
+- Answers must be factual and strictly under 100 words.
 - Do NOT include conversational filler, introductions, pleasantries, or motivational fluff.
 - Rely solely on the JSON schema for output formatting. Do not output anything outside the JSON.
 </constraints>
+
+<example>
+Example Question (Level 2: Basic Mechanics): "How does JavaScript handle asynchronous operations?"
+Example Answer: "JavaScript uses an event loop and a single-threaded call stack. Asynchronous operations like I/O or timers are offloaded to Web APIs. When they complete, their callbacks are pushed to the task queue. The event loop continuously checks if the call stack is empty; if so, it dequeues the next callback from the queue and pushes it onto the stack for execution."
+</example>
 EOT;
 
     // 4. Call Gemini
