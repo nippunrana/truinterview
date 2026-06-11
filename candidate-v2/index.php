@@ -188,7 +188,7 @@ if ($baseResume) {
                   <div>
                     <strong>Resume Optimized</strong>
                     <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
-                      <a href="../<?php echo htmlspecialchars($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View File</a>
+                      <a href="optimized_resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Optimized</a>
                       <?php if (!empty($profileChanges)): ?>
                         <span style="color: var(--color-text-muted);">•</span>
                         <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
@@ -204,7 +204,7 @@ if ($baseResume) {
                   <div>
                     <strong><?php echo htmlspecialchars($displayRole); ?></strong>
                     <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
-                      <a href="../<?php echo htmlspecialchars($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View File</a>
+                      <a href="resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Document</a>
                     </div>
                   </div>
                 <?php else: ?>
