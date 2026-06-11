@@ -25,6 +25,19 @@ foreach ($words as $w) {
 $initials = substr($initials, 0, 2);
 $firstName = !empty($words[0]) ? $words[0] : 'Candidate';
 $profileCount = count($profiles);
+
+$resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+$baseResume = null;
+foreach ($resumes as $r) {
+    if (!empty($r['is_base'])) {
+        $baseResume = $r;
+        break;
+    }
+}
+if (!$baseResume && !empty($resumes)) {
+    $baseResume = $resumes[0];
+    $baseResume['is_base'] = true;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -238,7 +251,136 @@ $profileCount = count($profiles);
         <?php endif; ?>
         
       </div>
-      
+
+      <!-- RESUME MANAGEMENT SECTION -->
+      <section class="resume-section">
+        <div class="resume-section-header">
+          <h2 class="resume-section-title">Resume Management</h2>
+          <p class="resume-section-subtitle">Select or upload your base resume so that our AI can optimize your range for targeted profiles.</p>
+        </div>
+
+        <div class="resume-grid">
+          <!-- Left Panel: Base Resume Details -->
+          <div class="resume-base-card">
+            <div class="resume-base-header">
+              <span class="resume-base-title">Selected Base Resume</span>
+              <?php if ($baseResume): ?>
+                <span class="resume-badge-base">Active</span>
+              <?php endif; ?>
+            </div>
+
+            <div class="resume-base-body">
+              <?php if ($baseResume): 
+                $ext = strtoupper(pathinfo($baseResume['path'], PATHINFO_EXTENSION));
+                $displayRole = !empty($baseResume['detected_role']) ? $baseResume['detected_role'] : 'Resume';
+              ?>
+                <div>
+                  <div style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary); display: flex; align-items: center; gap: 8px;">
+                    <svg style="width: 18px; height: 18px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span><?php echo htmlspecialchars($displayRole); ?></span>
+                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
+                  </div>
+                  <div style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">
+                    Uploaded on <?php echo date('M d, Y h:i A', $baseResume['date']); ?>
+                  </div>
+                </div>
+
+                <div class="resume-summary-box">
+                  <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 6px; letter-spacing: 0.05em;">AI Profile Analysis</div>
+                  <div><?php echo htmlspecialchars($baseResume['short_description'] ?? 'No description parsed yet.'); ?></div>
+                </div>
+
+                <div style="display: flex; gap: var(--space-3); margin-top: auto; padding-top: var(--space-4);">
+                  <a href="../candidate/resume_optimizer.php?resume_path=<?php echo urlencode($baseResume['path']); ?>" class="btn btn-primary" style="flex: 1;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    Optimize Base
+                  </a>
+                  <a href="../<?php echo htmlspecialchars($baseResume['path']); ?>" target="_blank" class="btn btn-outline" style="flex: 1;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    View Document
+                  </a>
+                </div>
+              <?php else: ?>
+                <div style="text-align: center; padding: var(--space-8) var(--space-4); color: var(--color-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                  <svg style="width: 48px; height: 48px; color: var(--color-text-muted); margin-bottom: var(--space-3);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <div style="font-weight: 600; color: var(--color-text-secondary);">No Base Resume Selected</div>
+                  <p style="font-size: var(--text-xs); margin-top: 4px; max-width: 280px;">Upload a resume to establish your primary profile and activate interview prep.</p>
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <!-- Right Panel: Resume History & Upload -->
+          <div class="resume-history-card">
+            <div class="resume-base-header">
+              <span class="resume-base-title">Upload & Version History</span>
+              <span style="font-size: var(--text-xs); color: var(--color-text-secondary);"><?php echo count($resumes); ?>/5 Resumes</span>
+            </div>
+
+            <div class="resume-base-body">
+              <?php if (empty($resumes)): ?>
+                <div style="text-align: center; padding: var(--space-8) var(--space-4); color: var(--color-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                  <svg style="width: 32px; height: 32px; color: var(--color-text-muted); margin-bottom: var(--space-2);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <p style="font-size: var(--text-xs); margin: 0;">Upload your first resume in the action box below.</p>
+                </div>
+              <?php else: ?>
+                <div class="resume-list">
+                  <?php foreach ($resumes as $idx => $res): 
+                    $isResBase = !empty($res['is_base']);
+                    $fileName = basename($res['path']);
+                    $displayRole = !empty($res['detected_role']) ? $res['detected_role'] : 'Resume';
+                    $ext = strtoupper(pathinfo($res['path'], PATHINFO_EXTENSION));
+                  ?>
+                    <div class="resume-item <?php echo $isResBase ? 'active' : ''; ?>">
+                      <div class="resume-item-info" style="max-width: 60%;">
+                        <div class="resume-item-title" style="display: flex; align-items: center; gap: 8px;" title="<?php echo htmlspecialchars($displayRole); ?>">
+                          <?php if ($isResBase): ?>
+                            <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px;">Base</span>
+                          <?php endif; ?>
+                          <span style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden;"><?php echo htmlspecialchars($displayRole); ?></span>
+                          <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
+                        </div>
+                        <div class="resume-item-date">
+                          Uploaded <?php echo date('M d, Y', $res['date']); ?>
+                        </div>
+                      </div>
+
+                      <div class="resume-item-actions">
+                        <?php if (!$isResBase): ?>
+                          <button class="btn btn-outline btn-set-base" data-path="<?php echo htmlspecialchars($res['path']); ?>" style="padding: 4px 8px; font-size: 11px;" title="Set as base resume">Set Base</button>
+                        <?php endif; ?>
+                        <a href="../<?php echo htmlspecialchars($res['path']); ?>" target="_blank" class="btn btn-outline" style="padding: 4px; border-radius: 6px;" title="View Resume">
+                          <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </a>
+                        <button class="btn btn-outline btn-delete-global-resume" data-path="<?php echo htmlspecialchars($res['path']); ?>" style="padding: 4px; border-radius: 6px; color: var(--color-danger);" title="Delete Resume">
+                          <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+
+              <?php if (count($resumes) < 5): ?>
+                <div style="margin-top: auto; padding-top: var(--space-4);">
+                  <label class="btn btn-outline btn-full" style="padding: 10px 0; border-style: dashed; cursor: pointer;">
+                    <input type="file" class="hidden-upload" id="global-resume-file-input" accept=".pdf,.doc,.docx,.md" />
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload New Version
+                  </label>
+                </div>
+              <?php else: ?>
+                <div style="margin-top: auto; padding-top: var(--space-4); text-align: center; font-size: var(--text-xs); color: var(--color-text-muted);">
+                  Limit of 5 resumes reached. Delete previous versions to upload.
+                </div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- JOIN INTERVIEW BAR -->
       <div class="join-hero-section" id="join-bottom-bar">
         <div class="join-hero-content">
@@ -259,6 +401,44 @@ $profileCount = count($profiles);
     <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-4); background: var(--color-bg-surface); padding: var(--space-6) var(--space-8); border-radius: var(--radius-outer); box-shadow: var(--shadow-float);">
       <div class="spinner" style="border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--color-brand-primary); width: 32px; height: 32px;"></div>
       <div style="font-weight: 600; color: var(--color-text-primary);">Running initial AI verification on your resume...</div>
+    </div>
+  </div>
+
+  <!-- Delete Profile Modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal-content">
+      <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-danger); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+        <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+        </svg>
+        Delete Profile
+      </h3>
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+        Are you sure you want to delete this profile? This action cannot be undone.
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+        <button id="btn-delete-cancel" class="btn btn-outline">Cancel</button>
+        <button id="btn-delete-confirm" class="btn btn-primary" style="background: var(--color-danger); border-color: var(--color-danger);">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Global Resume Modal -->
+  <div class="modal-overlay" id="delete-global-resume-modal">
+    <div class="modal-content">
+      <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-danger); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+        <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+        </svg>
+        Delete Resume
+      </h3>
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+        Are you sure you want to delete this resume? This will remove the file from your account.
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+        <button id="btn-delete-global-cancel" class="btn btn-outline">Cancel</button>
+        <button id="btn-delete-global-confirm" class="btn btn-primary" style="background: var(--color-danger); border-color: var(--color-danger);">Yes, Delete</button>
+      </div>
     </div>
   </div>
 
@@ -525,33 +705,58 @@ $profileCount = count($profiles);
     }
 
     // Handle Delete Profile
-    document.querySelectorAll('.btn-delete-profile').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        if (!confirm('Are you sure you want to delete this profile?')) return;
-        
-        const profileId = btn.getAttribute('data-id');
-        try {
-          const formData = new URLSearchParams();
-          formData.append('action', 'delete_profile');
-          formData.append('profile_id', profileId);
+    let pendingDeleteProfileId = null;
 
-          const res = await fetch('ajax.php', {
-            method: 'POST',
-            body: formData,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-          });
-          const data = await res.json();
-          
-          if (data.success) {
-            window.location.reload();
-          } else {
-            showToast(data.message || 'Error deleting profile', 'error');
-          }
-        } catch (err) {
-          showToast('Network error', 'error');
-        }
+    document.querySelectorAll('.btn-delete-profile').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        pendingDeleteProfileId = btn.getAttribute('data-id');
+        document.getElementById('delete-modal').classList.add('active');
       });
     });
+
+    document.getElementById('btn-delete-cancel').addEventListener('click', () => {
+      document.getElementById('delete-modal').classList.remove('active');
+      pendingDeleteProfileId = null;
+    });
+
+    document.getElementById('btn-delete-confirm').addEventListener('click', async () => {
+      if (!pendingDeleteProfileId) return;
+      
+      const btnConfirm = document.getElementById('btn-delete-confirm');
+      const originalText = btnConfirm.innerHTML;
+      btnConfirm.innerHTML = '<span class="spinner" style="border-width: 2px; width: 14px; height: 14px; margin-right: 6px;"></span> Deleting...';
+      btnConfirm.disabled = true;
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'delete_profile');
+        formData.append('profile_id', pendingDeleteProfileId);
+
+        const res = await fetch('ajax.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          window.location.reload();
+        } else {
+          showToast(data.message || 'Error deleting profile', 'error');
+          btnConfirm.innerHTML = originalText;
+          btnConfirm.disabled = false;
+          document.getElementById('delete-modal').classList.remove('active');
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+        btnConfirm.innerHTML = originalText;
+        btnConfirm.disabled = false;
+        document.getElementById('delete-modal').classList.remove('active');
+      }
+    });
+
+    // Flag to differentiate global and profile uploads in the mismatch modal
+    window.isGlobalUpload = false;
 
     // Handle File Upload
     document.querySelectorAll('.resume-upload-input').forEach(input => {
@@ -566,6 +771,7 @@ $profileCount = count($profiles);
         formData.append('profile_id', profileId);
         formData.append('resume_file', file);
 
+        window.isGlobalUpload = false;
         document.getElementById('ai-loading-overlay').classList.add('active');
 
         try {
@@ -600,12 +806,140 @@ $profileCount = count($profiles);
       });
     });
 
+    // Handle Global File Upload
+    const globalUploadInput = document.getElementById('global-resume-file-input');
+    if (globalUploadInput) {
+      globalUploadInput.addEventListener('change', async (e) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('action', 'upload_global_resume');
+        formData.append('resume_file', file);
+
+        window.isGlobalUpload = true;
+        document.getElementById('ai-loading-overlay').classList.add('active');
+
+        try {
+          const res = await fetch('ajax.php', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          
+          if (data.success) {
+            window.location.reload();
+          } else {
+            document.getElementById('ai-loading-overlay').classList.remove('active');
+            if (data.error_type === 'name_mismatch') {
+              window.pendingTempFilename = data.temp_filename;
+              const profileName = <?php echo json_encode($user['full_name']); ?>;
+              const extractedName = data.extracted_name || 'Unknown Name';
+              
+              document.getElementById('mismatch-modal-text').innerHTML = `The resume uploaded is not for <strong>${escapeHTML(profileName)}</strong> but instead it is showing the name <strong>${escapeHTML(extractedName)}</strong>.<br><br>Do you really want to upload this to your profile or want to skip it?`;
+              document.getElementById('mismatch-modal').classList.add('active');
+            } else {
+              showToast(data.message || 'Error uploading file', 'error');
+            }
+          }
+        } catch (err) {
+          document.getElementById('ai-loading-overlay').classList.remove('active');
+          showToast('Network error during upload', 'error');
+        }
+        
+        globalUploadInput.value = ''; // Reset
+      });
+    }
+
+    // Handle Set Base Resume
+    document.querySelectorAll('.btn-set-base').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const path = btn.getAttribute('data-path');
+        const formData = new URLSearchParams();
+        formData.append('action', 'set_base_resume');
+        formData.append('resume_path', path);
+
+        try {
+          const res = await fetch('ajax.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Base resume updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            showToast(data.message || 'Error setting base resume', 'error');
+          }
+        } catch (err) {
+          showToast('Network error', 'error');
+        }
+      });
+    });
+
+    // Handle Delete Global Resume
+    let pendingDeleteResumePath = null;
+    const deleteGlobalModal = document.getElementById('delete-global-resume-modal');
+    
+    document.querySelectorAll('.btn-delete-global-resume').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        pendingDeleteResumePath = btn.getAttribute('data-path');
+        deleteGlobalModal.classList.add('active');
+      });
+    });
+
+    document.getElementById('btn-delete-global-cancel').addEventListener('click', () => {
+      deleteGlobalModal.classList.remove('active');
+      pendingDeleteResumePath = null;
+    });
+
+    document.getElementById('btn-delete-global-confirm').addEventListener('click', async () => {
+      if (!pendingDeleteResumePath) return;
+      
+      const btnConfirm = document.getElementById('btn-delete-global-confirm');
+      const originalText = btnConfirm.innerHTML;
+      btnConfirm.innerHTML = '<span class="spinner" style="border-width: 2px; width: 14px; height: 14px; margin-right: 6px;"></span> Deleting...';
+      btnConfirm.disabled = true;
+
+      const formData = new URLSearchParams();
+      formData.append('action', 'delete_global_resume');
+      formData.append('resume_path', pendingDeleteResumePath);
+
+      try {
+        const res = await fetch('ajax.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          deleteGlobalModal.classList.remove('active');
+          showToast('Resume deleted successfully.', 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.message || 'Error deleting resume', 'error');
+          btnConfirm.innerHTML = originalText;
+          btnConfirm.disabled = false;
+          deleteGlobalModal.classList.remove('active');
+          pendingDeleteResumePath = null;
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+        btnConfirm.innerHTML = originalText;
+        btnConfirm.disabled = false;
+        deleteGlobalModal.classList.remove('active');
+        pendingDeleteResumePath = null;
+      }
+    });
+
     // Mismatch Modal Logic
     document.getElementById('btn-mismatch-skip').addEventListener('click', async () => {
       document.getElementById('mismatch-modal').classList.remove('active');
       if (window.pendingTempFilename) {
         const formData = new URLSearchParams();
-        formData.append('action', 'cancel_resume');
+        formData.append('action', window.isGlobalUpload ? 'cancel_global_resume' : 'cancel_resume');
         formData.append('temp_filename', window.pendingTempFilename);
         window.pendingTempFilename = null;
         
@@ -623,9 +957,11 @@ $profileCount = count($profiles);
 
       if (window.pendingTempFilename) {
         const formData = new URLSearchParams();
-        formData.append('action', 'commit_resume');
+        formData.append('action', window.isGlobalUpload ? 'commit_global_resume' : 'commit_resume');
         formData.append('temp_filename', window.pendingTempFilename);
-        formData.append('profile_id', window.pendingProfileId);
+        if (!window.isGlobalUpload) {
+          formData.append('profile_id', window.pendingProfileId);
+        }
         window.pendingTempFilename = null;
 
         try {
@@ -637,7 +973,11 @@ $profileCount = count($profiles);
           const data = await res.json();
           
           if (data.success) {
-            window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
+            if (window.isGlobalUpload) {
+              window.location.reload();
+            } else {
+              window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
+            }
           } else {
             document.getElementById('ai-loading-overlay').classList.remove('active');
             showToast(data.message || 'Failed to complete upload', 'error');

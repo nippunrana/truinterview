@@ -242,7 +242,7 @@ function extractTextFromDoc($filePath) {
  */
 function getResumeAnalyzerSystemPrompt($profileName) {
     return "<context>
-You are an expert resume analyzer. Your job is to inspect an uploaded document, verify if it is indeed a resume/CV (and not some other file type), extract the candidate's name, and compare it with the candidate's profile name.
+You are an expert resume analyzer. Your job is to inspect an uploaded document, verify if it is indeed a resume/CV (and not some other file type), extract the candidate's name, compare it with the candidate's profile name, convert it to clean plain text markdown, identify their primary job role, and generate a brief professional summary.
 </context>
 
 <task>
@@ -250,6 +250,9 @@ Analyze the uploaded document contents.
 1. Determine if the document represents a professional resume or curriculum vitae (CV).
 2. If it is a valid resume/CV, extract the full name of the candidate as written in the resume.
 3. Compare the extracted name from the resume with the profile name: \"" . $profileName . "\". Check if they match.
+4. Extract the complete plain text version of the resume in clean, readable markdown format.
+5. Identify the primary job title or detected role (e.g., \"Senior Frontend Developer\", \"Full-Stack Engineer\").
+6. Generate a professional summary/short description (1-2 sentences summarizing their primary skills and background).
 </task>
 
 <constraints>
@@ -266,14 +269,17 @@ Analyze the uploaded document contents.
 Return ONLY this JSON (no prose):
 {
   \"is_valid_resume\": boolean,
-  \"extracted_name\": string | null, // The full name extracted from the resume, or null if invalid
-  \"is_name_match\": boolean,       // true if first name matches, false otherwise
-  \"confidence\": number            // 0-1, your confidence rating in this analysis
+  \"extracted_name\": string | null,
+  \"is_name_match\": boolean,
+  \"confidence\": number,
+  \"detected_role\": string | null,
+  \"short_description\": string | null,
+  \"text_version\": string | null
 }
 </output_format>
 
 <verification>
-- If the document is not a resume/CV, set is_valid_resume to false and extracted_name to null.
+- If the document is not a resume/CV, set is_valid_resume to false and other fields to null.
 - Be honest with the confidence score. If the name is missing or extremely ambiguous, keep confidence low.
 </verification>";
 }

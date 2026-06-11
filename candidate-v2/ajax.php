@@ -237,5 +237,286 @@ if ($action === 'cancel_resume') {
     exit;
 }
 
+if ($action === 'upload_global_resume') {
+    if (!isset($_FILES['resume_file']) || $_FILES['resume_file']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => 'File upload error.']);
+        exit;
+    }
+
+    $tmpName = $_FILES['resume_file']['tmp_name'];
+    $fileName = $_FILES['resume_file']['name'];
+    $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    $allowed = ['pdf', 'doc', 'docx', 'md'];
+
+    if (!in_array($ext, $allowed)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid file type. Allowed: PDF, DOC/DOCX, MD.']);
+        exit;
+    }
+
+    $db = getDB();
+    $stmt = $db->prepare("SELECT resume_path, model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+    $stmt->execute(['id' => $user['id']]);
+    $userFull = $stmt->fetch();
+
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    if (count($resumes) >= 5) {
+        echo json_encode(['success' => false, 'message' => 'Maximum limit of 5 resumes reached. Please delete an older resume before uploading a new one.']);
+        exit;
+    }
+
+    $uploadDir = __DIR__ . '/../uploads/resumes/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $tempFileName = 'temp_global_' . $user['id'] . '_' . time() . '.' . $ext;
+    $dest = $uploadDir . $tempFileName;
+
+    if (move_uploaded_file($tmpName, $dest)) {
+        // Run AI Verification
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+        
+        $verification = verifyUploadedResume($dest, $ext, $user['full_name'], $model, $apiKey);
+
+        if (!$verification || isset($verification['error'])) {
+            @unlink($dest);
+            echo json_encode(['success' => false, 'error_type' => 'ai_error', 'message' => 'AI verification failed: ' . ($verification['error'] ?? 'Unknown')]);
+            exit;
+        }
+
+        if (!$verification['is_valid_resume']) {
+            @unlink($dest);
+            echo json_encode(['success' => false, 'error_type' => 'invalid_resume', 'message' => 'It is not a valid resume, please upload the correct file.']);
+            exit;
+        }
+
+        if (!$verification['is_name_match']) {
+            echo json_encode([
+                'success' => false,
+                'error_type' => 'name_mismatch',
+                'extracted_name' => $verification['extracted_name'] ?? 'Unknown Name',
+                'temp_filename' => $tempFileName
+            ]);
+            exit;
+        }
+
+        $finalFileName = 'global_' . $user['id'] . '_' . time() . '.' . $ext;
+        $finalDest = $uploadDir . $finalFileName;
+        
+        if (rename($dest, $finalDest)) {
+            $resumePath = 'uploads/resumes/' . $finalFileName;
+            
+            // Extract text version if not PDF and not returned by verification
+            $textVersion = $verification['text_version'] ?? '';
+            if (empty($textVersion)) {
+                if ($ext === 'docx') {
+                    $textVersion = extractTextFromDocx($finalDest);
+                } elseif ($ext === 'doc') {
+                    $textVersion = extractTextFromDoc($finalDest);
+                } else {
+                    $textVersion = file_get_contents($finalDest);
+                }
+            }
+
+            foreach ($resumes as &$r) {
+                $r['is_base'] = false;
+            }
+
+            $resumes[] = [
+                'path' => $resumePath,
+                'date' => time(),
+                'text_version' => $textVersion,
+                'short_description' => $verification['short_description'] ?? 'No description generated.',
+                'detected_role' => $verification['detected_role'] ?? 'Resume',
+                'is_base' => true
+            ];
+
+            $jsonVal = json_encode(array_values($resumes));
+            $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+            $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+
+            echo json_encode(['success' => true, 'path' => $resumePath]);
+        } else {
+            @unlink($dest);
+            echo json_encode(['success' => false, 'message' => 'Failed to finalize file storage.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to save file.']);
+    }
+    exit;
+}
+
+if ($action === 'commit_global_resume') {
+    $tempFileName = $_POST['temp_filename'] ?? '';
+    if (empty($tempFileName) || strpos($tempFileName, 'temp_global_' . $user['id']) !== 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid file access request.']);
+        exit;
+    }
+
+    $db = getDB();
+    $stmt = $db->prepare("SELECT resume_path, model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+    $stmt->execute(['id' => $user['id']]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    if (count($resumes) >= 5) {
+        echo json_encode(['success' => false, 'message' => 'Maximum limit of 5 resumes reached.']);
+        exit;
+    }
+
+    $uploadDir = __DIR__ . '/../uploads/resumes/';
+    $tempPath = $uploadDir . $tempFileName;
+
+    if (!file_exists($tempPath)) {
+        echo json_encode(['success' => false, 'message' => 'Temporary file not found.']);
+        exit;
+    }
+
+    $ext = pathinfo($tempFileName, PATHINFO_EXTENSION);
+    $finalFileName = 'global_' . $user['id'] . '_' . time() . '.' . $ext;
+    $finalDest = $uploadDir . $finalFileName;
+
+    if (rename($tempPath, $finalDest)) {
+        $resumePath = 'uploads/resumes/' . $finalFileName;
+        
+        $textVersion = '';
+        $shortDescription = 'Bypassed name mismatch verification.';
+        
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+        
+        $verification = verifyUploadedResume($finalDest, $ext, $user['full_name'], $model, $apiKey);
+        if ($verification && !isset($verification['error'])) {
+            $textVersion = $verification['text_version'] ?? '';
+            $shortDescription = $verification['short_description'] ?? 'Bypassed name mismatch verification.';
+        }
+        
+        if (empty($textVersion)) {
+            if ($ext === 'docx') {
+                $textVersion = extractTextFromDocx($finalDest);
+            } elseif ($ext === 'doc') {
+                $textVersion = extractTextFromDoc($finalDest);
+            } else {
+                $textVersion = file_get_contents($finalDest);
+            }
+        }
+
+        foreach ($resumes as &$r) {
+            $r['is_base'] = false;
+        }
+
+        $resumes[] = [
+            'path' => $resumePath,
+            'date' => time(),
+            'text_version' => $textVersion,
+            'short_description' => $shortDescription,
+            'detected_role' => $verification['detected_role'] ?? 'Resume',
+            'is_base' => true
+        ];
+
+        $jsonVal = json_encode(array_values($resumes));
+        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+        $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+
+        echo json_encode(['success' => true, 'path' => $resumePath]);
+    } else {
+        @unlink($tempPath);
+        echo json_encode(['success' => false, 'message' => 'Failed to save resume.']);
+    }
+    exit;
+}
+
+if ($action === 'cancel_global_resume') {
+    $tempFileName = $_POST['temp_filename'] ?? '';
+    if (!empty($tempFileName) && strpos($tempFileName, 'temp_global_' . $user['id']) === 0) {
+        $tempPath = __DIR__ . '/../uploads/resumes/' . $tempFileName;
+        if (file_exists($tempPath)) {
+            @unlink($tempPath);
+        }
+    }
+    echo json_encode(['success' => true, 'message' => 'Upload discarded.']);
+    exit;
+}
+
+if ($action === 'set_base_resume') {
+    $resumePath = $_POST['resume_path'] ?? '';
+    if (empty($resumePath)) {
+        echo json_encode(['success' => false, 'message' => 'Resume path is required.']);
+        exit;
+    }
+    
+    $db = getDB();
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmt->execute(['id' => $user['id']]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    $updated = false;
+    foreach ($resumes as &$r) {
+        if ($r['path'] === $resumePath) {
+            $r['is_base'] = true;
+            $updated = true;
+        } else {
+            $r['is_base'] = false;
+        }
+    }
+    
+    if ($updated) {
+        $jsonVal = json_encode(array_values($resumes));
+        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+        $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Resume not found in list.']);
+    }
+    exit;
+}
+
+if ($action === 'delete_global_resume') {
+    $deletePath = $_POST['resume_path'] ?? '';
+    if (empty($deletePath)) {
+        echo json_encode(['success' => false, 'message' => 'Resume path is required.']);
+        exit;
+    }
+    
+    $db = getDB();
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmt->execute(['id' => $user['id']]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+    $foundIndex = -1;
+    foreach ($resumes as $idx => $r) {
+        if ($r['path'] === $deletePath) {
+            $foundIndex = $idx;
+            break;
+        }
+    }
+    
+    if ($foundIndex !== -1) {
+        $fullPath = __DIR__ . '/../' . $deletePath;
+        if (file_exists($fullPath)) {
+            @unlink($fullPath);
+        }
+        
+        $wasBase = !empty($resumes[$foundIndex]['is_base']);
+        array_splice($resumes, $foundIndex, 1);
+        
+        if ($wasBase && !empty($resumes)) {
+            $resumes[0]['is_base'] = true;
+        }
+        
+        $jsonVal = empty($resumes) ? null : json_encode(array_values($resumes));
+        $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
+        $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
+        
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Resume not found.']);
+    }
+    exit;
+}
+
 echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 exit;
