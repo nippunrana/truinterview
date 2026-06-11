@@ -235,7 +235,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const profileId = btn.getAttribute('data-profile-id');
       
       const overlay = document.getElementById('practice-loading-overlay');
-      if (overlay) overlay.classList.add('active');
+      if (overlay) {
+        overlay.classList.add('active');
+        const spinner = document.getElementById('practice-loading-spinner');
+        if (spinner) spinner.style.display = 'block';
+        const text = document.getElementById('practice-loading-text');
+        if (text) text.textContent = 'Preparing AI Interview Questions... This may take a moment.';
+        const actions = document.getElementById('practice-loading-actions');
+        if (actions) actions.style.display = 'none';
+      }
 
       try {
         const formData = new URLSearchParams();
@@ -249,8 +257,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         
         if (data.status === 'success') {
-          // Success: questions generated and saved to session, redirect to interview
-          window.location.href = '../interview.php?profile_id=' + encodeURIComponent(profileId);
+          // Success: questions generated, show actions instead of auto-redirect
+          const spinner = document.getElementById('practice-loading-spinner');
+          if (spinner) spinner.style.display = 'none';
+          
+          const text = document.getElementById('practice-loading-text');
+          if (text) text.textContent = 'Done! Please review the JSON if needed.';
+          
+          const actionsDiv = document.getElementById('practice-loading-actions');
+          if (actionsDiv) {
+            actionsDiv.style.display = 'flex';
+            
+            const btnCopy = document.getElementById('btn-practice-copy-json');
+            if (btnCopy) {
+              btnCopy.onclick = () => {
+                navigator.clipboard.writeText(JSON.stringify(data.qa_data, null, 2))
+                  .then(() => showToast('Copied to clipboard!', 'success'))
+                  .catch(() => showToast('Failed to copy', 'error'));
+              };
+            }
+            
+            const btnContinue = document.getElementById('btn-practice-continue');
+            if (btnContinue) {
+              btnContinue.onclick = () => {
+                window.location.href = '../interview.php?profile_id=' + encodeURIComponent(profileId);
+              };
+            }
+          } else {
+             window.location.href = '../interview.php?profile_id=' + encodeURIComponent(profileId);
+          }
         } else {
           if (overlay) overlay.classList.remove('active');
           showToast(data.message || 'Error preparing practice interview', 'error');

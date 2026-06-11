@@ -63,12 +63,10 @@ try {
     // 3. Formulate Context
     $roleContext = "Role: " . ($detectedRole ?: $userEnteredRole) . "\n";
     if ($userEnteredDescription) {
-        $roleContext .= "Description: " . $userEnteredDescription;
+        $roleContext .= "Description: " . $userEnteredDescription . "\n";
     }
 
-    $prompt = "You are an expert technical interviewer evaluating a candidate for Level {$targetLevel} out of 10. ";
-    $prompt .= "Here is the candidate's profile context:\n{$roleContext}\n\n";
-
+    $historyContext = "";
     if ($targetLevel > 1) {
         // Fetch previous session Q&A to progressively make it harder
         $stmt = $db->prepare("SELECT q_a FROM sessions WHERE profile_id = :profile_id AND q_a IS NOT NULL ORDER BY started_at DESC LIMIT 1");
@@ -78,19 +76,36 @@ try {
         if ($prevSession && $prevSession['q_a']) {
             $prevQA = json_decode($prevSession['q_a'], true);
             if (is_array($prevQA)) {
-                $prompt .= "Here are the questions asked in the previous level (Level " . ($targetLevel - 1) . "):\n";
+                $historyContext .= "<history>\n";
+                $historyContext .= "Questions asked in the previous level (Level " . ($targetLevel - 1) . "):\n";
                 foreach ($prevQA as $idx => $qa) {
-                    $prompt .= ($idx + 1) . ". " . $qa['question'] . "\n";
+                    $historyContext .= ($idx + 1) . ". " . $qa['question'] . "\n";
                 }
-                $prompt .= "\nBased on these previous questions, please generate 10 NEW questions for Level {$targetLevel}. They should be slightly more advanced or cover different aspects of the role to ensure progression.\n\n";
+                $historyContext .= "</history>\n\n";
             }
         }
-    } else {
-        $prompt .= "Draft exactly 10 interview questions appropriate for a Level 1 assessment.\n\n";
     }
 
-    $prompt .= "For each question, provide a straight-forward answer in less than 100 words without any fluff. ";
-    $prompt .= "Return the output as an array of objects, where each object has 'question' and 'answer' fields.";
+    $prompt = <<<EOT
+<context>
+You are generating practice interview questions for a candidate.
+Target Level: {$targetLevel} out of 10.
+Candidate Profile:
+{$roleContext}
+</context>
+
+{$historyContext}<task>
+Generate exactly 10 interview questions appropriate for the candidate's target level.
+For each question, also provide an expected answer.
+</task>
+
+<constraints>
+- If <history> is present, the new questions MUST be distinct from previous questions and cover more advanced concepts or different aspects of the role to ensure skill progression.
+- Answers must be concise, factual, and strictly under 100 words.
+- Do NOT include conversational filler, introductions, pleasantries, or motivational fluff.
+- Rely solely on the JSON schema for output formatting. Do not output anything outside the JSON.
+</constraints>
+EOT;
 
     // 4. Call Gemini
     $schema = [
@@ -144,6 +159,7 @@ try {
     echo json_encode([
         "status" => "success",
         "target_level" => $targetLevel,
+        "qa_data" => $qaData,
         "message" => "Prepared " . count($qaData) . " questions successfully."
     ]);
     exit;

@@ -14,8 +14,12 @@
 <!-- Loading Overlay for Practice Interview -->
 <div class="modal-overlay" id="practice-loading-overlay">
   <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-4); background: var(--color-bg-surface); padding: var(--space-6) var(--space-8); border-radius: var(--radius-outer); box-shadow: var(--shadow-float);">
-    <div class="spinner" style="border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--color-brand-primary); width: 32px; height: 32px;"></div>
+    <div class="spinner" id="practice-loading-spinner" style="border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--color-brand-primary); width: 32px; height: 32px;"></div>
     <div id="practice-loading-text" style="font-weight: 600; color: var(--color-text-primary);">Preparing AI Interview Questions... This may take a moment.</div>
+    <div id="practice-loading-actions" style="display: none; gap: var(--space-3); margin-top: var(--space-2);">
+      <button class="btn btn-outline" id="btn-practice-copy-json">Copy JSON</button>
+      <button class="btn btn-primary" id="btn-practice-continue">Continue to Interview</button>
+    </div>
   </div>
 </div>
 
