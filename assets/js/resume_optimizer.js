@@ -452,7 +452,9 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
   try {
     let bodyStr = 'ajax_action=optimizer_save_profile&optimized_markdown=' + encodeURIComponent(state.finalResult.rewritten_resume_markdown) +
                   '&original_path=' + encodeURIComponent(state.resumePath) +
-                  '&target_role=' + encodeURIComponent(state.targetRole);
+                  '&target_role=' + encodeURIComponent(state.targetRole) +
+                  '&job_description=' + encodeURIComponent(state.jobDescription) +
+                  '&ai_refined_role=' + encodeURIComponent(state.finalResult.ai_refined_role || '');
     if (state.profileId) {
         bodyStr += '&profile_id=' + encodeURIComponent(state.profileId);
     }

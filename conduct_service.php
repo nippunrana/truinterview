@@ -34,6 +34,22 @@ function buildInterviewSystemPrompt($session) {
         $difficulty = 'medium';
         $duration = 30;
         $customPrompt = '';
+
+        if (!empty($session['profile_id'])) {
+            $profile = getCandidateProfile($session['profile_id'], $session['user_id']);
+            if ($profile) {
+                $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                if (!empty($resumeData['detected_role'])) {
+                    $jobRole = $resumeData['detected_role'];
+                } elseif (!empty($profile['role_title'])) {
+                    $jobRole = $profile['role_title'];
+                }
+                
+                if (!empty($resumeData['user_entered_description'])) {
+                    $topics .= ", specifically aligned with the target job requirements: " . $resumeData['user_entered_description'];
+                }
+            }
+        }
     }
 
     $warningsCount = getSessionConductWarnings($session['id']);

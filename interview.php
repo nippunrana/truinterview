@@ -21,14 +21,22 @@ if (!$isLocal && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
     exit();
 }
 
+$profileId = $_GET['profile_id'] ?? '';
 $sessionId = $_COOKIE['session_id'] ?? '';
 $session = null;
 $trugenAgentId = '';
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
     if ($session) {
-        $userSettings = getSessionUserSettings($session['id']);
-        $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID');
+        if ((!empty($profileId) && (!isset($session['profile_id']) || $session['profile_id'] != $profileId)) || $session['current_status'] === 'COMPLETED') {
+            $session = null;
+            setcookie("session_id", "", time() - 3600, "/");
+            $_COOKIE['session_id'] = "";
+            $sessionId = "";
+        } else {
+            $userSettings = getSessionUserSettings($session['id']);
+            $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID');
+        }
     }
 }
 
@@ -317,6 +325,7 @@ if (!empty($inviteCode)) {
 
         <form id="registration-form" onsubmit="handleRegister(event)">
           <input type="hidden" id="invite_code" value="<?php echo htmlspecialchars($inviteCode); ?>">
+          <input type="hidden" id="profile_id" value="<?php echo htmlspecialchars($profileId); ?>">
           
           <div class="form-group" style="margin-bottom: var(--space-4);">
             <label>Full Name</label>

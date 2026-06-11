@@ -252,7 +252,10 @@ if (!empty($user['full_name'])) {
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h4 class="modal-title" id="modal-field-title">Cell Inspector</h4>
-        <button class="btn-close-modal" onclick="closeInspector()">&times;</button>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="btn-copy-inspect" class="btn-submit" style="margin: 0; padding: 6px 14px; font-size: 0.8rem; border-radius: 6px;" onclick="copyInspectedContent()">Copy Content</button>
+          <button class="btn-close-modal" onclick="closeInspector()">&times;</button>
+        </div>
       </div>
       <div class="modal-body">
         <pre class="code-block-inspect" id="modal-field-content"></pre>
@@ -499,16 +502,51 @@ if (!empty($user['full_name'])) {
       loadActiveTableData();
     }
 
+    let activeInspectValue = '';
+
+    function syntaxHighlight(jsonStr) {
+      jsonStr = jsonStr.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+        if (/^"/.test(match)) {
+          cls = (/:$/.test(match)) ? 'json-key' : 'json-string';
+        } else if (/true|false/.test(match)) {
+          cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
     function inspectCell(field, val) {
       document.getElementById('modal-field-title').textContent = `Inspecting Cell: "${field}"`;
       const modalContentEl = document.getElementById('modal-field-content');
       
+      let formatted = val;
+      let isJson = false;
+      
       try {
-        // Attempt to pretty format JSON
-        const parsed = JSON.parse(val);
-        modalContentEl.textContent = JSON.stringify(parsed, null, 2);
+        if (typeof val === 'string') {
+          const parsed = JSON.parse(val);
+          formatted = JSON.stringify(parsed, null, 2);
+          isJson = true;
+        } else if (typeof val === 'object' && val !== null) {
+          formatted = JSON.stringify(val, null, 2);
+          isJson = true;
+        }
       } catch (e) {
-        modalContentEl.textContent = val;
+        formatted = val;
+      }
+      
+      activeInspectValue = formatted;
+      
+      if (isJson) {
+        modalContentEl.innerHTML = syntaxHighlight(formatted);
+        document.getElementById('btn-copy-inspect').textContent = 'Copy JSON';
+      } else {
+        modalContentEl.textContent = formatted;
+        document.getElementById('btn-copy-inspect').textContent = 'Copy Content';
       }
       
       document.getElementById('cell-inspect-modal').classList.add('active');
@@ -516,6 +554,21 @@ if (!empty($user['full_name'])) {
 
     function closeInspector() {
       document.getElementById('cell-inspect-modal').classList.remove('active');
+    }
+
+    function copyInspectedContent() {
+      const btn = document.getElementById('btn-copy-inspect');
+      navigator.clipboard.writeText(activeInspectValue).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = 'var(--color-emerald)';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+        }, 1500);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+      });
     }
 
     function escapeHtml(str) {

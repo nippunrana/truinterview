@@ -108,6 +108,8 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             $changesRaw = $_POST['changes'] ?? '';
             $originalPath = $_POST['original_path'] ?? null;
             $targetRole = $_POST['target_role'] ?? null;
+            $jobDescription = $_POST['job_description'] ?? '';
+            $aiRefinedRole = $_POST['ai_refined_role'] ?? '';
             $changes = !empty($changesRaw) ? json_decode($changesRaw, true) : null;
 
             if (empty($optimizedMarkdown)) {
@@ -116,7 +118,10 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             }
 
             if (!empty($profileId)) {
-                $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown, $changes, $targetRole, $originalPath);
+                if (empty($aiRefinedRole)) {
+                    $aiRefinedRole = $targetRole;
+                }
+                $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown, $changes, $aiRefinedRole, $originalPath, $targetRole, $jobDescription);
             } else {
                 $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes, $originalPath);
             }

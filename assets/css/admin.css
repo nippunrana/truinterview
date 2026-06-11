@@ -558,8 +558,9 @@ body.admin-body {
 .modal-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  width: 600px;
-  max-width: 90%;
+  width: 85vw;
+  height: 80vh;
+  max-width: 1400px;
   border-radius: var(--radius-outer);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -599,7 +600,9 @@ body.admin-body {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
-  max-height: 60vh;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .code-block-inspect {
@@ -613,7 +616,16 @@ body.admin-body {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
+  flex: 1;
+  overflow-y: auto;
 }
+
+/* JSON highlighting styles */
+.json-key { color: #b91c1c; font-weight: 600; }
+.json-string { color: #047857; }
+.json-number { color: #1d4ed8; }
+.json-boolean { color: #b45309; font-weight: 600; }
+.json-null { color: #64748b; font-style: italic; }
 
 /* Responsive sidebar */
 @media (max-width: 900px) {

@@ -424,6 +424,9 @@ CORE PILLARS:
    - Rewrite work bullet points using the Google XYZ Formula: 'Accomplished [X] as measured by [Y], by doing [Z]'.
    - Focus on business momentum, impact, and revenue metrics ('sizzle') instead of basic duties ('silverware').
    - Address employment gaps or title modifications honestly and clearly.
+3. Appropriate Role Name Detection:
+   - Study the target role entered by the user and the job description. Analyze the candidate's resume relative to these inputs.
+   - Determine the most appropriate, professional, and specific role title/name for this profile (e.g., 'Senior Front-End Engineer' instead of just 'two' or 'ok'). Output this under the key 'ai_refined_role'.
 
 Use the mathematically verified experience details provided to set accurate dates and flags. Ensure the output conforms exactly to the requested JSON structure.";
 
@@ -467,6 +470,7 @@ Use the mathematically verified experience details provided to set accurate date
                     "rating" => ["type" => "integer"],
                     "alignment_summary" => ["type" => "string"],
                     "rewritten_resume_markdown" => ["type" => "string"],
+                    "ai_refined_role" => ["type" => "string"],
                     "changes" => [
                         "type" => "array",
                         "items" => [
@@ -480,7 +484,7 @@ Use the mathematically verified experience details provided to set accurate date
                         ]
                     ]
                 ],
-                "required" => ["rating", "alignment_summary", "rewritten_resume_markdown", "changes"]
+                "required" => ["rating", "alignment_summary", "rewritten_resume_markdown", "ai_refined_role", "changes"]
             ]
         ]
     ];
@@ -552,7 +556,7 @@ function optimizer_save_to_profile($userId, $optimizedMarkdown, $changes = null,
 /**
  * Save optimized resume to V2 candidate profile and create a Markdown file on disk.
  */
-function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown, $changes = null, $detectedRole = null, $originalPath = null) {
+function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMarkdown, $changes = null, $detectedRole = null, $originalPath = null, $userEnteredRole = null, $userEnteredDescription = null) {
     $db = getDB();
     $uploadDir = __DIR__ . '/uploads/resumes/';
     if (!is_dir($uploadDir)) {
@@ -568,7 +572,7 @@ function optimizer_save_to_candidate_profile($profileId, $userId, $optimizedMark
     }
 
     $resumePath = 'uploads/resumes/' . $finalFileName;
-    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown, false, $changes, $detectedRole, $originalPath);
+    updateCandidateProfileResume($profileId, $userId, $resumePath, $optimizedMarkdown, false, $changes, $detectedRole, $originalPath, $userEnteredRole, $userEnteredDescription);
 
     return [
         'success' => true,

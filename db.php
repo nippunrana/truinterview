@@ -172,6 +172,7 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ALTER COLUMN model_eval_task SET DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS conduct_warnings INTEGER DEFAULT 0");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS closure_reason VARCHAR(50)");
+    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL");
 
     // Create transcripts table
     $db->exec("CREATE TABLE IF NOT EXISTS transcripts (
@@ -275,9 +276,9 @@ function seedQuestions() {
     }
 }
 
-function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite') {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
@@ -287,7 +288,8 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
         'type' => $type,
         'model_chat' => $modelChat,
         'model_vision' => $modelVision,
-        'model_eval' => $modelEval
+        'model_eval' => $modelEval,
+        'profile_id' => $profileId
     ]);
     return $stmt->fetchColumn();
 }
@@ -717,7 +719,7 @@ function deleteCandidateProfile($profileId, $userId) {
     return $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
 }
 
-function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null, $detectedRole = null, $originalPath = null) {
+function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null, $detectedRole = null, $originalPath = null, $userEnteredRole = null, $userEnteredDescription = null) {
     $db = getDB();
     
     // Fetch current resume_data JSON if exists to preserve other keys
@@ -743,6 +745,37 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
     if ($originalPath !== null) {
         $resumeData['original_path'] = $originalPath;
     }
+    if ($userEnteredRole !== null) {
+        $resumeData['user_entered_role'] = $userEnteredRole;
+    }
+    if ($userEnteredDescription !== null) {
+        $resumeData['user_entered_description'] = $userEnteredDescription;
+    }
+
+    // Order keys logically: text_version, detected_role, original_path, user_entered_role, user_entered_description, needs_human_review, optimization_changes, optimized_resume_path
+    $ordered = [];
+    $logicalOrder = [
+        'text_version',
+        'detected_role',
+        'original_path',
+        'user_entered_role',
+        'user_entered_description',
+        'needs_human_review',
+        'optimization_changes',
+        'optimized_resume_path'
+    ];
+    foreach ($logicalOrder as $key) {
+        if (array_key_exists($key, $resumeData)) {
+            $ordered[$key] = $resumeData[$key];
+        }
+    }
+    // Append any extra keys
+    foreach ($resumeData as $key => $val) {
+        if (!array_key_exists($key, $ordered)) {
+            $ordered[$key] = $val;
+        }
+    }
+    $resumeData = $ordered;
     
     $jsonVal = json_encode($resumeData);
     

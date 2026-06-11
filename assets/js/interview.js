@@ -257,9 +257,12 @@ function handleRegister(event) {
     const modelChatEl = document.getElementById('model_chat_task');
     const modelVisionEl = document.getElementById('model_vision_task');
     const modelEvalEl = document.getElementById('model_eval_task');
+    const profileIdEl = document.getElementById('profile_id');
+    const profileId = profileIdEl ? profileIdEl.value : '';
     if (modelChatEl) body += `&model_chat_task=${encodeURIComponent(modelChatEl.value)}`;
     if (modelVisionEl) body += `&model_vision_task=${encodeURIComponent(modelVisionEl.value)}`;
     if (modelEvalEl) body += `&model_eval_task=${encodeURIComponent(modelEvalEl.value)}`;
+    if (profileId) body += `&profile_id=${encodeURIComponent(profileId)}`;
   }
 
   fetch('api.php?action=start', {

@@ -264,12 +264,14 @@ try {
         $name = $_POST['name'] ?? '';
         $email = $_POST['email'] ?? '';
         $inviteCode = $_POST['invite_code'] ?? '';
+        $profileId = $_POST['profile_id'] ?? null;
         
         if (empty($name) || empty($email)) {
             $input = json_decode(file_get_contents('php://input'), true);
             $name = $input['name'] ?? '';
             $email = $input['email'] ?? '';
             $inviteCode = $input['invite_code'] ?? '';
+            $profileId = $input['profile_id'] ?? $profileId;
         }
 
         if (empty($name) || empty($email)) {
@@ -345,7 +347,7 @@ try {
             }
         }
         
-        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval);
+        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval, $profileId);
         
         // Start session and set client cookie
         if (session_status() === PHP_SESSION_NONE) {
