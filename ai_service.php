@@ -263,7 +263,7 @@ Analyze the uploaded document contents.
 1. Determine if the document represents a professional resume or curriculum vitae (CV).
 2. If it is a valid resume/CV, extract the full name of the candidate as written in the resume.
 3. Compare the extracted name from the resume with the profile name: \"" . $profileName . "\". Check if they match.
-4. Extract the primary job title or detected role (e.g., \"Senior Frontend Developer\", \"Full-Stack Engineer\").
+4. Extract the primary job title or detected role and refine it into a standardized, recognizable, and concise industry-standard job title (e.g., \"Senior Frontend Engineer\", \"Full Stack Developer\").
 5. Generate a professional summary/short description (1-2 sentences summarizing their primary skills and background).
 </task>
 
@@ -274,6 +274,9 @@ Analyze the uploaded document contents.
   - A first name match should be case-insensitive.
   - Nicknames or shortened names that refer to the same name should count as matching (e.g. \"Mike\" matches \"Michael\", \"Dave\" matches \"David\", \"Rob\" matches \"Robert\").
   - Do not require a 100% exact full name match (e.g. middle names or last names might be slightly different or missing, and that is okay, but the first name must match).
+- For detected_role:
+  - Refine it to be a standardized, clean, and concise job title of 2-4 words maximum (e.g. \"Senior Prompt Engineer\", not a long hybrid list like \"Senior Prompt Engineer & AI Automation Architect\").
+  - No punctuation, slashes, or ampersands in the title.
 - Return ONLY a valid JSON object. Do not include any explanation or markdown formatting outside the JSON block.
 </constraints>
 

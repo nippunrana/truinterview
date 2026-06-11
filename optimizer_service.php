@@ -425,8 +425,13 @@ CORE PILLARS:
    - Focus on business momentum, impact, and revenue metrics ('sizzle') instead of basic duties ('silverware').
    - Address employment gaps or title modifications honestly and clearly.
 3. Appropriate Role Name Detection:
-   - Study the target role entered by the user and the job description. Analyze the candidate's resume relative to these inputs.
-   - Determine the most appropriate, professional, and specific role title/name for this profile (e.g., 'Senior Front-End Engineer' instead of just 'two' or 'ok'). Output this under the key 'ai_refined_role'.
+   - Study the target role entered by the user, the job description, and the candidate's actual work experience.
+   - Refine the user's target role into a standardized, recognizable, and concise industry-standard job title (e.g., \"Senior Frontend Engineer\" instead of a raw target role like \"react developer\").
+   - Follow these strict rules for generating the \"ai_refined_role\":
+     a. Keep it concise (2-4 words maximum). Avoid long/bloated hybrid titles (e.g., do not output \"Senior Prompt Engineer & AI Automation Architect\", instead prefer a singular focus like \"Senior Prompt Engineer\" or \"AI Automation Engineer\" depending on the primary target and experience).
+     b. Ground seniority level: Check the verified experience duration. Add \"Senior\" if experience is 5-8 years, and \"Lead\" or \"Principal\" if experience is 8+ years, matching the seniority in their resume and target role. Do not add seniority prefixes if experience is less than 4 years.
+     c. No punctuation, slashes, or ampersands in the title (use spaces or standard phrasing, e.g. \"Full Stack Developer\", not \"Full-Stack/Graphic-Designer\").
+     d. Standardize spelling and casing (e.g., capitalization of each word).
 
 Use the mathematically verified experience details provided to set accurate dates and flags. Ensure the output conforms exactly to the requested JSON structure.";
 
@@ -442,11 +447,11 @@ Use the mathematically verified experience details provided to set accurate date
         $datesInput .= "- {$ed['role']} at {$ed['company']} ({$ed['start_date']} to {$ed['end_date']}) - Duration: {$ed['duration_formatted']}\n";
     }
 
-    $contents = "ORIGINAL RESUME TEXT:\n" . $resumeText . "\n\n" .
-                "TARGET ROLE: " . $targetRole . "\n\n" .
-                "JOB DESCRIPTION:\n" . $jobDescription . "\n\n" .
-                "ADDITIONAL CANDIDATE INPUT ON SKILLS GAPS:\n" . $gapInput . "\n\n" .
-                "MATHEMATICALLY VERIFIED TIMELINE DETAILS:\n" . $datesInput;
+    $contents = "<resume_text>\n" . $resumeText . "\n</resume_text>\n\n" .
+                "<target_role>\n" . $targetRole . "\n</target_role>\n\n" .
+                "<job_description>\n" . $jobDescription . "\n</job_description>\n\n" .
+                "<additional_candidate_input_on_skills_gaps>\n" . $gapInput . "</additional_candidate_input_on_skills_gaps>\n\n" .
+                "<mathematically_verified_timeline_details>\n" . $datesInput . "</mathematically_verified_timeline_details>";
 
     $payload = [
         "contents" => [

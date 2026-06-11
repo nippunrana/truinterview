@@ -223,16 +223,91 @@ function initSchema() {
         id SERIAL PRIMARY KEY,
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
         role_title VARCHAR(150) NOT NULL,
+        role_title_id VARCHAR(150),
         optimized_resume_path TEXT,
         text_version TEXT,
         needs_human_review BOOLEAN DEFAULT FALSE,
+        resume_data JSONB,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
     
     // Ensure column exists for existing tables
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS role_title_id VARCHAR(150)");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS text_version TEXT");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN DEFAULT FALSE");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS resume_data JSONB");
+
+    // Reorder columns in candidate_profiles if role_title_id is not next to role_title
+    try {
+        $stmt = $db->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'candidate_profiles' ORDER BY ordinal_position");
+        $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (!empty($cols)) {
+            $roleTitleIdx = array_search('role_title', $cols);
+            $roleTitleIdIdx = array_search('role_title_id', $cols);
+            
+            // If role_title_id exists but is not right after role_title
+            if ($roleTitleIdx !== false && $roleTitleIdIdx !== false && $roleTitleIdIdx !== $roleTitleIdx + 1) {
+                // Disassociate the sequence from the old column
+                $db->exec("ALTER SEQUENCE IF EXISTS candidate_profiles_id_seq OWNED BY NONE");
+                
+                // Drop constraint on sessions table pointing to candidate_profiles
+                $db->exec("ALTER TABLE sessions DROP CONSTRAINT IF EXISTS sessions_profile_id_fkey");
+                
+                // Rename candidate_profiles to candidate_profiles_old
+                $db->exec("ALTER TABLE candidate_profiles RENAME TO candidate_profiles_old");
+                
+                // Create the table candidate_profiles with correct column order using the existing sequence
+                $db->exec("CREATE TABLE candidate_profiles (
+                    id INTEGER DEFAULT nextval('candidate_profiles_id_seq') PRIMARY KEY,
+                    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                    role_title VARCHAR(150) NOT NULL,
+                    role_title_id VARCHAR(150),
+                    optimized_resume_path TEXT,
+                    text_version TEXT,
+                    needs_human_review BOOLEAN DEFAULT FALSE,
+                    resume_data JSONB,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                )");
+                
+                // Associate the sequence with the new table's id column
+                $db->exec("ALTER SEQUENCE IF EXISTS candidate_profiles_id_seq OWNED BY candidate_profiles.id");
+                
+                // Copy data from candidate_profiles_old to candidate_profiles
+                $db->exec("INSERT INTO candidate_profiles (id, user_id, role_title, role_title_id, optimized_resume_path, text_version, needs_human_review, resume_data, created_at)
+                    SELECT id, user_id, role_title, role_title_id, optimized_resume_path, text_version, needs_human_review, resume_data, created_at
+                    FROM candidate_profiles_old");
+                
+                // Restore/sync the sequence value
+                $db->exec("SELECT setval('candidate_profiles_id_seq', COALESCE((SELECT MAX(id) FROM candidate_profiles), 1), true)");
+                
+                // Re-add foreign key constraint to sessions
+                $db->exec("ALTER TABLE sessions ADD CONSTRAINT sessions_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES candidate_profiles(id) ON DELETE SET NULL");
+                
+                // Drop the old table
+                $db->exec("DROP TABLE candidate_profiles_old");
+            }
+        }
+    } catch (Exception $e) {
+        // Fail silently
+    }
+
+    // Backfill role_title_id for existing candidate profiles
+    try {
+        $stmt = $db->query("SELECT id, role_title FROM candidate_profiles WHERE role_title_id IS NULL OR role_title_id = ''");
+        $unfilled = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($unfilled)) {
+            $updateStmt = $db->prepare("UPDATE candidate_profiles SET role_title_id = :role_title_id WHERE id = :id");
+            foreach ($unfilled as $row) {
+                $rtId = preg_replace('/\s+/', '-', $row['role_title']);
+                $rtId = preg_replace('/[^a-zA-Z0-9\-]/', '', $rtId);
+                $rtId = preg_replace('/-+/', '-', $rtId);
+                $rtId = trim($rtId, '-');
+                $updateStmt->execute(['role_title_id' => $rtId, 'id' => $row['id']]);
+            }
+        }
+    } catch (Exception $e) {
+        // Fail silently
+    }
 }
 
 function seedQuestions() {
@@ -708,8 +783,14 @@ function createCandidateProfile($userId, $roleTitle) {
         return false; // Max 3 profiles
     }
     
-    $stmt = $db->prepare("INSERT INTO candidate_profiles (user_id, role_title) VALUES (:user_id, :role_title) RETURNING id");
-    $stmt->execute(['user_id' => $userId, 'role_title' => $roleTitle]);
+    // Generate role_title_id from role_title
+    $roleTitleId = preg_replace('/\s+/', '-', $roleTitle);
+    $roleTitleId = preg_replace('/[^a-zA-Z0-9\-]/', '', $roleTitleId);
+    $roleTitleId = preg_replace('/-+/', '-', $roleTitleId);
+    $roleTitleId = trim($roleTitleId, '-');
+
+    $stmt = $db->prepare("INSERT INTO candidate_profiles (user_id, role_title, role_title_id) VALUES (:user_id, :role_title, :role_title_id) RETURNING id");
+    $stmt->execute(['user_id' => $userId, 'role_title' => $roleTitle, 'role_title_id' => $roleTitleId]);
     return $stmt->fetchColumn();
 }
 
