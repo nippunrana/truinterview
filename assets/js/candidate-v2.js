@@ -259,13 +259,95 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle File Upload
-  document.querySelectorAll('.resume-upload-input').forEach(input => {
-    input.addEventListener('change', async (e) => {
+  // Choose Resume Source Modal Logic
+  const chooseResumeModal = document.getElementById('choose-resume-source-modal');
+  const btnCrsCancel = document.getElementById('btn-crs-cancel');
+  const step1 = document.getElementById('crs-step-1');
+  const step2Optimized = document.getElementById('crs-step-2-optimized');
+  
+  let currentProfileData = {};
+
+  document.querySelectorAll('.btn-choose-resume').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      currentProfileData = {
+        profileId: btn.getAttribute('data-profile-id'),
+        hasBase: btn.getAttribute('data-has-base') === '1',
+        basePath: btn.getAttribute('data-base-path'),
+        hasOptimized: btn.getAttribute('data-has-optimized') === '1',
+        optPath: btn.getAttribute('data-opt-path')
+      };
+
+      if (step1) step1.style.display = 'block';
+      if (step2Optimized) step2Optimized.style.display = 'none';
+      
+      const btnUseBase = document.getElementById('btn-crs-use-base');
+      if (btnUseBase) {
+        if (currentProfileData.hasBase) {
+          btnUseBase.style.display = 'flex';
+        } else {
+          btnUseBase.style.display = 'none'; // No base resume available
+        }
+      }
+      
+      if (chooseResumeModal) chooseResumeModal.classList.add('active');
+    });
+  });
+
+  if (btnCrsCancel) {
+    btnCrsCancel.addEventListener('click', () => {
+      chooseResumeModal.classList.remove('active');
+    });
+  }
+
+  // Handle "Work with Base Resume"
+  const btnCrsUseBase = document.getElementById('btn-crs-use-base');
+  if (btnCrsUseBase) {
+    btnCrsUseBase.addEventListener('click', () => {
+      if (currentProfileData.hasOptimized) {
+        step1.style.display = 'none';
+        step2Optimized.style.display = 'block';
+      } else {
+        // Redirect directly to optimizer with base resume
+        window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(currentProfileData.basePath) + '&profile_id=' + encodeURIComponent(currentProfileData.profileId);
+      }
+    });
+  }
+
+  // Handle "Use Optimized Version"
+  const btnCrsUseOptimized = document.getElementById('btn-crs-use-optimized');
+  if (btnCrsUseOptimized) {
+    btnCrsUseOptimized.addEventListener('click', () => {
+      window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(currentProfileData.optPath) + '&profile_id=' + encodeURIComponent(currentProfileData.profileId);
+    });
+  }
+
+  // Handle "Use Original Base Resume"
+  const btnCrsUseOriginal = document.getElementById('btn-crs-use-original');
+  if (btnCrsUseOriginal) {
+    btnCrsUseOriginal.addEventListener('click', () => {
+      window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(currentProfileData.basePath) + '&profile_id=' + encodeURIComponent(currentProfileData.profileId);
+    });
+  }
+
+  // Handle "Upload New Resume"
+  const btnCrsUploadNew = document.getElementById('btn-crs-upload-new');
+  const profileUploadInput = document.getElementById('profile-resume-upload-input');
+  
+  if (btnCrsUploadNew && profileUploadInput) {
+    btnCrsUploadNew.addEventListener('click', () => {
+      chooseResumeModal.classList.remove('active');
+      profileUploadInput.click();
+    });
+  }
+
+  // Handle File Upload (New Profile Resume)
+  if (profileUploadInput) {
+    profileUploadInput.addEventListener('change', async (e) => {
       if (!e.target.files || e.target.files.length === 0) return;
       
       const file = e.target.files[0];
-      const profileId = input.getAttribute('data-id');
+      const profileId = currentProfileData.profileId;
       
       const formData = new FormData();
       formData.append('action', 'upload_resume');
@@ -308,9 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Network error during upload', 'error');
       }
       
-      input.value = ''; // Reset
+      profileUploadInput.value = ''; // Reset
     });
-  });
+  }
 
   // Handle Global File Upload
   const globalUploadInput = document.getElementById('global-resume-file-input');

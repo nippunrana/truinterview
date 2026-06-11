@@ -226,3 +226,48 @@
   </div>
 </div>
 
+<!-- Choose Resume Source Modal -->
+<div class="modal-overlay" id="choose-resume-source-modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-brand-primary); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+      <svg style="width: 24px; height: 24px; color: currentColor;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      Setup Profile Resume
+    </h3>
+    
+    <div id="crs-step-1">
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+        Would you like to use your existing base resume or upload a completely new resume specifically for this role?
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <button id="btn-crs-use-base" class="btn btn-primary" style="padding: 14px; justify-content: center; width: 100%;">
+          Work with Base Resume
+        </button>
+        <button id="btn-crs-upload-new" class="btn btn-outline" style="padding: 14px; justify-content: center; width: 100%;">
+          Upload New Resume
+        </button>
+      </div>
+    </div>
+
+    <div id="crs-step-2-optimized" style="display: none;">
+      <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+        We found an <strong>optimized version</strong> of your base resume. Using the optimized version usually delivers better results. Would you like to use the optimized version or stick with the original base resume?
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <button id="btn-crs-use-optimized" class="btn btn-primary" style="padding: 14px; justify-content: center; width: 100%; background: var(--color-success); border-color: var(--color-success);">
+          Use Optimized Version (Recommended)
+        </button>
+        <button id="btn-crs-use-original" class="btn btn-outline" style="padding: 14px; justify-content: center; width: 100%;">
+          Use Original Base Resume
+        </button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-top: var(--space-6);">
+      <button id="btn-crs-cancel" class="btn btn-outline">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="profile-resume-upload-input" class="hidden-upload" accept=".pdf,.doc,.docx,.md" style="display: none;" />

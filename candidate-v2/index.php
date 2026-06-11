@@ -38,6 +38,26 @@ if (!$baseResume && !empty($resumes)) {
     $baseResume = $resumes[0];
     $baseResume['is_base'] = true;
 }
+
+$baseResumeHasOptimized = false;
+$baseResumeOptPath = '';
+if ($baseResume) {
+    if (!empty($baseResume['optimization_changes'])) {
+        $baseResumeHasOptimized = true;
+        $baseResumeOptPath = $baseResume['path'];
+    } else {
+        foreach ($resumes as $r) {
+            if (!empty($r['optimization_changes'])) {
+                if ((!empty($r['original_path']) && $r['original_path'] === $baseResume['path']) ||
+                    (empty($r['original_path']) && $baseResume['date'] <= $r['date'])) {
+                    $baseResumeHasOptimized = true;
+                    $baseResumeOptPath = $r['path'];
+                    break;
+                }
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,17 +159,23 @@ if (!$baseResume && !empty($resumes)) {
             </div>
 
             <div class="card-actions">
-              <!-- If we had an optimizer tool here, we'd link to it. For now we just upload. -->
-              <label class="btn btn-outline" style="flex: 1; text-align: center; padding: 10px 0;">
-                <input type="file" class="hidden-upload resume-upload-input" data-id="<?php echo $profile['id']; ?>" accept=".pdf,.doc,.docx,.md" />
+              <button class="btn btn-outline btn-choose-resume" 
+                data-profile-id="<?php echo $profile['id']; ?>"
+                data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
+                data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
+                data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"
+                data-opt-path="<?php echo htmlspecialchars($baseResumeOptPath); ?>"
+                style="flex: 1; text-align: center; padding: 10px 0;">
                 <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                 Upload Resume
-              </label>
+              </button>
 
+              <?php if (!empty($profile['optimized_resume_path'])): ?>
               <a href="../interview.php?practice_role=<?php echo urlencode($profile['role_title']); ?>" class="btn btn-primary" style="flex: 1;">
                 <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Practice
               </a>
+              <?php endif; ?>
             </div>
 
           </div>
@@ -238,24 +264,8 @@ if (!$baseResume && !empty($resumes)) {
                 </div>
                 <div style="display: flex; gap: var(--space-3); margin-top: auto; padding-top: var(--space-4);">
                   <?php 
-                    $hasOptimized = false;
-                    $optResumePath = '';
-                    if (!empty($baseResume['optimization_changes'])) {
-                        $hasOptimized = true;
-                        $optResumePath = $baseResume['path'];
-                    } else {
-                        foreach ($resumes as $r) {
-                            if (!empty($r['optimization_changes'])) {
-                                // Match if original_path matches base resume path, or fallback to date comparison for older resumes
-                                if ((!empty($r['original_path']) && $r['original_path'] === $baseResume['path']) ||
-                                    (empty($r['original_path']) && $baseResume['date'] <= $r['date'])) {
-                                    $hasOptimized = true;
-                                    $optResumePath = $r['path'];
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    $hasOptimized = $baseResumeHasOptimized;
+                    $optResumePath = $baseResumeOptPath;
                   ?>
                   <?php if ($hasOptimized): ?>
                     <a href="optimized_resume_viewer.php?path=<?php echo urlencode($optResumePath); ?>" class="btn btn-primary" style="flex: 1; background-color: var(--color-success); border-color: var(--color-success);">
