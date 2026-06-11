@@ -6,7 +6,7 @@ require_once __DIR__ . '/auth.php';
 if (isLoggedIn()) {
     $user = getCurrentUser();
     if ($user['role'] === 'candidate') {
-        header('Location: candidate/index.php');
+        header('Location: candidate-v2/index.php');
     } else {
         header('Location: recruiter/index.php');
     }
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Redirect appropriately
         if ($role === 'candidate') {
-            header('Location: candidate/index.php');
+            header('Location: candidate-v2/index.php');
         } else {
             header('Location: recruiter/index.php');
         }

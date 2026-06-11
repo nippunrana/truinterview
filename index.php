@@ -45,7 +45,7 @@ if (!empty($sessionId)) {
         <?php if (isLoggedIn()): ?>
           <?php $u = getCurrentUser(); ?>
           <?php if ($u['role'] === 'candidate'): ?>
-            <a href="candidate/index.php" class="btn btn-primary btn-pill">Go to Dashboard</a>
+            <a href="candidate-v2/index.php" class="btn btn-primary btn-pill">Go to Dashboard</a>
           <?php else: ?>
             <a href="recruiter/index.php" class="btn btn-primary btn-pill">Recruiter Dashboard</a>
           <?php endif; ?>

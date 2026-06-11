@@ -1,5 +1,5 @@
 <?php
-// candidate/report.php - View Feedback Report
+// candidate-v2/report.php - View Feedback Report
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
 

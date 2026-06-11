@@ -376,7 +376,7 @@ if (!empty($inviteCode)) {
           </button>
         </form>
         <div class="onboarding-footer" style="text-align: center; margin-top: var(--space-4);">
-          <a href="<?php echo isLoggedIn() ? 'candidate/index.php' : 'index.php'; ?>" class="back-link">
+          <a href="<?php echo isLoggedIn() ? 'candidate-v2/index.php' : 'index.php'; ?>" class="back-link">
             <svg style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 4px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
             <?php echo isLoggedIn() ? 'Back to Dashboard' : 'Back to Landing Page'; ?>
           </a>

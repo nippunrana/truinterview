@@ -120,7 +120,7 @@ function requireAuth($allowedRoles = []) {
     if (!empty($allowedRoles) && !in_array($user['role'], $allowedRoles)) {
         // Forbidden or redirect to correct role dashboard
         if ($user['role'] === 'candidate') {
-            header('Location: /truinterview/candidate/index.php');
+            header('Location: /truinterview/candidate-v2/index.php');
         } else {
             header('Location: /truinterview/recruiter/index.php');
         }

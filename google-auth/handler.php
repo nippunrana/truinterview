@@ -79,7 +79,7 @@ try {
                 'full_name' => $user['full_name']
             ];
 
-            $redirect = $user['role'] === 'candidate' ? 'candidate/index.php' : 'recruiter/index.php';
+            $redirect = $user['role'] === 'candidate' ? 'candidate-v2/index.php' : 'recruiter/index.php';
             echo json_encode([
                 'success' => true,
                 'is_new' => false,
@@ -175,7 +175,7 @@ try {
         // Clear pending user session
         unset($_SESSION['pending_google_user']);
 
-        $redirect = $role === 'candidate' ? 'candidate/index.php' : 'recruiter/index.php';
+        $redirect = $role === 'candidate' ? 'candidate-v2/index.php' : 'recruiter/index.php';
         echo json_encode([
             'success' => true,
             'redirect' => $redirect

@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.success) {
           const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
           await stopLoadingText(msg, 2000);
-          window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(profileId);
+          window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(profileId);
         } else {
           await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.isGlobalUpload) {
               window.location.reload();
             } else {
-              window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
+              window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
             }
           } else {
             await stopLoadingText(null, 0);

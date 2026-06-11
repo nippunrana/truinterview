@@ -1,5 +1,5 @@
 <?php
-// candidate/resume_optimizer.php - Resume Optimizer Page
+// candidate-v2/resume_optimizer.php - Resume Optimizer Page V2
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../optimizer_service.php';
@@ -1285,11 +1285,7 @@ $initials = substr($initials, 0, 2);
           btn.textContent = 'Saved!';
           btn.style.background = 'var(--color-emerald)';
           setTimeout(() => {
-            if (state.profileId) {
-                window.location.href = '../candidate-v2/index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
-            } else {
-                window.location.href = 'index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
-            }
+            window.location.href = 'index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
           }, 1500);
         } else {
           btn.disabled = false;
