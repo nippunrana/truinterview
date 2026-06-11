@@ -7,7 +7,7 @@
 <div class="modal-overlay" id="ai-loading-overlay">
   <div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-4); background: var(--color-bg-surface); padding: var(--space-6) var(--space-8); border-radius: var(--radius-outer); box-shadow: var(--shadow-float);">
     <div class="spinner" style="border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--color-brand-primary); width: 32px; height: 32px;"></div>
-    <div style="font-weight: 600; color: var(--color-text-primary);">Running initial AI verification on your resume...</div>
+    <div id="ai-loading-text" style="font-weight: 600; color: var(--color-text-primary);">Running initial AI verification on your resume...</div>
   </div>
 </div>
 

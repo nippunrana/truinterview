@@ -23,6 +23,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
 
+  let loadingInterval = null;
+  function startLoadingText() {
+    const textEl = document.getElementById('ai-loading-text');
+    if (!textEl) return;
+
+    clearInterval(loadingInterval);
+    
+    const steps = [
+      { time: 0, text: "Reading document structure & verifying candidate details..." },
+      { time: 1800, text: "Extracting full resume content into Markdown..." },
+      { time: 3600, text: "Running AI Quality Assurance check on factual blocks..." },
+      { time: 5400, text: "Resolving final document audits..." }
+    ];
+
+    textEl.textContent = steps[0].text;
+    
+    let startTime = Date.now();
+    loadingInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      let activeText = steps[0].text;
+      for (const step of steps) {
+        if (elapsed >= step.time) {
+          activeText = step.text;
+        }
+      }
+      textEl.textContent = activeText;
+    }, 500);
+  }
+
+  function stopLoadingText(successMessage, delay = 1500) {
+    clearInterval(loadingInterval);
+    const textEl = document.getElementById('ai-loading-text');
+    if (textEl && successMessage) {
+      textEl.textContent = successMessage;
+    }
+    return new Promise(resolve => setTimeout(resolve, delay));
+  }
+
   // Settings Modal Logic
   const settingsModal = document.getElementById('settings-modal');
   const btnOpenSettings = document.getElementById('btn-open-settings-modal');
@@ -208,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       window.isGlobalUpload = false;
       document.getElementById('ai-loading-overlay').classList.add('active');
+      startLoadingText();
 
       try {
         const res = await fetch('ajax.php', {
@@ -217,8 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         
         if (data.success) {
+          const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
+          await stopLoadingText(msg, 2000);
           window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(profileId);
         } else {
+          await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
           if (data.error_type === 'name_mismatch') {
             window.pendingTempFilename = data.temp_filename;
@@ -233,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       } catch (err) {
+        await stopLoadingText(null, 0);
         document.getElementById('ai-loading-overlay').classList.remove('active');
         showToast('Network error during upload', 'error');
       }
@@ -254,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       window.isGlobalUpload = true;
       document.getElementById('ai-loading-overlay').classList.add('active');
+      startLoadingText();
 
       try {
         const res = await fetch('ajax.php', {
@@ -263,8 +307,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         
         if (data.success) {
+          const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
+          await stopLoadingText(msg, 2000);
           window.location.reload();
         } else {
+          await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
           if (data.error_type === 'name_mismatch') {
             window.pendingTempFilename = data.temp_filename;
@@ -278,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       } catch (err) {
+        await stopLoadingText(null, 0);
         document.getElementById('ai-loading-overlay').classList.remove('active');
         showToast('Network error during upload', 'error');
       }
@@ -399,6 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnMismatchConfirm.addEventListener('click', async () => {
       document.getElementById('mismatch-modal').classList.remove('active');
       document.getElementById('ai-loading-overlay').classList.add('active');
+      startLoadingText();
 
       if (window.pendingTempFilename) {
         const formData = new URLSearchParams();
@@ -418,16 +467,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await res.json();
           
           if (data.success) {
+            const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
+            await stopLoadingText(msg, 2000);
             if (window.isGlobalUpload) {
               window.location.reload();
             } else {
               window.location.href = '../candidate/resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
             }
           } else {
+            await stopLoadingText(null, 0);
             document.getElementById('ai-loading-overlay').classList.remove('active');
             showToast(data.message || 'Failed to complete upload', 'error');
           }
         } catch (err) {
+          await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
           showToast('Error completing upload', 'error');
         }

@@ -179,7 +179,7 @@ if ($action === 'upload_resume') {
             }
             
             updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
-            echo json_encode(['success' => true, 'path' => $resumePath]);
+            echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
         } else {
             @unlink($dest);
             echo json_encode(['success' => false, 'message' => 'Failed to finalize file storage.']);
@@ -245,7 +245,7 @@ if ($action === 'commit_resume') {
         }
         
         updateCandidateProfileResume($profileId, $user['id'], $resumePath, $textVersion, $needsHumanReview);
-        echo json_encode(['success' => true, 'path' => $resumePath]);
+        echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
     } else {
         @unlink($tempPath);
         echo json_encode(['success' => false, 'message' => 'Failed to save resume.']);
@@ -363,7 +363,7 @@ if ($action === 'upload_global_resume') {
             $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
             $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
 
-            echo json_encode(['success' => true, 'path' => $resumePath]);
+            echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
         } else {
             @unlink($dest);
             echo json_encode(['success' => false, 'message' => 'Failed to finalize file storage.']);
@@ -447,7 +447,7 @@ if ($action === 'commit_global_resume') {
         $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
         $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
 
-        echo json_encode(['success' => true, 'path' => $resumePath]);
+        echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
     } else {
         @unlink($tempPath);
         echo json_encode(['success' => false, 'message' => 'Failed to save resume.']);
