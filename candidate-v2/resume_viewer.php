@@ -145,7 +145,8 @@ if (!$found) {
         </div>
         
         <div class="editor-textarea-wrapper">
-          <textarea id="editor-textarea" class="editor-textarea" spellcheck="false" placeholder="Paste or edit plain text resume here..."><?php echo htmlspecialchars($textVersion); ?></textarea>
+          <div class="line-numbers" id="line-numbers">1</div>
+          <textarea id="editor-textarea" class="editor-textarea" spellcheck="false" placeholder="Paste or edit plain text resume here..." onscroll="syncScroll()" oninput="updateLineNumbers()"><?php echo htmlspecialchars($textVersion); ?></textarea>
         </div>
       </div>
 
@@ -193,12 +194,43 @@ if (!$found) {
 
     function toggleWordWrap(enabled) {
         const textarea = document.getElementById('editor-textarea');
+        const lineNumbers = document.getElementById('line-numbers');
         if (enabled) {
             textarea.classList.add('word-wrapped');
+            lineNumbers.style.display = 'none';
         } else {
             textarea.classList.remove('word-wrapped');
+            lineNumbers.style.display = 'block';
+            updateLineNumbers();
         }
     }
+
+    function updateLineNumbers() {
+        const textarea = document.getElementById('editor-textarea');
+        const lineNumbers = document.getElementById('line-numbers');
+        if (!textarea || !lineNumbers) return;
+        const lines = textarea.value.split('\n');
+        const lineCount = Math.max(1, lines.length);
+        
+        let html = '';
+        for (let i = 1; i <= lineCount; i++) {
+            html += i + '\n';
+        }
+        lineNumbers.textContent = html;
+        syncScroll();
+    }
+
+    function syncScroll() {
+        const textarea = document.getElementById('editor-textarea');
+        const lineNumbers = document.getElementById('line-numbers');
+        if (!textarea || !lineNumbers) return;
+        lineNumbers.scrollTop = textarea.scrollTop;
+    }
+
+    // Initialize line numbers on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        updateLineNumbers();
+    });
 
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
