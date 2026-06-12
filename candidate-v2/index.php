@@ -81,6 +81,8 @@ $initials = substr($initials, 0, 2);
 $firstName = !empty($words[0]) ? $words[0] : 'Candidate';
 $profileCount = count($profiles);
 
+$submissionHistory = listCandidateHistory($user['id']);
+
 $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
 $baseResume = null;
 foreach ($resumes as $r) {
@@ -759,6 +761,79 @@ $levelDescriptions = [
           </div>
         </div>
       </section>
+
+      <!-- My Submissions Section -->
+      <section class="resume-section" style="margin-top: var(--space-14);">
+        <div class="resume-section-header">
+          <h2 class="resume-section-title">My Submissions</h2>
+          <p class="resume-section-subtitle">Your interview session history. You can delete sessions you no longer need.</p>
+        </div>
+
+        <div class="submissions-table-wrapper">
+          <?php if (empty($submissionHistory)): ?>
+            <div style="text-align: center; padding: var(--space-8) var(--space-4); color: var(--color-text-muted); display: flex; flex-direction: column; align-items: center;">
+              <svg style="width: 48px; height: 48px; color: var(--color-text-muted); margin-bottom: var(--space-3);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <div style="font-weight: 600;">No Submissions Yet</div>
+              <p style="font-size: var(--text-xs); margin-top: 4px;">Once you complete an interview session, it will appear here.</p>
+            </div>
+          <?php else: ?>
+            <table class="recruiter-table">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th style="text-align: center;">Type</th>
+                  <th style="text-align: center;">Score</th>
+                  <th style="text-align: center;">Status</th>
+                  <th style="text-align: center;">Date</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($submissionHistory as $session):
+                  $scoreData = !empty($session['final_score']) ? json_decode($session['final_score'], true) : null;
+                  $avgScore = null;
+                  if ($scoreData) {
+                      $comm = (float)($scoreData['communication_score'] ?? 0);
+                      $prob = (float)($scoreData['problem_solving_score'] ?? 0);
+                      $qual = (float)($scoreData['code_quality_score'] ?? 0);
+                      $avgScore = round(($comm + $prob + $qual) / 3.0, 1);
+                  }
+                  $sessionType = $session['session_type'] ?? 'assessment';
+                  $sessionDate = !empty($session['started_at']) ? date('M j, Y', strtotime($session['started_at'])) : '—';
+                ?>
+                  <tr id="submission-row-<?php echo htmlspecialchars($session['id']); ?>">
+                    <td>
+                      <div style="font-weight: 700; color: var(--color-text-primary);"><?php echo htmlspecialchars($session['template_title'] ?? 'Unknown Role'); ?></div>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="card-badge" style="font-size: 0.68rem; padding: 2px 8px; text-transform: capitalize;"><?php echo htmlspecialchars($sessionType); ?></span>
+                    </td>
+                    <td style="text-align: center; font-weight: 700;">
+                      <?php echo $avgScore !== null ? ($avgScore . '/10') : '—'; ?>
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="card-badge" style="font-size: 0.68rem; padding: 2px 6px; text-transform: capitalize;"><?php echo strtolower($session['current_status']); ?></span>
+                    </td>
+                    <td style="text-align: center; font-size: 0.78rem; color: var(--color-text-secondary);">
+                      <?php echo $sessionDate; ?>
+                    </td>
+                    <td style="text-align: right;">
+                      <button
+                        class="btn btn-outline"
+                        style="padding: 6px 12px; font-size: 0.78rem; color: var(--color-danger); border-color: var(--color-danger);"
+                        onclick="deleteSubmission('<?php echo htmlspecialchars($session['id']); ?>')"
+                      >Delete</button>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          <?php endif; ?>
+        </div>
+      </section>
+      <!-- End My Submissions Section -->
 
       <!-- JOIN INTERVIEW BAR -->
       <div class="join-hero-section" id="join-bottom-bar">

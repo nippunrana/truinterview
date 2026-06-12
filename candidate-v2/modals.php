@@ -23,6 +23,25 @@
   </div>
 </div>
 
+<!-- Delete Submission Modal -->
+<div class="modal-overlay" id="delete-submission-modal">
+  <div class="modal-content">
+    <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-danger); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+      <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+      </svg>
+      Delete Submission
+    </h3>
+    <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
+      Are you sure you want to delete this submission? This action cannot be undone.
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+      <button id="btn-delete-submission-cancel" class="btn btn-outline">Cancel</button>
+      <button id="btn-delete-submission-confirm" class="btn btn-primary" style="background: var(--color-danger); border-color: var(--color-danger);">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Delete Profile Modal -->
 <div class="modal-overlay" id="delete-modal">
   <div class="modal-content">

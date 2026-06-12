@@ -856,4 +856,59 @@ document.addEventListener('DOMContentLoaded', () => {
       rationaleModal.classList.remove('active');
     });
   }
+
+  let pendingDeleteSessionId = null;
+  const deleteSubmissionModal = document.getElementById('delete-submission-modal');
+  const btnDeleteSubmissionCancel = document.getElementById('btn-delete-submission-cancel');
+  const btnDeleteSubmissionConfirm = document.getElementById('btn-delete-submission-confirm');
+
+  if (btnDeleteSubmissionCancel) {
+    btnDeleteSubmissionCancel.addEventListener('click', () => {
+      pendingDeleteSessionId = null;
+      deleteSubmissionModal.classList.remove('active');
+    });
+  }
+
+  if (btnDeleteSubmissionConfirm) {
+    btnDeleteSubmissionConfirm.addEventListener('click', async () => {
+      if (!pendingDeleteSessionId) return;
+
+      const originalText = btnDeleteSubmissionConfirm.innerHTML;
+      btnDeleteSubmissionConfirm.innerHTML = '<span class="spinner" style="border-width: 2px; width: 14px; height: 14px; margin-right: 6px;"></span> Deleting...';
+      btnDeleteSubmissionConfirm.disabled = true;
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'delete_session');
+        formData.append('session_id', pendingDeleteSessionId);
+
+        const res = await fetch('ajax.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const row = document.getElementById('submission-row-' + pendingDeleteSessionId);
+          if (row) row.remove();
+          showToast('Submission deleted.', 'success');
+        } else {
+          showToast(data.message || 'Error deleting submission.', 'error');
+        }
+      } catch (err) {
+        showToast('Network error.', 'error');
+      } finally {
+        pendingDeleteSessionId = null;
+        btnDeleteSubmissionConfirm.innerHTML = originalText;
+        btnDeleteSubmissionConfirm.disabled = false;
+        deleteSubmissionModal.classList.remove('active');
+      }
+    });
+  }
+
+  window.deleteSubmission = function(sessionId) {
+    pendingDeleteSessionId = sessionId;
+    deleteSubmissionModal.classList.add('active');
+  };
 });

@@ -109,6 +109,21 @@ if ($action === 'delete_profile') {
     exit;
 }
 
+if ($action === 'delete_session') {
+    $sessionId = $_POST['session_id'] ?? '';
+    if (empty($sessionId)) {
+        echo json_encode(['success' => false, 'message' => 'Session ID is required.']);
+        exit;
+    }
+    $deleted = deleteSession($sessionId, $user['id']);
+    if ($deleted) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Session not found or access denied.']);
+    }
+    exit;
+}
+
 if ($action === 'upload_resume') {
     $profileId = $_POST['profile_id'] ?? '';
     if (empty($profileId)) {

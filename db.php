@@ -670,6 +670,12 @@ function listCandidateHistory($candidateId) {
     return $stmt->fetchAll();
 }
 
+function deleteSession($sessionId, $userId) {
+    $db = getDB();
+    $stmt = $db->prepare("DELETE FROM sessions WHERE id = :id AND user_id = :user_id");
+    return $stmt->execute(['id' => $sessionId, 'user_id' => $userId]);
+}
+
 function getCandidateStats($candidateId) {
     $db = getDB();
     
