@@ -297,6 +297,76 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Handle Assessment Interview preparation
+  document.querySelectorAll('.btn-prepare-assessment').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const profileId = btn.getAttribute('data-profile-id');
+      const code = btn.getAttribute('data-code');
+      
+      const overlay = document.getElementById('practice-loading-overlay');
+      if (overlay) {
+        overlay.classList.add('active');
+        const spinner = document.getElementById('practice-loading-spinner');
+        if (spinner) spinner.style.display = 'block';
+        const text = document.getElementById('practice-loading-text');
+        if (text) text.textContent = 'Preparing AI Assessment Questions... This may take a moment.';
+        const actions = document.getElementById('practice-loading-actions');
+        if (actions) actions.style.display = 'none';
+      }
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('profile_id', profileId);
+        formData.append('code', code);
+
+        const res = await fetch('../api/prepare_practice.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+          const spinner = document.getElementById('practice-loading-spinner');
+          if (spinner) spinner.style.display = 'none';
+          
+          const text = document.getElementById('practice-loading-text');
+          if (text) text.textContent = 'Done! Please review the JSON if needed.';
+          
+          const actionsDiv = document.getElementById('practice-loading-actions');
+          if (actionsDiv) {
+            actionsDiv.style.display = 'flex';
+            
+            const btnCopy = document.getElementById('btn-practice-copy-json');
+            if (btnCopy) {
+              btnCopy.onclick = () => {
+                navigator.clipboard.writeText(JSON.stringify(data.qa_data, null, 2))
+                  .then(() => showToast('Copied to clipboard!', 'success'))
+                  .catch(() => showToast('Failed to copy', 'error'));
+              };
+            }
+            
+            const btnContinue = document.getElementById('btn-practice-continue');
+            if (btnContinue) {
+              btnContinue.onclick = () => {
+                window.location.href = '../interview.php?code=' + encodeURIComponent(code) + '&profile_id=' + encodeURIComponent(profileId);
+              };
+            }
+          } else {
+             window.location.href = '../interview.php?code=' + encodeURIComponent(code) + '&profile_id=' + encodeURIComponent(profileId);
+          }
+        } else {
+          if (overlay) overlay.classList.remove('active');
+          showToast(data.message || 'Error preparing assessment interview', 'error');
+        }
+      } catch (err) {
+        if (overlay) overlay.classList.remove('active');
+        showToast('Network error while preparing interview', 'error');
+      }
+    });
+  });
+
   // Flag to differentiate global and profile uploads in the mismatch modal
   window.isGlobalUpload = false;
 

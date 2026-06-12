@@ -26,6 +26,7 @@ try {
 
     $input = json_decode(file_get_contents('php://input'), true);
     $profileId = $_POST['profile_id'] ?? $input['profile_id'] ?? null;
+    $code = $_POST['code'] ?? $input['code'] ?? null;
 
     if (!$profileId) {
         throw new Exception("Profile ID is required.");
@@ -33,41 +34,68 @@ try {
 
     $db = getDB();
 
-    // 1. Fetch Candidate Profile
-    $stmt = $db->prepare("SELECT role_title, level, resume_data FROM candidate_profiles WHERE id = :profile_id AND user_id = :user_id");
-    $stmt->execute(['profile_id' => $profileId, 'user_id' => $currentUser['id']]);
-    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    $jobRole = "";
+    $jobDescription = "";
+    $targetLevel = 1;
+    $modelEval = 'gemini-3.5-flash';
 
-    if (!$profile) {
-        throw new Exception("Profile not found or access denied.");
+    if ($code) {
+        // Fetch the public interview link details by code
+        $link = getInterviewLinkByCode($code);
+        if (!$link) {
+            throw new Exception("Active public assessment link not found.");
+        }
+        $targetLevel = max(1, (int)($link['min_level'] ?? 0));
+        $jobRole = $link['job_role'];
+        $jobDescription = $link['job_description'] ?? '';
+
+        // Resolve Recruiter Model Settings if available
+        if (!empty($link['created_by'])) {
+            $stmt = $db->prepare("SELECT model_eval_task FROM users WHERE id = :id");
+            $stmt->execute(['id' => $link['created_by']]);
+            $recruiterSettings = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!empty($recruiterSettings['model_eval_task'])) {
+                $modelEval = $recruiterSettings['model_eval_task'];
+            }
+        }
+    } else {
+        // 1. Fetch Candidate Profile
+        $stmt = $db->prepare("SELECT role_title, level, resume_data FROM candidate_profiles WHERE id = :profile_id AND user_id = :user_id");
+        $stmt->execute(['profile_id' => $profileId, 'user_id' => $currentUser['id']]);
+        $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$profile) {
+            throw new Exception("Profile not found or access denied.");
+        }
+
+        $currentLevel = (int)($profile['level'] ?? 0);
+        $targetLevel = $currentLevel === 0 ? 1 : $currentLevel + 1;
+        
+        if ($targetLevel > 10) {
+            throw new Exception("You have completed all 10 levels for this role!");
+        }
+
+        $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+        $userEnteredRole = $resumeData['user_entered_role'] ?? $profile['role_title'];
+        $detectedRole = $resumeData['detected_role'] ?? '';
+        $jobRole = $detectedRole ?: $userEnteredRole;
+        $jobDescription = $resumeData['user_entered_description'] ?? '';
+
+        // 2. Fetch User Model Settings
+        $stmt = $db->prepare("SELECT model_eval_task FROM users WHERE id = :id");
+        $stmt->execute(['id' => $currentUser['id']]);
+        $userSettings = $stmt->fetch(PDO::FETCH_ASSOC);
+        $modelEval = $userSettings['model_eval_task'] ?: 'gemini-3.5-flash';
     }
-
-    $currentLevel = (int)($profile['level'] ?? 0);
-    $targetLevel = $currentLevel === 0 ? 1 : $currentLevel + 1;
-    
-    if ($targetLevel > 10) {
-        throw new Exception("You have completed all 10 levels for this role!");
-    }
-
-    $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-    $userEnteredRole = $resumeData['user_entered_role'] ?? $profile['role_title'];
-    $detectedRole = $resumeData['detected_role'] ?? '';
-    $userEnteredDescription = $resumeData['user_entered_description'] ?? '';
-
-    // 2. Fetch User Model Settings
-    $stmt = $db->prepare("SELECT model_eval_task FROM users WHERE id = :id");
-    $stmt->execute(['id' => $currentUser['id']]);
-    $userSettings = $stmt->fetch(PDO::FETCH_ASSOC);
-    $modelEval = $userSettings['model_eval_task'] ?: 'gemini-3.5-flash';
 
     // 3. Formulate Context
-    $roleContext = "Role: " . ($detectedRole ?: $userEnteredRole) . "\n";
-    if ($userEnteredDescription) {
-        $roleContext .= "Description: " . $userEnteredDescription . "\n";
+    $roleContext = "Role: " . $jobRole . "\n";
+    if ($jobDescription) {
+        $roleContext .= "Description: " . $jobDescription . "\n";
     }
 
     $historyContext = "";
-    if ($targetLevel > 1) {
+    if (!$code && $targetLevel > 1) {
         // Fetch previous session Q&A to progressively make it harder
         $stmt = $db->prepare("SELECT q_a FROM sessions WHERE profile_id = :profile_id AND q_a IS NOT NULL ORDER BY started_at DESC LIMIT 1");
         $stmt->execute(['profile_id' => $profileId]);

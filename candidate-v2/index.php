@@ -353,76 +353,7 @@ $levelDescriptions = [
                 <?php endif; ?>
               </div>
 
-              <?php
-              $matchedAssessments = [];
-              $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
-              $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
-              $profileSlug = preg_replace('/-+/', '-', $profileSlug);
-              $profileSlug = trim($profileSlug, '-');
 
-              foreach ($publicLinks as $pLink) {
-                  if (!empty($profile['category_id']) && !empty($pLink['category_id']) && $profile['category_id'] === $pLink['category_id']) {
-                      $matchedAssessments[] = $pLink;
-                  } else {
-                      $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
-                      $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
-                      $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
-                      $pLinkSlug = trim($pLinkSlug, '-');
-                      
-                      if ($profileSlug === $pLinkSlug) {
-                          $matchedAssessments[] = $pLink;
-                      }
-                  }
-              }
-              ?>
-              
-              <?php if (!empty($matchedAssessments)): ?>
-                <div class="matched-assessments-section" style="margin-top: var(--space-4); border-top: 1px solid var(--color-border); padding-top: var(--space-3); width: 100%;">
-                  <div style="font-size: var(--text-xs); font-weight: 700; color: var(--color-brand-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); display: flex; align-items: center; gap: 4px;">
-                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Available Public Assessments
-                  </div>
-                  <div style="display: flex; flex-direction: column; gap: var(--space-2);">
-                    <?php foreach ($matchedAssessments as $ma): 
-                      $maLevelVal = (int)($ma['min_level'] ?? 0);
-                      $maLevelName = $levelNames[$maLevelVal] ?? "Novice";
-                      $hasRequiredLevel = ($profileLevel >= $maLevelVal);
-                    ?>
-                      <div style="background: var(--color-bg-subtle); padding: var(--space-2); border-radius: var(--radius-inner); display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--color-border);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2);">
-                          <div style="min-width: 0;">
-                            <div style="font-weight: 700; font-size: 0.82rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo htmlspecialchars($ma['company_name']); ?></div>
-                            <div style="font-size: 0.72rem; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo htmlspecialchars($ma['job_role']); ?></div>
-                          </div>
-                          <span class="card-badge" style="font-size: 0.65rem; padding: 2px 4px; background: <?php echo $hasRequiredLevel ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'; ?>; color: <?php echo $hasRequiredLevel ? 'var(--color-success)' : 'var(--color-danger)'; ?>; flex-shrink: 0;">
-                            Req L<?php echo $maLevelVal; ?>
-                          </span>
-                        </div>
-                        
-                        <?php if (!empty($ma['job_description'])): ?>
-                          <div style="font-size: 0.72rem; color: var(--color-text-secondary); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="<?php echo htmlspecialchars($ma['job_description']); ?>">
-                            <?php echo htmlspecialchars($ma['job_description']); ?>
-                          </div>
-                        <?php endif; ?>
-
-                        <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 2px;">
-                          <?php if ($hasRequiredLevel): ?>
-                            <a href="../interview.php?code=<?php echo urlencode($ma['code']); ?>" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">
-                              Take Assessment &rarr;
-                            </a>
-                          <?php else: ?>
-                            <div style="font-size: 0.68rem; color: var(--color-danger); font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
-                              🔒 Locked (Requires L<?php echo $maLevelVal; ?> - <?php echo htmlspecialchars($maLevelName); ?>)
-                            </div>
-                          <?php endif; ?>
-                        </div>
-                      </div>
-                    <?php endforeach; ?>
-                  </div>
-                </div>
-              <?php endif; ?>
             </div>
 
             <div class="card-actions">
@@ -480,6 +411,139 @@ $levelDescriptions = [
         <?php endif; ?>
         
       </div>
+
+      <!-- MATCHED PUBLIC ASSESSMENTS SECTION -->
+      <?php
+      // Compile matched public assessments across all profiles
+      $allMatchedAssessments = [];
+      foreach ($publicLinks as $pLink) {
+          $matchedProfilesForThisLink = [];
+          foreach ($profiles as $profile) {
+              $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
+              $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
+              $profileSlug = preg_replace('/-+/', '-', $profileSlug);
+              $profileSlug = trim($profileSlug, '-');
+
+              $isCategoryMatch = (!empty($profile['category_id']) && !empty($pLink['category_id']) && $profile['category_id'] === $pLink['category_id']);
+              
+              $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
+              $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
+              $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
+              $pLinkSlug = trim($pLinkSlug, '-');
+              
+              $isRoleMatch = ($profileSlug === $pLinkSlug);
+
+              if ($isCategoryMatch || $isRoleMatch) {
+                  $matchedProfilesForThisLink[] = $profile;
+              }
+          }
+
+          if (!empty($matchedProfilesForThisLink)) {
+              $allMatchedAssessments[] = [
+                  'link' => $pLink,
+                  'profiles' => $matchedProfilesForThisLink
+              ];
+          }
+      }
+      ?>
+
+      <?php if (!empty($allMatchedAssessments)): ?>
+      <section class="matched-assessments-section" style="margin-top: var(--space-8); margin-bottom: var(--space-8);">
+        <div class="resume-section-header" style="margin-bottom: var(--space-5);">
+          <h2 class="resume-section-title">Open Interviews Found Matched To Your Interest</h2>
+          <p class="resume-section-subtitle">We tailored these open interviews matching your active profiles. Launch a session to answer their questions.</p>
+        </div>
+
+        <div style="margin: 0 var(--space-6); display: flex; flex-direction: column; gap: var(--space-3);">
+          <?php foreach ($allMatchedAssessments as $item): 
+            $ma = $item['link'];
+            $maLevelVal = (int)($ma['min_level'] ?? 0);
+            $maLevelName = $levelNames[$maLevelVal] ?? "Novice";
+            
+            $matchedTitles = [];
+            foreach ($item['profiles'] as $mp) {
+                $matchedTitles[] = $mp['role_title'];
+            }
+            $matchedProfilesText = implode(", ", $matchedTitles);
+            $targetProfileId = $item['profiles'][0]['id'];
+          ?>
+            <div class="assessment-bar">
+              
+              <!-- Left Side: Logo & Main Info -->
+              <div style="display: flex; gap: var(--space-4); align-items: center; min-width: 0; flex: 1;">
+                <?php if (!empty($ma['logo_url'])): ?>
+                  <img src="<?php echo htmlspecialchars($ma['logo_url']); ?>" alt="<?php echo htmlspecialchars($ma['company_name']); ?>" style="width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid var(--color-border); flex-shrink: 0;">
+                <?php else: ?>
+                  <div style="width: 42px; height: 42px; border-radius: 8px; background: var(--color-brand-light); color: var(--color-brand-primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; border: 1px solid var(--color-brand-light); flex-shrink: 0;">
+                    <?php echo htmlspecialchars(strtoupper(substr($ma['company_name'], 0, 1))); ?>
+                  </div>
+                <?php endif; ?>
+                
+                <div style="min-width: 0;">
+                  <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: 2px;">
+                    <span style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary);"><?php echo htmlspecialchars($ma['job_role']); ?></span>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">at</span>
+                    <span style="font-weight: 600; font-size: var(--text-sm); color: var(--color-text-secondary);"><?php echo htmlspecialchars($ma['company_name']); ?></span>
+                  </div>
+                  
+                  <?php if (!empty($ma['job_description'])): ?>
+                    <div style="font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px;" title="<?php echo htmlspecialchars($ma['job_description']); ?>">
+                      <?php echo htmlspecialchars($ma['job_description']); ?>
+                    </div>
+                  <?php endif; ?>
+
+                  <div style="font-size: 0.7rem; color: var(--color-brand-primary); font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                    <svg style="width: 12px; height: 12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    <span>Matches profile: <?php echo htmlspecialchars($matchedProfilesText); ?></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Middle: Metadata Badges -->
+              <div style="display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; font-size: 0.72rem; color: var(--color-text-secondary);">
+                <!-- Level difficulty info -->
+                <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span style="color: var(--color-brand-primary);">⚡</span>
+                  <span><?php echo htmlspecialchars($maLevelName); ?> (Level <?php echo $maLevelVal; ?>)</span>
+                </div>
+
+                <!-- Attempts Remaining -->
+                <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span style="color: var(--color-text-muted);">🔄</span>
+                  <span>Attempts: <?php echo (int)($ma['attempts_used'] ?? 0); ?>/<?php echo (int)($ma['max_attempts'] ?? 1); ?></span>
+                </div>
+                
+                <!-- Expiration Date -->
+                <?php if (!empty($ma['expires_at'])): 
+                  $expiryTime = strtotime($ma['expires_at']);
+                  $expiryFormatted = date('M d, Y', $expiryTime);
+                ?>
+                  <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                    <span style="color: var(--color-text-muted);">📅</span>
+                    <span>Expires: <?php echo $expiryFormatted; ?></span>
+                  </div>
+                <?php endif; ?>
+
+                <!-- Category Match Percentage -->
+                <?php if (isset($ma['category_match_percentage']) && $ma['category_match_percentage'] > 0): ?>
+                  <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.15); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-weight: 700; color: var(--color-success);">
+                    <span><?php echo htmlspecialchars($ma['category_match_percentage']); ?>% Match</span>
+                  </div>
+                <?php endif; ?>
+              </div>
+
+              <!-- Right Side: Action Button -->
+              <div style="flex-shrink: 0;">
+                <button class="btn btn-primary btn-prepare-assessment" data-profile-id="<?php echo htmlspecialchars($targetProfileId); ?>" data-code="<?php echo htmlspecialchars($ma['code']); ?>" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-inner); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; border: none; height: 38px;">
+                  Take Interview &rarr;
+                </button>
+              </div>
+
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
 
       <!-- RESUME MANAGEMENT SECTION -->
       <section class="resume-section">
