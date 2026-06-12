@@ -566,6 +566,76 @@ function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model =
     }
 }
 
+/**
+ * Match a role title to the best fitting category
+ */
+function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash', $apiKey = null) {
+    if (empty($categories)) {
+        return ['category_id' => null, 'match_percentage' => null];
+    }
+    
+    $categoriesJson = json_encode($categories);
+    
+    $prompt = "<context>\n" .
+              "You are an expert HR assistant matching job roles to a predefined list of categories.\n" .
+              "</context>\n" .
+              "<task>\n" .
+              "Given a job role, and a list of categories (each with a uuid, name, and description), find the best matching category.\n" .
+              "If a matching category is found, provide its uuid and a match_percentage (0 to 100).\n" .
+              "If the role does not reasonably match any category, return null for both.\n" .
+              "</task>\n" .
+              "<role>\n" .
+              $roleTitle . "\n" .
+              "</role>\n" .
+              "<categories>\n" .
+              $categoriesJson . "\n" .
+              "</categories>\n" .
+              "<output_format>\n" .
+              "Return ONLY this JSON:\n" .
+              "{\n" .
+              "  \"category_id\": string (uuid) | null,\n" .
+              "  \"match_percentage\": integer | null\n" .
+              "}\n" .
+              "</output_format>";
+              
+    $payload = [
+        "contents" => [
+            [
+                "role" => "user",
+                "parts" => [
+                    ["text" => $prompt]
+                ]
+            ]
+        ],
+        "generationConfig" => [
+            "responseMimeType" => "application/json"
+        ]
+    ];
+    
+    try {
+        $responseJson = callGemini($payload, $model, $apiKey);
+        $result = json_decode($responseJson, true);
+        
+        if (!$result || (!isset($result['category_id']) && !array_key_exists('category_id', $result))) {
+            preg_match('/\{.*\}/s', $responseJson, $matches);
+            if (isset($matches[0])) {
+                $result = json_decode($matches[0], true);
+            }
+        }
+        
+        if ($result && array_key_exists('category_id', $result)) {
+            return [
+                'category_id' => $result['category_id'],
+                'match_percentage' => isset($result['match_percentage']) ? (int)$result['match_percentage'] : null
+            ];
+        }
+        
+        return ['category_id' => null, 'match_percentage' => null];
+    } catch (Exception $e) {
+        return ['category_id' => null, 'match_percentage' => null];
+    }
+}
+
 
 
 

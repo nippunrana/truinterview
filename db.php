@@ -390,6 +390,9 @@ function initSchema() {
         description TEXT
     )");
 
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(uuid) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS category_match_percentage INTEGER");
+
     // Drop cataegories table (remove typo fallback)
     $db->exec("DROP TABLE IF EXISTS cataegories");
     } catch (Exception $e) {
@@ -864,6 +867,12 @@ function getCandidateResumes($rawPath) {
 }
 
 // V2 Candidate Dashboard Helpers
+function getAllCategories() {
+    $db = getDB();
+    $stmt = $db->query("SELECT * FROM categories ORDER BY name ASC");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 function getCandidateProfiles($userId) {
     $db = getDB();
     $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id ORDER BY created_at ASC");
@@ -878,7 +887,7 @@ function getCandidateProfile($profileId, $userId) {
     return $stmt->fetch();
 }
 
-function createCandidateProfile($userId, $roleTitle) {
+function createCandidateProfile($userId, $roleTitle, $categoryId = null, $matchPercentage = null) {
     $db = getDB();
     // Check limit
     $stmt = $db->prepare("SELECT COUNT(*) FROM candidate_profiles WHERE user_id = :user_id");
@@ -893,8 +902,14 @@ function createCandidateProfile($userId, $roleTitle) {
     $roleTitleId = preg_replace('/-+/', '-', $roleTitleId);
     $roleTitleId = trim($roleTitleId, '-');
 
-    $stmt = $db->prepare("INSERT INTO candidate_profiles (user_id, role_title, role_title_id) VALUES (:user_id, :role_title, :role_title_id) RETURNING id");
-    $stmt->execute(['user_id' => $userId, 'role_title' => $roleTitle, 'role_title_id' => $roleTitleId]);
+    $stmt = $db->prepare("INSERT INTO candidate_profiles (user_id, role_title, role_title_id, category_id, category_match_percentage) VALUES (:user_id, :role_title, :role_title_id, :category_id, :category_match_percentage) RETURNING id");
+    $stmt->execute([
+        'user_id' => $userId, 
+        'role_title' => $roleTitle, 
+        'role_title_id' => $roleTitleId,
+        'category_id' => $categoryId,
+        'category_match_percentage' => $matchPercentage
+    ]);
     return $stmt->fetchColumn();
 }
 

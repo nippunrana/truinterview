@@ -51,7 +51,32 @@ if ($action === 'create_profile') {
         exit;
     }
 
-    $id = createCandidateProfile($user['id'], $roleTitle);
+    $categoryId = null;
+    $matchPercentage = null;
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+        $stmt->execute(['id' => $user['id']]);
+        $userFull = $stmt->fetch();
+        
+        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+        
+        $categories = getAllCategories();
+        $aiResult = matchRoleToCategory($roleTitle, $categories, $model, $apiKey);
+        
+        if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
+            if ($aiResult['match_percentage'] >= 15) {
+                $categoryId = $aiResult['category_id'];
+                $matchPercentage = $aiResult['match_percentage'];
+            }
+        }
+    } catch (Exception $e) {
+        // Fail silently and leave them empty if AI fails
+    }
+
+    $id = createCandidateProfile($user['id'], $roleTitle, $categoryId, $matchPercentage);
     if ($id) {
         echo json_encode(['success' => true, 'profile_id' => $id]);
     } else {
