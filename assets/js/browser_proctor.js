@@ -143,19 +143,7 @@ function updateMidInterviewOverlayState() {
     const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
     const isSingleMonitor = !(screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended));
 
-    if (!isSingleMonitor) {
-        // Multiple monitors connected: lock and show monitor resume view
-        overlay.style.display = 'flex';
-        wizardView.style.display = 'none';
-        resumeView.style.display = 'none';
-        screenShareResumeView.style.display = 'none';
-        monitorResumeView.style.display = 'block';
-
-        triggerBrowserAlert('device_change', 'critical', {
-            reason: 'Candidate connected a secondary monitor during the active session.',
-            screen_count: screenDetailsObj ? screenDetailsObj.screens.length : 2
-        });
-    } else if (!screenDone) {
+    if (!screenDone) {
         // Screen sharing is stopped: force screen share view
         overlay.style.display = 'flex';
         wizardView.style.display = 'none';
@@ -300,25 +288,11 @@ function setupIntegrityWizard() {
             return;
         }
 
-        if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
-            if (window.showProctorBanner) {
-                window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors.", 'warning', 6000, 'monitor');
-            }
-            alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens and ensure you are using a single monitor to proceed.");
-            return;
-        }
-
         // Register listener for layout changes mid-session
         if (!listeners.screenschange) {
             listeners.screenschange = () => {
                 const isSingleMonitor = !(screenDetailsObj && (screenDetailsObj.screens.length > 1 || window.screen.isExtended));
                 window.setSecurityIndicator('monitor', isSingleMonitor);
-                if (!isSingleMonitor) {
-                    triggerBrowserAlert('device_change', 'critical', {
-                        reason: 'Candidate connected a secondary monitor during the active session.',
-                        screen_count: screenDetailsObj.screens.length
-                    });
-                }
                 if (setupWizardComplete) {
                     updateMidInterviewOverlayState();
                 }
@@ -357,15 +331,6 @@ function setupIntegrityWizard() {
 
     // Resume button link (exclusively active when escaping fullscreen mid-interview)
     listeners.resumeBtnClick = async () => {
-        if (screenDetailsObj) {
-            if (screenDetailsObj.screens.length > 1 || window.screen.isExtended) {
-                if (window.showProctorBanner) {
-                    window.showProctorBanner("Integrity Block: Multiple displays detected. Please disconnect all external monitors to resume.", 'warning', 6000, 'monitor');
-                }
-                alert("Security Restriction: Multiple displays detected. Please disconnect all external monitors/screens to resume the assessment.");
-                return;
-            }
-        }
         try {
             if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen();
