@@ -103,6 +103,7 @@ Your style is professional, encouraging, objective, and clear.
 
 <task>
 Conduct a technical interview. Ask the pre-generated open-ended questions listed in <open_ended_questions> one at a time.
+You MUST call the `set_current_open_question` tool with the 1-based index (e.g., 1, 2, 3...) when you start asking a new open-ended question from <open_ended_questions>. Do NOT call this tool for follow-up questions or discussions on the same question, only when transitioning to a new pre-generated open-ended question.
 Do NOT list all questions at once. Ask the candidate to answer, listen to their response, and ask probing follow-up questions if needed.
 Once the candidate has answered all the questions in <open_ended_questions>, you MUST call the `start_mcq_phase` tool. This will display the multiple choice questions on their screen.
 Do NOT ask the candidate any MCQ questions verbally yourself.
@@ -181,6 +182,20 @@ function getInterviewTools() {
                     "type" => "object",
                     "properties" => new stdClass()
                 ]
+            ],
+            [
+                "name" => "set_current_open_question",
+                "description" => "Call this tool when starting to ask a new open-ended question from <open_ended_questions> (e.g. Question 1, Question 2...).",
+                "parameters" => [
+                    "type" => "object",
+                    "properties" => [
+                        "question_index" => [
+                            "type" => "integer",
+                            "description" => "The 1-based index of the open-ended question being asked (e.g., 1, 2, 3...)."
+                        ]
+                    ],
+                    "required" => ["question_index"]
+                ]
             ]
         ]
     ];
@@ -237,6 +252,20 @@ function executeInterviewTool($toolName, $args, $sessionId) {
                 "status" => "success",
                 "message" => "MCQ phase initialized on the user interface. Ask the candidate if they prefer you to read the questions aloud, or if they would like to read silently."
             ];
+
+        case 'set_current_open_question':
+            $db = getDB();
+            $questionIndex = (int)($args['question_index'] ?? 0);
+            if ($questionIndex > 0) {
+                $stmt = $db->prepare("UPDATE sessions SET current_open_question_index = :question_index WHERE id = :id");
+                $stmt->execute(['question_index' => $questionIndex, 'id' => $sessionId]);
+                logTranscript($sessionId, 'SYSTEM', "Current open question set to index: " . $questionIndex);
+                return [
+                    "status" => "success",
+                    "message" => "Current open-ended question index updated to " . $questionIndex . " on the candidate's screen."
+                ];
+            }
+            return ["error" => "Invalid question index."];
             
         default:
             return ["error" => "Unknown tool: " . $toolName];

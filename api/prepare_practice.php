@@ -38,6 +38,8 @@ try {
     $jobDescription = "";
     $targetLevel = 1;
     $modelEval = 'gemini-3.5-flash';
+    $numOpen = 4;
+    $numMCQ = 4;
 
     if ($code) {
         // Fetch the public interview link details by code
@@ -48,6 +50,17 @@ try {
         $targetLevel = max(1, (int)($link['min_level'] ?? 0));
         $jobRole = $link['job_role'];
         $jobDescription = $link['job_description'] ?? '';
+
+        if (isset($link['num_open_questions']) && $link['num_open_questions'] !== null) {
+            $numOpen = (int)$link['num_open_questions'];
+        }
+        if (isset($link['num_mcq_questions']) && $link['num_mcq_questions'] !== null) {
+            $numMCQ = (int)$link['num_mcq_questions'];
+        }
+        if ($numOpen + $numMCQ === 0) {
+            $numOpen = 4;
+            $numMCQ = 4;
+        }
 
         // Resolve Recruiter Model Settings if available
         if (!empty($link['created_by'])) {
@@ -128,6 +141,8 @@ try {
     ];
     $levelDescription = $levelTaxonomy[$targetLevel] ?? $levelTaxonomy[1];
 
+    $totalQuestions = $numOpen + $numMCQ;
+
     $prompt = <<<EOT
 <context>
 You are generating practice technical interview questions for a candidate.
@@ -141,10 +156,10 @@ Level {$targetLevel} Definition: {$levelDescription}
 {$historyContext}
 
 <task>
-Generate exactly 10 technical interview questions aligned strictly with the Level {$targetLevel} definition.
-Out of these 10 questions:
-- Exactly 6 questions must be standard open-ended technical questions (type: "open").
-- Exactly 4 questions must be Multiple-Choice Questions (type: "mcq").
+Generate exactly {$totalQuestions} technical interview questions aligned strictly with the Level {$targetLevel} definition.
+Out of these {$totalQuestions} questions:
+- Exactly {$numOpen} questions must be standard open-ended technical questions (type: "open").
+- Exactly {$numMCQ} questions must be Multiple-Choice Questions (type: "mcq").
 For each question, provide a corresponding correct answer.
 </task>
 
@@ -187,7 +202,7 @@ Example 2: Multiple-Choice Question (MCQ)
 </examples>
 
 <output_format>
-Return ONLY a JSON array of exactly 10 objects matching the response schema:
+Return ONLY a JSON array of exactly {$totalQuestions} objects matching the response schema:
 [
   {
     "type": "open" | "mcq",
@@ -199,8 +214,8 @@ Return ONLY a JSON array of exactly 10 objects matching the response schema:
 </output_format>
 
 <verification>
-- Confirm that exactly 10 objects are returned.
-- Confirm that exactly 6 objects have type 'open' and 4 objects have type 'mcq'.
+- Confirm that exactly {$totalQuestions} objects are returned.
+- Confirm that exactly {$numOpen} objects have type 'open' and {$numMCQ} objects have type 'mcq'.
 - Confirm 'answer' for MCQs is exactly one of the letters: 'A', 'B', 'C', or 'D'.
 - Confirm that MCQ options contain exactly keys 'A', 'B', 'C', and 'D'.
 </verification>
@@ -260,8 +275,8 @@ EOT;
     $responseJson = callGemini($payload, $modelEval);
     $qaData = json_decode($responseJson, true);
 
-    if (!$qaData || !is_array($qaData) || count($qaData) !== 10) {
-        // Fallback: If AI didn't return exactly 10, that's okay, but let's ensure it's valid JSON array
+    if (!$qaData || !is_array($qaData) || count($qaData) !== $totalQuestions) {
+        // Fallback: If AI didn't return exactly $totalQuestions, that's okay, but let's ensure it's valid JSON array
         if (!is_array($qaData)) {
             throw new Exception("AI generated invalid JSON structure.");
         }

@@ -150,6 +150,8 @@ function initSchema() {
     $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS job_description TEXT");
     $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE");
     $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS min_level INTEGER NOT NULL DEFAULT 0");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS num_open_questions INTEGER");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS num_mcq_questions INTEGER");
 
     // Create sessions table
     $db->exec("CREATE TABLE IF NOT EXISTS sessions (
@@ -268,6 +270,7 @@ function initSchema() {
         $db->exec("ALTER TABLE candidate_responses DROP CONSTRAINT IF EXISTS candidate_responses_question_id_fkey");
         $db->exec("DROP TABLE IF EXISTS mcq_questions CASCADE");
         $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_mcq_index INT");
+        $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_open_question_index INT");
     } catch (Exception $e) {
         // Fail silently
     }
@@ -624,9 +627,9 @@ function getInterviewLink($id) {
     return $stmt->fetch();
 }
 
-function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAttempts, $expiresAt, $jobRole, $jobDescription = null, $isPublic = false, $minLevel = 0, $categoryId = null, $categoryMatchPercentage = 0) {
+function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAttempts, $expiresAt, $jobRole, $jobDescription = null, $isPublic = false, $minLevel = 0, $categoryId = null, $categoryMatchPercentage = 0, $numOpenQuestions = null, $numMcqQuestions = null) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, max_attempts, expires_at, job_role, job_description, is_public, min_level, category_id, category_match_percentage) VALUES (:company_id, :created_by, :code, :candidate_email, :max_attempts, :expires_at, :job_role, :job_description, :is_public, :min_level, :category_id, :category_match_percentage) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, max_attempts, expires_at, job_role, job_description, is_public, min_level, category_id, category_match_percentage, num_open_questions, num_mcq_questions) VALUES (:company_id, :created_by, :code, :candidate_email, :max_attempts, :expires_at, :job_role, :job_description, :is_public, :min_level, :category_id, :category_match_percentage, :num_open_questions, :num_mcq_questions) RETURNING id");
     $stmt->execute([
         'company_id' => $companyId,
         'created_by' => $userId,
@@ -639,7 +642,9 @@ function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAt
         'is_public' => $isPublic ? 'true' : 'false',
         'min_level' => (int)$minLevel,
         'category_id' => $categoryId,
-        'category_match_percentage' => (int)$categoryMatchPercentage
+        'category_match_percentage' => (int)$categoryMatchPercentage,
+        'num_open_questions' => $numOpenQuestions !== null && $numOpenQuestions !== '' ? (int)$numOpenQuestions : null,
+        'num_mcq_questions' => $numMcqQuestions !== null && $numMcqQuestions !== '' ? (int)$numMcqQuestions : null
     ]);
     return $stmt->fetchColumn();
 }

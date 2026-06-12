@@ -96,6 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $jobDescription = trim($_POST['job_description'] ?? '');
     $isPublic = isset($_POST['is_public']) && $_POST['is_public'] === '1';
     $minLevel = (int)($_POST['min_level'] ?? 0);
+    $numOpenQuestions = isset($_POST['num_open_questions']) && $_POST['num_open_questions'] !== '' ? (int)$_POST['num_open_questions'] : null;
+    $numMcqQuestions = isset($_POST['num_mcq_questions']) && $_POST['num_mcq_questions'] !== '' ? (int)$_POST['num_mcq_questions'] : null;
     
     if (empty($jobRole)) {
         $errorMsg = "Job role is required.";
@@ -144,7 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $isPublic,
                 $minLevel,
                 $categoryId,
-                $matchPercentage
+                $matchPercentage,
+                $numOpenQuestions,
+                $numMcqQuestions
             );
             
             $_SESSION['created_code'] = $code;
@@ -290,6 +294,9 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
               <?php endif; ?>
               <div style="font-size: 0.72rem; color: var(--color-text-secondary);">
                 Min Level: <strong>L<?php echo $minLevelVal; ?> - <?php echo htmlspecialchars($minLevelName); ?></strong>
+              </div>
+              <div style="font-size: 0.72rem; color: var(--color-text-secondary);">
+                Questions: <strong><?php echo isset($link['num_open_questions']) ? (int)$link['num_open_questions'] : 4; ?> open / <?php echo isset($link['num_mcq_questions']) ? (int)$link['num_mcq_questions'] : 4; ?> MCQ</strong>
               </div>
               <?php if (!empty($link['job_description'])): ?>
                 <div style="font-size: 0.78rem; color: var(--color-text-muted); margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="<?php echo htmlspecialchars($link['job_description']); ?>">
@@ -454,6 +461,18 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
               <option value="9">Level 9: Governance</option>
               <option value="10">Level 10: Strategic Leadership</option>
             </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="num_open_questions">Open-Ended Questions Count</label>
+            <input type="number" id="num_open_questions" name="num_open_questions" class="form-input" min="0" max="20" placeholder="Default: 4">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="num_mcq_questions">MCQ Questions Count</label>
+            <input type="number" id="num_mcq_questions" name="num_mcq_questions" class="form-input" min="0" max="20" placeholder="Default: 4">
           </div>
         </div>
 

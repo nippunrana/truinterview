@@ -511,11 +511,30 @@ function renderMCQ(data) {
   if (!container) return;
 
   if (!data.has_active_mcq) {
-    container.innerHTML = `
-      <div class="mcq-question-card" style="opacity: 0.7; text-align: center; justify-content: center; height: 100%;">
-        <p class="mcq-text" style="color: var(--color-text-muted);">Waiting for the AI interviewer to present the MCQ questions...</p>
+    let questionsHtml = `
+      <div class="mcq-question-card" style="height: 100%; display: flex; flex-direction: column;">
+        <div class="mcq-topic" style="text-transform: uppercase; font-size: var(--text-xs); color: var(--color-accent); font-weight: 700; margin-bottom: var(--space-3); letter-spacing: 0.5px;">Current Open-Ended Question</div>
+        <div class="open-questions-list" style="display: flex; flex-direction: column; gap: var(--space-3); overflow-y: auto; flex: 1; padding-right: 4px; justify-content: center;">
+    `;
+    const activeIdx = data.current_open_question_index ? parseInt(data.current_open_question_index) - 1 : -1;
+    if (data.open_questions && data.open_questions.length > 0 && activeIdx >= 0 && activeIdx < data.open_questions.length) {
+      const q = data.open_questions[activeIdx];
+      questionsHtml += `
+          <div class="open-question-item" style="padding: var(--space-4); background: var(--color-surface-elevated); border: 2px solid var(--color-accent); border-radius: var(--radius-inner); font-size: 1.1rem; line-height: 1.6; color: var(--color-text-primary); display: flex; align-items: flex-start; gap: 12px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);">
+            <span style="font-weight: 700; color: var(--color-accent); min-width: 30px; font-size: 1.25rem;">Q:</span>
+            <span>${escapeHtml(q.question)}</span>
+          </div>
+      `;
+    } else {
+      questionsHtml += `
+        <p class="mcq-text" style="color: var(--color-text-muted); text-align: center; margin-top: var(--space-4);">Waiting for the AI interviewer to ask a question...</p>
+      `;
+    }
+    questionsHtml += `
+        </div>
       </div>
     `;
+    container.innerHTML = questionsHtml;
     currentMCQQuestionId = null;
     return;
   }
@@ -530,34 +549,30 @@ function renderMCQ(data) {
     <div class="mcq-question-card">
       <div class="mcq-topic">${escapeHtml(q.topic)}</div>
       <div class="mcq-text">${escapeHtml(q.question)}</div>
-      <div class="mcq-options">
-        <label class="mcq-option" data-option="A">
-          <input type="radio" name="mcq-choice" value="A">
-          <span class="custom-radio"></span>
-          <span class="option-text">A: ${escapeHtml(q.option_a)}</span>
-        </label>
-        <label class="mcq-option" data-option="B">
-          <input type="radio" name="mcq-choice" value="B">
-          <span class="custom-radio"></span>
-          <span class="option-text">B: ${escapeHtml(q.option_b)}</span>
-        </label>
-        <label class="mcq-option" data-option="C">
-          <input type="radio" name="mcq-choice" value="C">
-          <span class="custom-radio"></span>
-          <span class="option-text">C: ${escapeHtml(q.option_c)}</span>
-        </label>
-        <label class="mcq-option" data-option="D">
-          <input type="radio" name="mcq-choice" value="D">
-          <span class="custom-radio"></span>
-          <span class="option-text">D: ${escapeHtml(q.option_d)}</span>
-        </label>
+      <div class="mcq-options" style="display: flex; flex-direction: column; gap: var(--space-2); cursor: default;">
+        <div class="mcq-option" style="cursor: default; pointer-events: none; border-color: var(--color-border); background: var(--color-surface-elevated); display: flex; align-items: center; padding: var(--space-3); border-radius: var(--radius-inner); gap: var(--space-3);">
+          <span style="font-weight: 700; color: var(--color-accent); font-size: 1.1rem; min-width: 15px;">A</span>
+          <span class="option-text" style="color: var(--color-text-primary); text-align: left;">${escapeHtml(q.option_a)}</span>
+        </div>
+        <div class="mcq-option" style="cursor: default; pointer-events: none; border-color: var(--color-border); background: var(--color-surface-elevated); display: flex; align-items: center; padding: var(--space-3); border-radius: var(--radius-inner); gap: var(--space-3);">
+          <span style="font-weight: 700; color: var(--color-accent); font-size: 1.1rem; min-width: 15px;">B</span>
+          <span class="option-text" style="color: var(--color-text-primary); text-align: left;">${escapeHtml(q.option_b)}</span>
+        </div>
+        <div class="mcq-option" style="cursor: default; pointer-events: none; border-color: var(--color-border); background: var(--color-surface-elevated); display: flex; align-items: center; padding: var(--space-3); border-radius: var(--radius-inner); gap: var(--space-3);">
+          <span style="font-weight: 700; color: var(--color-accent); font-size: 1.1rem; min-width: 15px;">C</span>
+          <span class="option-text" style="color: var(--color-text-primary); text-align: left;">${escapeHtml(q.option_c)}</span>
+        </div>
+        <div class="mcq-option" style="cursor: default; pointer-events: none; border-color: var(--color-border); background: var(--color-surface-elevated); display: flex; align-items: center; padding: var(--space-3); border-radius: var(--radius-inner); gap: var(--space-3);">
+          <span style="font-weight: 700; color: var(--color-accent); font-size: 1.1rem; min-width: 15px;">D</span>
+          <span class="option-text" style="color: var(--color-text-primary); text-align: left;">${escapeHtml(q.option_d)}</span>
+        </div>
       </div>
-      <button id="submit-mcq-option-btn" class="btn-action" style="margin-top: var(--space-4);" onclick="submitMCQOption()" disabled>
-        <span>Submit Option</span>
-      </button>
+      <div class="verbal-instruction" style="margin-top: var(--space-4); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); background: rgba(99, 102, 241, 0.08); border: 1px dashed var(--color-accent); border-radius: var(--radius-inner); color: var(--color-text-primary); font-size: var(--text-sm); font-weight: 600; line-height: 1.4; text-align: left;">
+        <span style="font-size: 1.25rem;">🎤</span>
+        <span>Please speak your answer aloud (e.g., "I choose A" or "The correct option is B").</span>
+      </div>
     </div>
   `;
-  setupMCQListeners();
 }
 
 function escapeHtml(str) {

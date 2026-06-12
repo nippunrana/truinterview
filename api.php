@@ -69,8 +69,7 @@ try {
             throw new Exception("Session not found");
         }
         
-        $status = $session['current_status'];
-        if (($status === 'MCQ_PROMPTING' || $status === 'MCQ_ACTIVE') && isset($session['current_mcq_index'])) {
+        if (isset($session['current_mcq_index']) && $session['current_mcq_index'] !== null) {
             $mcqIndex = $session['current_mcq_index'];
             $qa = json_decode($session['q_a'] ?? '', true);
             if ($qa && isset($qa[$mcqIndex])) {
@@ -93,9 +92,25 @@ try {
             }
         }
         
+        $qa = json_decode($session['q_a'] ?? '', true);
+        $openQuestions = [];
+        if (is_array($qa)) {
+            foreach ($qa as $q) {
+                if (($q['type'] ?? '') === 'open') {
+                    $openQuestions[] = [
+                        "question" => $q['question']
+                    ];
+                }
+            }
+        }
+        
+        $currentOpenIndex = isset($session['current_open_question_index']) ? (int)$session['current_open_question_index'] : null;
+        
         echo json_encode([
             "status" => "success",
-            "has_active_mcq" => false
+            "has_active_mcq" => false,
+            "current_open_question_index" => $currentOpenIndex,
+            "open_questions" => $openQuestions
         ]);
         exit;
     }
@@ -757,8 +772,9 @@ try {
                     terminateTruGenConversation($convId);
                 }
             } else {
-                $stmt = $db->prepare("UPDATE sessions SET current_status = 'IN_PROGRESS' WHERE id = :id");
-                $stmt->execute(['id' => $sessionId]);
+                $newStatus = ($session['current_mcq_index'] !== null) ? 'MCQ_ACTIVE' : 'IN_PROGRESS';
+                $stmt = $db->prepare("UPDATE sessions SET current_status = :status WHERE id = :id");
+                $stmt->execute(['status' => $newStatus, 'id' => $sessionId]);
             }
             
         } elseif ($eventName === 'utterance_committed') {

@@ -395,8 +395,9 @@ $levelDescriptions = [
               <?php endif; ?>
             </div>
             <?php if ($hasResume && $isOptimized && $profileLevel < 10): ?>
-              <div class="pass-hint tech-mono" style="margin-top: var(--space-2); font-size: 10px; text-align: center; font-weight: 500;">
-                Score 60% or higher to pass.
+              <div class="pass-hint tech-mono" style="margin-top: var(--space-2); font-size: 10px; text-align: center; font-weight: 500; display: flex; flex-direction: column; gap: 2px;">
+                <div>Questions: 4 open / 4 MCQ</div>
+                <div>Score 60% or higher to pass.</div>
               </div>
             <?php endif; ?>
 
@@ -520,6 +521,12 @@ $levelDescriptions = [
                 <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                   <span style="color: var(--color-text-muted);">🔄</span>
                   <span>Attempts: <span class="tech-mono"><?php echo (int)($ma['attempts_used'] ?? 0); ?>/<?php echo (int)($ma['max_attempts'] ?? 1); ?></span></span>
+                </div>
+                
+                <!-- Questions Count -->
+                <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span style="color: var(--color-brand-primary);">❓</span>
+                  <span>Questions: <span class="tech-mono"><?php echo isset($ma['num_open_questions']) ? (int)$ma['num_open_questions'] : 4; ?> open / <?php echo isset($ma['num_mcq_questions']) ? (int)$ma['num_mcq_questions'] : 4; ?> MCQ</span></span>
                 </div>
                 
                 <!-- Expiration Date -->
