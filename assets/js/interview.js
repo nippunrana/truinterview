@@ -513,10 +513,7 @@ function renderMCQ(data) {
   if (!data.has_active_mcq) {
     container.innerHTML = `
       <div class="mcq-question-card" style="opacity: 0.7; text-align: center; justify-content: center; height: 100%;">
-        <p class="mcq-text" style="color: var(--color-text-muted);">Waiting for the AI interviewer to load questions...</p>
-        <button class="btn-action" style="margin: var(--space-4) auto 0;" onclick="triggerMCQ()">
-          <span>Start MCQ Assessment</span>
-        </button>
+        <p class="mcq-text" style="color: var(--color-text-muted);">Waiting for the AI interviewer to present the MCQ questions...</p>
       </div>
     `;
     currentMCQQuestionId = null;

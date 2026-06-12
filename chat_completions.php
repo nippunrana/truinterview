@@ -180,13 +180,16 @@ try {
             $stmt = $db->prepare("UPDATE sessions SET mcq_preference = 'READ', current_status = 'MCQ_ACTIVE' WHERE id = :id");
             $stmt->execute(['id' => $sessionId]);
             
-            $question = getNextUnansweredQuestion($sessionId);
+            $mcqIndex = $session['current_mcq_index'] ?? null;
+            $qa = json_decode($session['q_a'] ?? '', true);
+            $question = ($qa && $mcqIndex !== null) ? ($qa[$mcqIndex] ?? null) : null;
+            
             if ($question) {
                 $spokenText = "The question is: " . $question['question'] . 
-                              ". Option A: " . $question['option_a'] . 
-                              ". Option B: " . $question['option_b'] . 
-                              ". Option C: " . $question['option_c'] . 
-                              ". Option D: " . $question['option_d'] . 
+                              ". Option A: " . ($question['options']['A'] ?? '') . 
+                              ". Option B: " . ($question['options']['B'] ?? '') . 
+                              ". Option C: " . ($question['options']['C'] ?? '') . 
+                              ". Option D: " . ($question['options']['D'] ?? '') . 
                               ". Which one do you think is correct?";
             } else {
                 $spokenText = "We have completed the MCQ assessment. Thank you.";
@@ -197,14 +200,17 @@ try {
             $spokenText = "Please read the question on your screen and select your answer.";
         }
     } elseif ($status === 'MCQ_ACTIVE') {
-        $question = getNextUnansweredQuestion($sessionId);
+        $mcqIndex = $session['current_mcq_index'] ?? null;
+        $qa = json_decode($session['q_a'] ?? '', true);
+        $question = ($qa && $mcqIndex !== null) ? ($qa[$mcqIndex] ?? null) : null;
+        
         if ($question) {
             $payload = [
                 "contents" => [
                     [
                         "parts" => [
                             [
-                                "text" => "Given the user response: '" . $candidateText . "' and the current question: '" . $question['question'] . "' with options A: '" . $question['option_a'] . "', B: '" . $question['option_b'] . "', C: '" . $question['option_c'] . "', D: '" . $question['option_d'] . "'. Classify the user response into one of these options: A, B, C, D, or NONE if they did not select an option. Return only the option letter (A, B, C, or D) or NONE."
+                                "text" => "Given the user response: '" . $candidateText . "' and the current question: '" . $question['question'] . "' with options A: '" . ($question['options']['A'] ?? '') . "', B: '" . ($question['options']['B'] ?? '') . "', C: '" . ($question['options']['C'] ?? '') . "', D: '" . ($question['options']['D'] ?? '') . "'. Classify the user response into one of these options: A, B, C, D, or NONE if they did not select an option. Return only the option letter (A, B, C, or D) or NONE."
                             ]
                         ]
                     ]
@@ -218,27 +224,42 @@ try {
             }
             
             if (in_array($classification, ['A', 'B', 'C', 'D'])) {
-                $isCorrect = ($classification === strtoupper(trim($question['correct_option'])));
-                saveCandidateResponse($sessionId, $question['id'], $classification, $isCorrect);
+                $isCorrect = ($classification === strtoupper(trim($question['answer'])));
+                saveCandidateResponse($sessionId, $mcqIndex, $classification, $isCorrect);
                 
-                $nextQuestion = getNextUnansweredQuestion($sessionId);
-                $feedback = $isCorrect ? "That is correct!" : "That is incorrect. The correct answer was Option " . $question['correct_option'] . ".";
+                // Find next MCQ
+                $nextMCQIndex = null;
+                if (is_array($qa)) {
+                    for ($i = $mcqIndex + 1; $i < count($qa); $i++) {
+                        if (($qa[$i]['type'] ?? '') === 'mcq') {
+                            $nextMCQIndex = $i;
+                            break;
+                        }
+                    }
+                }
                 
-                if ($nextQuestion) {
+                $feedback = $isCorrect ? "That is correct!" : "That is incorrect. The correct answer was Option " . $question['answer'] . ".";
+                
+                if ($nextMCQIndex !== null) {
+                    $nextQuestion = $qa[$nextMCQIndex];
                     $nextPrompt = "";
                     if ($pref === 'READ') {
                         $nextPrompt = " Let's move to the next question. The question is: " . $nextQuestion['question'] . 
-                                      ". Option A: " . $nextQuestion['option_a'] . 
-                                      ". Option B: " . $nextQuestion['option_b'] . 
-                                      ". Option C: " . $nextQuestion['option_c'] . 
-                                      ". Option D: " . $nextQuestion['option_d'] . 
+                                      ". Option A: " . ($nextQuestion['options']['A'] ?? '') . 
+                                      ". Option B: " . ($nextQuestion['options']['B'] ?? '') . 
+                                      ". Option C: " . ($nextQuestion['options']['C'] ?? '') . 
+                                      ". Option D: " . ($nextQuestion['options']['D'] ?? '') . 
                                       ". Which one do you think is correct?";
+                        $stmt = $db->prepare("UPDATE sessions SET current_status = 'MCQ_ACTIVE', current_mcq_index = :next_index WHERE id = :id");
+                        $stmt->execute(['next_index' => $nextMCQIndex, 'id' => $sessionId]);
                     } else {
                         $nextPrompt = " Let's move to the next question. Please read it on your screen and select your answer.";
+                        $stmt = $db->prepare("UPDATE sessions SET current_status = 'MCQ_ACTIVE', current_mcq_index = :next_index WHERE id = :id");
+                        $stmt->execute(['next_index' => $nextMCQIndex, 'id' => $sessionId]);
                     }
                     $spokenText = $feedback . $nextPrompt;
                 } else {
-                    $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
+                    $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, current_mcq_index = NULL WHERE id = :id");
                     $stmt->execute(['id' => $sessionId]);
                     $spokenText = $feedback . " We have completed the MCQ assessment. Thank you.";
                 }

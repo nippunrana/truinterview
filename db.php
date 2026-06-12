@@ -253,27 +253,24 @@ function initSchema() {
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // Create mcq_questions table
-    $db->exec("CREATE TABLE IF NOT EXISTS mcq_questions (
-        id SERIAL PRIMARY KEY,
-        topic VARCHAR(50) NOT NULL,
-        question TEXT NOT NULL,
-        option_a TEXT NOT NULL,
-        option_b TEXT NOT NULL,
-        option_c TEXT NOT NULL,
-        option_d TEXT NOT NULL,
-        correct_option CHAR(1) NOT NULL
-    )");
-
     // Create candidate_responses table
     $db->exec("CREATE TABLE IF NOT EXISTS candidate_responses (
         id SERIAL PRIMARY KEY,
         session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-        question_id INT REFERENCES mcq_questions(id),
+        question_id INT,
         selected_option CHAR(1),
         is_correct BOOLEAN,
         submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Run dynamic MCQ migrations & schema updates
+    try {
+        $db->exec("ALTER TABLE candidate_responses DROP CONSTRAINT IF EXISTS candidate_responses_question_id_fkey");
+        $db->exec("DROP TABLE IF EXISTS mcq_questions CASCADE");
+        $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS current_mcq_index INT");
+    } catch (Exception $e) {
+        // Fail silently
+    }
 
     // Create proctor_alerts table
     $db->exec("CREATE TABLE IF NOT EXISTS proctor_alerts (
@@ -445,46 +442,6 @@ function initSchema() {
     }
 }
 
-function seedQuestions() {
-    $db = getDB();
-    $count = $db->query("SELECT COUNT(*) FROM mcq_questions")->fetchColumn();
-    if ($count == 0) {
-        $questions = [
-            [
-                'topic' => 'JavaScript',
-                'question' => 'What is the output of typeof null in JavaScript?',
-                'option_a' => 'null',
-                'option_b' => 'object',
-                'option_c' => 'undefined',
-                'option_d' => 'function',
-                'correct_option' => 'B'
-            ],
-            [
-                'topic' => 'CSS',
-                'question' => 'Which CSS property is used to align grid items vertically inside their cell?',
-                'option_a' => 'align-items',
-                'option_b' => 'justify-items',
-                'option_c' => 'align-content',
-                'option_d' => 'grid-gap',
-                'correct_option' => 'A'
-            ],
-            [
-                'topic' => 'PHP',
-                'question' => 'What does PDO stand for in PHP?',
-                'option_a' => 'PHP Database Object',
-                'option_b' => 'PHP Data Objects',
-                'option_c' => 'Postgres Database Object',
-                'option_d' => 'Programmable Data Objects',
-                'correct_option' => 'B'
-            ]
-        ];
-
-        $stmt = $db->prepare("INSERT INTO mcq_questions (topic, question, option_a, option_b, option_c, option_d, correct_option) VALUES (:topic, :question, :option_a, :option_b, :option_c, :option_d, :correct_option)");
-        foreach ($questions as $q) {
-            $stmt->execute($q);
-        }
-    }
-}
 
 function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null, $qaJson = null, $targetLevel = null) {
     $db = getDB();
@@ -601,13 +558,6 @@ function getLatestStartedSession() {
     return $stmt->fetch();
 }
 
-function getNextUnansweredQuestion($sessionId) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM mcq_questions WHERE id NOT IN (SELECT question_id FROM candidate_responses WHERE session_id = :session_id) ORDER BY id ASC LIMIT 1");
-    $stmt->execute(['session_id' => $sessionId]);
-    return $stmt->fetch();
-}
-
 function saveCandidateResponse($sessionId, $questionId, $selectedOption, $isCorrect) {
     $db = getDB();
     $stmt = $db->prepare("INSERT INTO candidate_responses (session_id, question_id, selected_option, is_correct) VALUES (:session_id, :question_id, :selected_option, :is_correct)");
@@ -619,18 +569,31 @@ function saveCandidateResponse($sessionId, $questionId, $selectedOption, $isCorr
     ]);
 }
 
-function getMCQQuestionById($id) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM mcq_questions WHERE id = :id");
-    $stmt->execute(['id' => $id]);
-    return $stmt->fetch();
-}
-
 function getCandidateResponses($sessionId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT cr.*, mq.topic, mq.question, mq.option_a, mq.option_b, mq.option_c, mq.option_d, mq.correct_option FROM candidate_responses cr JOIN mcq_questions mq ON cr.question_id = mq.id WHERE cr.session_id = :session_id ORDER BY cr.id ASC");
+    $stmt = $db->prepare("SELECT * FROM candidate_responses WHERE session_id = :session_id ORDER BY id ASC");
     $stmt->execute(['session_id' => $sessionId]);
-    return $stmt->fetchAll();
+    $responses = $stmt->fetchAll();
+    
+    $session = getSession($sessionId);
+    $qa = json_decode($session['q_a'] ?? '', true);
+    
+    $enriched = [];
+    foreach ($responses as $r) {
+        $idx = $r['question_id'];
+        if ($qa && isset($qa[$idx])) {
+            $q = $qa[$idx];
+            $r['topic'] = $q['topic'] ?? $session['role_title_id'] ?? 'MCQ';
+            $r['question'] = $q['question'];
+            $r['option_a'] = $q['options']['A'] ?? '';
+            $r['option_b'] = $q['options']['B'] ?? '';
+            $r['option_c'] = $q['options']['C'] ?? '';
+            $r['option_d'] = $q['options']['D'] ?? '';
+            $r['correct_option'] = $q['answer'];
+        }
+        $enriched[] = $r;
+    }
+    return $enriched;
 }
 
 function getInterviewLinkByCode($code) {
@@ -1067,10 +1030,9 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
     }
 }
 
-// Auto-init and seed tables on load
+// Auto-init tables on load
 try {
     initSchema();
-    seedQuestions();
 } catch (Exception $e) {
     // Fail silently in imports, let endpoints report errors if they happen
 }

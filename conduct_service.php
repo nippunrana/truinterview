@@ -64,6 +64,24 @@ function buildInterviewSystemPrompt($session) {
         }
     }
 
+    $questionsStr = "";
+    if (!empty($session['q_a'])) {
+        $qa = json_decode($session['q_a'], true);
+        if (is_array($qa)) {
+            $questionsStr = "<open_ended_questions>\n";
+            $openIdx = 1;
+            foreach ($qa as $idx => $q) {
+                if (($q['type'] ?? '') === 'open') {
+                    $questionsStr .= "Question {$openIdx}: " . $q['question'] . "\n";
+                    $openIdx++;
+                }
+            }
+            $questionsStr .= "</open_ended_questions>\n\n";
+        }
+    }
+
+    $candidateName = $session['candidate_name'] ?? 'Candidate';
+
     $prompt = "<context>
 You are Alex, an expert technical interviewer conducting a live technical interview assessment.
 Your style is professional, encouraging, objective, and clear.
@@ -77,16 +95,18 @@ Your style is professional, encouraging, objective, and clear.
 - Target Duration: {$duration} minutes
 </interview_context>
 
-<proctoring_status>
+{$questionsStr}<proctoring_status>
 - Total Confirmed Integrity Anomalies: {$confirmedProctorCount}
 - Active Webcam Log Context:
 {$proctorStatusStr}
 </proctoring_status>
 
 <task>
-Conduct a technical interview. Ask questions one at a time, listen to the candidate's answers, ask probing follow-up questions, and evaluate their code or design if visible in the screenshot.
-Start with a friendly greeting and introduction, then move into technical topics sequentially.
-Do NOT list all questions at once. Keep the dialogue turn-based.
+Conduct a technical interview. Ask the pre-generated open-ended questions listed in <open_ended_questions> one at a time.
+Do NOT list all questions at once. Ask the candidate to answer, listen to their response, and ask probing follow-up questions if needed.
+Once the candidate has answered all the questions in <open_ended_questions>, you MUST call the `start_mcq_phase` tool. This will display the multiple choice questions on their screen.
+Do NOT ask the candidate any MCQ questions verbally yourself.
+Keep the dialogue turn-based.
 </task>
 
 <security>
@@ -153,6 +173,14 @@ function getInterviewTools() {
                     ],
                     "required" => ["reason"]
                 ]
+            ],
+            [
+                "name" => "start_mcq_phase",
+                "description" => "Transition the interview to the multiple-choice question (MCQ) phase. Call this immediately once the candidate has finished answering the open-ended questions listed in <open_ended_questions>.",
+                "parameters" => [
+                    "type" => "object",
+                    "properties" => new stdClass()
+                ]
             ]
         ]
     ];
@@ -182,6 +210,32 @@ function executeInterviewTool($toolName, $args, $sessionId) {
             return [
                 "status" => "closed",
                 "message" => "Interview terminated. Say a brief, professional closing statement explaining that the interview is ended due to conduct rules."
+            ];
+
+        case 'start_mcq_phase':
+            $db = getDB();
+            $session = getSession($sessionId);
+            $qa = json_decode($session['q_a'] ?? '', true);
+            $firstMCQIndex = null;
+            if (is_array($qa)) {
+                foreach ($qa as $idx => $q) {
+                    if (($q['type'] ?? '') === 'mcq') {
+                        $firstMCQIndex = $idx;
+                        break;
+                    }
+                }
+            }
+            if ($firstMCQIndex === null) {
+                return ["error" => "No MCQ questions configured for this session."];
+            }
+
+            $stmt = $db->prepare("UPDATE sessions SET current_status = 'MCQ_PROMPTING', mcq_preference = 'PENDING', current_mcq_index = :mcq_index WHERE id = :id");
+            $stmt->execute(['mcq_index' => $firstMCQIndex, 'id' => $sessionId]);
+
+            logTranscript($sessionId, 'SYSTEM', "MCQ flow triggered via AI tool call.");
+            return [
+                "status" => "success",
+                "message" => "MCQ phase initialized on the user interface. Ask the candidate if they prefer you to read the questions aloud, or if they would like to read silently."
             ];
             
         default:
