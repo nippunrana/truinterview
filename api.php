@@ -443,7 +443,7 @@ try {
         ]);
         exit;
     }
-    
+
     if ($action === 'greet_candidate') {
         $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
         $convId = $_GET['conversation_id'] ?? '';
@@ -769,7 +769,7 @@ try {
         $eventPayload = $event['payload'] ?? [];
         
         $session = getSessionByConversationId($convId);
-        if (!$session) {
+        if (!$session && !in_array($eventName, ['call_ended', 'participant_left', 'max_call_duration_timeout'])) {
             // Auto-associate the conversation_id with the latest STARTED session
             $session = getLatestStartedSession();
             if ($session) {

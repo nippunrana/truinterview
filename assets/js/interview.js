@@ -1406,7 +1406,7 @@ window.addEventListener('message', (event) => {
       data.event === 'call_ended' ||
       data.type === 'call-ended' ||
       data.event === 'call-ended' ||
-      (typeof data === 'string' && (data.includes('ended') || data.includes('completed') || data.includes('close')))
+      (typeof data === 'string' && (data === 'call_ended' || data === 'call-ended' || data === 'close' || data === 'closed' || data === 'completed'))
     )) {
       console.log('TruGen call ended signal detected via postMessage.');
       if (typeof transitionToCompleted === 'function') {
