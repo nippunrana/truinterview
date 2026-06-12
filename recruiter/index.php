@@ -112,6 +112,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             $expiresVal = !empty($expiresAt) ? date('Y-m-d H:i:s', strtotime($expiresAt)) : null;
             
+            $categoryId = null;
+            $matchPercentage = 0;
+            try {
+                $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+                $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+                
+                require_once __DIR__ . '/../ai_service.php';
+                $categories = getAllCategories();
+                $aiResult = matchRoleToCategory($jobRole, $categories, $model, $apiKey);
+                
+                if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
+                    if ($aiResult['match_percentage'] >= 15) {
+                        $categoryId = $aiResult['category_id'];
+                        $matchPercentage = $aiResult['match_percentage'];
+                    }
+                }
+            } catch (Exception $ex) {
+                // Fail silently
+            }
+
             createInterviewLink(
                 $company['id'],
                 $user['id'],
@@ -122,7 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $jobRole,
                 !empty($jobDescription) ? $jobDescription : null,
                 $isPublic,
-                $minLevel
+                $minLevel,
+                $categoryId,
+                $matchPercentage
             );
             
             $_SESSION['created_code'] = $code;

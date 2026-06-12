@@ -398,6 +398,48 @@ function initSchema() {
 
     // Drop cataegories table (remove typo fallback)
     $db->exec("DROP TABLE IF EXISTS cataegories");
+
+    // Add category columns to interview_links
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(uuid) ON DELETE SET NULL");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS category_match_percentage INTEGER DEFAULT 0");
+
+    // Retroactively backfill category_id and category_match_percentage for existing active interview links
+    try {
+        $stmt = $db->query("SELECT id, job_role, created_by FROM interview_links WHERE category_id IS NULL AND status = 'active'");
+        $unfilled = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($unfilled)) {
+            require_once __DIR__ . '/ai_service.php';
+            $categories = getAllCategories();
+            $updateStmt = $db->prepare("UPDATE interview_links SET category_id = :category_id, category_match_percentage = :match_percent WHERE id = :id");
+            
+            foreach ($unfilled as $row) {
+                $model = 'gemini-3.5-flash';
+                $apiKey = null;
+                if (!empty($row['created_by'])) {
+                    $userStmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :uid");
+                    $userStmt->execute(['uid' => $row['created_by']]);
+                    $userFull = $userStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($userFull) {
+                        $model = $userFull['model_chat_task'] ?: $model;
+                        $apiKey = $userFull['custom_gemini_api_key'] ?: $apiKey;
+                    }
+                }
+                
+                $aiResult = matchRoleToCategory($row['job_role'], $categories, $model, $apiKey);
+                if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
+                    if ($aiResult['match_percentage'] >= 15) {
+                        $updateStmt->execute([
+                            'category_id' => $aiResult['category_id'],
+                            'match_percent' => (int)$aiResult['match_percentage'],
+                            'id' => $row['id']
+                        ]);
+                    }
+                }
+            }
+        }
+    } catch (Exception $ex) {
+        // Fail silently
+    }
     } catch (Exception $e) {
         // Fail silently
     }
@@ -619,9 +661,9 @@ function getInterviewLink($id) {
     return $stmt->fetch();
 }
 
-function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAttempts, $expiresAt, $jobRole, $jobDescription = null, $isPublic = false, $minLevel = 0) {
+function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAttempts, $expiresAt, $jobRole, $jobDescription = null, $isPublic = false, $minLevel = 0, $categoryId = null, $categoryMatchPercentage = 0) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, max_attempts, expires_at, job_role, job_description, is_public, min_level) VALUES (:company_id, :created_by, :code, :candidate_email, :max_attempts, :expires_at, :job_role, :job_description, :is_public, :min_level) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, max_attempts, expires_at, job_role, job_description, is_public, min_level, category_id, category_match_percentage) VALUES (:company_id, :created_by, :code, :candidate_email, :max_attempts, :expires_at, :job_role, :job_description, :is_public, :min_level, :category_id, :category_match_percentage) RETURNING id");
     $stmt->execute([
         'company_id' => $companyId,
         'created_by' => $userId,
@@ -632,7 +674,9 @@ function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAt
         'job_role' => empty($jobRole) ? 'Software Engineer' : trim($jobRole),
         'job_description' => empty($jobDescription) ? null : trim($jobDescription),
         'is_public' => $isPublic ? 'true' : 'false',
-        'min_level' => (int)$minLevel
+        'min_level' => (int)$minLevel,
+        'category_id' => $categoryId,
+        'category_match_percentage' => (int)$categoryMatchPercentage
     ]);
     return $stmt->fetchColumn();
 }

@@ -353,8 +353,7 @@ $levelDescriptions = [
                 <?php endif; ?>
               </div>
 
-              <?php 
-              // Query matched public assessments
+              <?php
               $matchedAssessments = [];
               $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
               $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
@@ -362,13 +361,17 @@ $levelDescriptions = [
               $profileSlug = trim($profileSlug, '-');
 
               foreach ($publicLinks as $pLink) {
-                  $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
-                  $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
-                  $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
-                  $pLinkSlug = trim($pLinkSlug, '-');
-                  
-                  if ($profileSlug === $pLinkSlug) {
+                  if (!empty($profile['category_id']) && !empty($pLink['category_id']) && $profile['category_id'] === $pLink['category_id']) {
                       $matchedAssessments[] = $pLink;
+                  } else {
+                      $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
+                      $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
+                      $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
+                      $pLinkSlug = trim($pLinkSlug, '-');
+                      
+                      if ($profileSlug === $pLinkSlug) {
+                          $matchedAssessments[] = $pLink;
+                      }
                   }
               }
               ?>
