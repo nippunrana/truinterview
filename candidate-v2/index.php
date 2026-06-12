@@ -225,12 +225,12 @@ $levelDescriptions = [
             $levelTooltip = $levelDescriptions[$profileLevel];
             if ($profileLevel === 0) {
                 if ($hasResume && $isOptimized) {
-                    $levelTooltip = "Resume optimized! Take your first practice interview to reach Level 1.";
+                    $levelTooltip = "Resume optimized! Take Level 1 (Score 60%+ to pass).";
                 } else {
-                    $levelTooltip = "Initial level. Upload and optimize your resume to unlock practice interviews.";
+                    $levelTooltip = "Initial level. Upload and optimize your resume to unlock Level 1.";
                 }
             } else if ($profileLevel < 10) {
-                $levelTooltip = "Level {$profileLevel}: " . $levelDescriptions[$profileLevel] . " Complete this interview to reach Level " . ($profileLevel + 1) . "!";
+                $levelTooltip = "Level {$profileLevel}: " . $levelDescriptions[$profileLevel] . " Score 60%+ to reach Level " . ($profileLevel + 1) . "!";
             }
             ?>
             <div class="level-container <?php echo $profileLevel === 10 ? 'level-10' : ''; ?> premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($levelTooltip); ?>">
@@ -308,14 +308,7 @@ $levelDescriptions = [
                         <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
                       <?php endif; ?>
                     </div>
-                    <?php if ($profileLevel < 10): ?>
-                      <div style="margin-top: var(--space-2); font-size: 0.78rem; color: var(--color-success); font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                        <svg style="width: 14px; height: 14px; flex-shrink: 0; color: var(--color-success);" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span>Start practice interview to reach Level <?php echo $profileLevel + 1; ?>!</span>
-                      </div>
-                    <?php else: ?>
+                    <?php if ($profileLevel === 10): ?>
                       <div style="margin-top: var(--space-2); font-size: 0.78rem; color: #d97706; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                         <svg style="width: 14px; height: 14px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
@@ -350,10 +343,19 @@ $levelDescriptions = [
 
             <div class="card-actions">
               <?php if ($hasResume && $isOptimized): ?>
-                <button class="btn btn-primary btn-prepare-practice" data-profile-id="<?php echo htmlspecialchars($profile['id']); ?>" style="flex: 1;">
-                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  Practice Interview
-                </button>
+                <?php if ($profileLevel < 10): ?>
+                  <button class="btn btn-primary btn-prepare-practice" data-profile-id="<?php echo htmlspecialchars($profile['id']); ?>" style="flex: 1;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Take Level <?php echo $profileLevel + 1; ?>
+                  </button>
+                <?php else: ?>
+                  <button class="btn btn-outline" style="flex: 1; opacity: 0.65; cursor: not-allowed; gap: 6px;" disabled>
+                    <svg style="width: 16px; height: 16px; color: var(--color-success);" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    All Levels Completed
+                  </button>
+                <?php endif; ?>
               <?php elseif ($hasResume && !$isOptimized): ?>
                 <a href="resume_optimizer.php?resume_path=<?php echo urlencode($profile['optimized_resume_path']); ?>&profile_id=<?php echo urlencode($profile['id']); ?>" 
                   class="btn btn-outline" 
@@ -374,6 +376,11 @@ $levelDescriptions = [
                 </button>
               <?php endif; ?>
             </div>
+            <?php if ($hasResume && $isOptimized && $profileLevel < 10): ?>
+              <div style="margin-top: var(--space-2); font-size: 11px; color: var(--color-text-secondary); text-align: center; font-weight: 500; font-family: 'Inter', sans-serif;">
+                Score 60% or higher to pass.
+              </div>
+            <?php endif; ?>
 
           </div>
         <?php endforeach; ?>

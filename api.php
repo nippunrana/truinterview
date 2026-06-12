@@ -193,18 +193,7 @@ try {
             $session = getSession($sessionId);
         }
 
-        // If the session has an associated profile_id and it is a completed practice session,
-        // update the candidate profile level to match or exceed this session's target level.
-        if (!empty($session['profile_id']) && ($session['session_type'] ?? '') === 'practice') {
-            $sessionLevel = (int)($session['level'] ?? 0);
-            if ($sessionLevel > 0) {
-                $stmtProfile = $db->prepare("UPDATE candidate_profiles SET level = GREATEST(level, :level) WHERE id = :profile_id");
-                $stmtProfile->execute([
-                    'level' => $sessionLevel,
-                    'profile_id' => $session['profile_id']
-                ]);
-            }
-        }
+
         
         // Terminate TruGen conversation if there is an active session
         if (!empty($session['trugen_conversation_id'])) {
@@ -257,6 +246,30 @@ try {
             ]);
             
             $session['final_score'] = json_encode($evaluation);
+        }
+
+        // If the session has an associated profile_id, it is completed, it is a practice session,
+        // and we have a final score generated, check if the candidate scored >= 60% to pass the level.
+        if (!empty($session['profile_id']) && ($session['session_type'] ?? '') === 'practice' && !empty($session['final_score'])) {
+            $eval = json_decode($session['final_score'], true);
+            if (is_array($eval)) {
+                $comm = (float)($eval['communication_score'] ?? 0);
+                $prob = (float)($eval['problem_solving_score'] ?? 0);
+                $qual = (float)($eval['code_quality_score'] ?? 0);
+                $avgScore = ($comm + $prob + $qual) / 3.0; // average score out of 10
+                $percentage = $avgScore * 10.0; // convert to percentage out of 100
+                
+                if ($percentage >= 60.0) {
+                    $sessionLevel = (int)($session['level'] ?? 0);
+                    if ($sessionLevel > 0) {
+                        $stmtProfile = $db->prepare("UPDATE candidate_profiles SET level = GREATEST(level, :level) WHERE id = :profile_id");
+                        $stmtProfile->execute([
+                            'level' => $sessionLevel,
+                            'profile_id' => $session['profile_id']
+                        ]);
+                    }
+                }
+            }
         }
         
         // Fetch MCQ responses
