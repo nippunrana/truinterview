@@ -115,16 +115,17 @@ Level {$targetLevel} Definition: {$levelDescription}
 <task>
 Generate exactly 10 technical interview questions aligned strictly with the Level {$targetLevel} definition.
 Out of these 10 questions:
-- Around 6 questions must be standard open-ended technical questions (type: "open").
-- Around 4 questions must be Multiple-Choice Questions (type: "mcq").
+- Exactly 6 questions must be standard open-ended technical questions (type: "open").
+- Exactly 4 questions must be Multiple-Choice Questions (type: "mcq").
 For each question, provide a corresponding correct answer.
 </task>
 
 <constraints>
+- Ensure the difficulty, complexity, and theme of every question strictly matches the Level {$targetLevel} Definition. Do not generate simple definition questions if the level calls for architecture, debugging, or optimization.
 - If <history> is present, ensure the new questions cover different TOPICS than those in <history>. Do not repeat concepts.
 - For standard open-ended questions (type: "open"):
   - The "question" is the technical question.
-  - The "options" field must be omitted or set to null.
+  - The "options" field must be null.
   - The "answer" must be a factual explanation strictly under 100 words.
 - For MCQ questions (type: "mcq"):
   - The "question" is the multiple-choice question. Do not include or embed options A, B, C, or D in this string.
@@ -170,10 +171,10 @@ Return ONLY a JSON array of exactly 10 objects matching the response schema:
 </output_format>
 
 <verification>
-- Ensure the output is valid JSON matching the schema.
-- Confirm there are exactly 10 objects in the array.
-- Confirm that exactly 4 of these objects have type 'mcq' and contain the populated 'options' keys.
-- Ensure 'answer' for MCQs is exactly one of the letters: 'A', 'B', 'C', or 'D'.
+- Confirm that exactly 10 objects are returned.
+- Confirm that exactly 6 objects have type 'open' and 4 objects have type 'mcq'.
+- Confirm 'answer' for MCQs is exactly one of the letters: 'A', 'B', 'C', or 'D'.
+- Confirm that MCQ options contain exactly keys 'A', 'B', 'C', and 'D'.
 </verification>
 EOT;
 
@@ -185,6 +186,7 @@ EOT;
             "properties" => [
                 "type" => [
                     "type" => "STRING",
+                    "enum" => ["open", "mcq"],
                     "description" => "The type of question, either 'open' or 'mcq'."
                 ],
                 "question" => [
