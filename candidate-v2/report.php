@@ -31,12 +31,16 @@ if ($session['current_status'] !== 'COMPLETED' || empty($session['final_score'])
 $scoreData = json_decode($session['final_score'], true);
 $responses = getCandidateResponses($sessionId);
 
-// Let's get the template title
+// Let's get the template title / job role
 $templateTitle = 'General Tech Practice';
-if ($session['template_id']) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT title FROM interview_templates WHERE id = :id");
-    $stmt->execute(['id' => $session['template_id']]);
+$db = getDB();
+if (!empty($session['interview_link_id'])) {
+    $stmt = $db->prepare("SELECT job_role FROM interview_links WHERE id = :id");
+    $stmt->execute(['id' => $session['interview_link_id']]);
+    $templateTitle = $stmt->fetchColumn() ?: 'General Tech Practice';
+} elseif (!empty($session['profile_id'])) {
+    $stmt = $db->prepare("SELECT role_title FROM candidate_profiles WHERE id = :id");
+    $stmt->execute(['id' => $session['profile_id']]);
     $templateTitle = $stmt->fetchColumn() ?: 'General Tech Practice';
 }
 

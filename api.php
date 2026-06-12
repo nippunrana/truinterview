@@ -358,7 +358,7 @@ try {
             }
             
             $linkId = $link['id'];
-            $templateId = $link['template_id'];
+            $templateId = null;
             $sessionType = 'assessment';
 
             // Increment attempts

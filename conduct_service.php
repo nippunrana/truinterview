@@ -8,46 +8,30 @@ require_once __DIR__ . '/ai_service.php';
  * Builds a robust, context-engineered, and secure prompt.
  */
 function buildInterviewSystemPrompt($session) {
-    $template = null;
-    if (!empty($session['template_id'])) {
-        $template = getInterviewTemplate($session['template_id']);
-    }
+    $jobRole = 'Software Engineer';
+    $topics = 'Core software engineering concepts, programming paradigms, and problem-solving';
+    $difficulty = 'medium';
+    $duration = 30;
+    $customPrompt = '';
 
-    $candidateName = $session['candidate_name'] ?? 'Candidate';
-    
-    if ($template) {
-        $jobRole = $template['job_role'] ?: 'Software Engineer';
-        $difficulty = $template['difficulty'] ?: 'medium';
-        $duration = $template['duration_minutes'] ?: 30;
-        
-        $topicsData = $template['topics'];
-        if (is_string($topicsData)) {
-            $topicsArr = json_decode($topicsData, true);
-        } else {
-            $topicsArr = $topicsData;
+    if (!empty($session['interview_link_id'])) {
+        $link = getInterviewLink($session['interview_link_id']);
+        if ($link) {
+            $jobRole = $link['job_role'] ?: 'Software Engineer';
+            $topics = 'Core concepts related to ' . $jobRole;
         }
-        $topics = is_array($topicsArr) ? implode(", ", $topicsArr) : 'Software engineering';
-        $customPrompt = $template['custom_system_prompt'] ?? '';
-    } else {
-        $jobRole = 'Software Engineer';
-        $topics = 'Core software engineering concepts, programming paradigms, and problem-solving';
-        $difficulty = 'medium';
-        $duration = 30;
-        $customPrompt = '';
-
-        if (!empty($session['profile_id'])) {
-            $profile = getCandidateProfile($session['profile_id'], $session['user_id']);
-            if ($profile) {
-                $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-                if (!empty($resumeData['detected_role'])) {
-                    $jobRole = $resumeData['detected_role'];
-                } elseif (!empty($profile['role_title'])) {
-                    $jobRole = $profile['role_title'];
-                }
-                
-                if (!empty($resumeData['user_entered_description'])) {
-                    $topics .= ", specifically aligned with the target job requirements: " . $resumeData['user_entered_description'];
-                }
+    } elseif (!empty($session['profile_id'])) {
+        $profile = getCandidateProfile($session['profile_id'], $session['user_id']);
+        if ($profile) {
+            $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+            if (!empty($resumeData['detected_role'])) {
+                $jobRole = $resumeData['detected_role'];
+            } elseif (!empty($profile['role_title'])) {
+                $jobRole = $profile['role_title'];
+            }
+            
+            if (!empty($resumeData['user_entered_description'])) {
+                $topics .= ", specifically aligned with the target job requirements: " . $resumeData['user_entered_description'];
             }
         }
     }

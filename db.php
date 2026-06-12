@@ -113,27 +113,20 @@ function initSchema() {
         joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // Create interview_templates table
-    $db->exec("CREATE TABLE IF NOT EXISTS interview_templates (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-        title VARCHAR(200) NOT NULL,
-        description TEXT,
-        job_role VARCHAR(150),
-        topics JSONB DEFAULT '[]',
-        difficulty VARCHAR(20) DEFAULT 'medium',
-        duration_minutes INTEGER DEFAULT 30,
-        custom_system_prompt TEXT,
-        mcq_enabled BOOLEAN DEFAULT TRUE,
-        is_active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    )");
+    // Run DB migrations to remove templates and add job_role to links
+    try {
+        $db->exec("ALTER TABLE IF EXISTS interview_links DROP CONSTRAINT IF EXISTS interview_links_template_id_fkey CASCADE");
+        $db->exec("ALTER TABLE IF EXISTS sessions DROP CONSTRAINT IF EXISTS sessions_template_id_fkey CASCADE");
+        $db->exec("ALTER TABLE IF EXISTS interview_links DROP COLUMN IF EXISTS template_id CASCADE");
+        $db->exec("ALTER TABLE IF EXISTS sessions DROP COLUMN IF EXISTS template_id CASCADE");
+        $db->exec("DROP TABLE IF EXISTS interview_templates CASCADE");
+    } catch (Exception $e) {
+        // Fail silently
+    }
 
     // Create interview_links table
     $db->exec("CREATE TABLE IF NOT EXISTS interview_links (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        template_id UUID REFERENCES interview_templates(id) ON DELETE CASCADE,
         company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
         created_by UUID REFERENCES users(id) ON DELETE SET NULL,
         code VARCHAR(12) UNIQUE NOT NULL,
@@ -143,8 +136,11 @@ function initSchema() {
         attempts_used INTEGER DEFAULT 0,
         expires_at TIMESTAMP WITH TIME ZONE,
         status VARCHAR(20) DEFAULT 'active',
+        job_role VARCHAR(150) NOT NULL DEFAULT 'Software Engineer',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
+
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS job_role VARCHAR(150) NOT NULL DEFAULT 'Software Engineer'");
 
     // Create sessions table
     $db->exec("CREATE TABLE IF NOT EXISTS sessions (
@@ -162,7 +158,6 @@ function initSchema() {
     // Add session columns if they don't exist
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) DEFAULT 'practice'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
@@ -212,7 +207,6 @@ function initSchema() {
                     final_score JSONB,
                     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
                     interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL,
-                    template_id UUID REFERENCES interview_templates(id) ON DELETE SET NULL,
                     session_type VARCHAR(20) DEFAULT 'practice',
                     model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
                     model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
@@ -224,8 +218,8 @@ function initSchema() {
                 )");
                 
                 // Copy data from sessions_old to sessions
-                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a)
-                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a
+                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a)
+                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a
                     FROM sessions_old");
                 
                 // Re-add constraints pointing to sessions
@@ -457,13 +451,12 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
             $roleTitleId = $profile['role_title_id'] ?? null;
         }
     }
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, template_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id, q_a) VALUES (:name, :email, :user_id, :link_id, :template_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id, :q_a) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id, q_a) VALUES (:name, :email, :user_id, :link_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id, :q_a) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
         'user_id' => $userId,
         'link_id' => $linkId,
-        'template_id' => $templateId,
         'type' => $type,
         'model_chat' => $modelChat,
         'model_vision' => $modelVision,
@@ -609,72 +602,47 @@ function getRecruiterCompany($recruiterId) {
     return $stmt->fetch();
 }
 
-function createInterviewTemplate($companyId, $userId, $title, $description, $jobRole, $topics, $difficulty, $duration, $customPrompt, $mcqEnabled) {
-    $db = getDB();
-    $stmt = $db->prepare("INSERT INTO interview_templates (company_id, created_by, title, description, job_role, topics, difficulty, duration_minutes, custom_system_prompt, mcq_enabled) VALUES (:company_id, :created_by, :title, :description, :job_role, :topics, :difficulty, :duration, :custom_prompt, :mcq_enabled) RETURNING id");
-    $stmt->execute([
-        'company_id' => $companyId,
-        'created_by' => $userId,
-        'title' => $title,
-        'description' => $description,
-        'job_role' => $jobRole,
-        'topics' => json_encode($topics),
-        'difficulty' => $difficulty,
-        'duration' => (int)$duration,
-        'custom_prompt' => $customPrompt,
-        'mcq_enabled' => $mcqEnabled ? 1 : 0
-    ]);
-    return $stmt->fetchColumn();
-}
-
-function listInterviewTemplates($companyId) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM interview_templates WHERE company_id = :company_id AND is_active = TRUE ORDER BY created_at DESC");
-    $stmt->execute(['company_id' => $companyId]);
-    return $stmt->fetchAll();
-}
-
-function getInterviewTemplate($id) {
+function getInterviewLink($id) {
     if (empty($id)) return null;
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM interview_templates WHERE id = :id");
+    $stmt = $db->prepare("SELECT * FROM interview_links WHERE id = :id");
     $stmt->execute(['id' => $id]);
     return $stmt->fetch();
 }
 
-function createInterviewLink($templateId, $companyId, $userId, $code, $candidateEmail, $candidateName, $maxAttempts, $expiresAt) {
+function createInterviewLink($companyId, $userId, $code, $candidateEmail, $candidateName, $maxAttempts, $expiresAt, $jobRole) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO interview_links (template_id, company_id, created_by, code, candidate_email, candidate_name, max_attempts, expires_at) VALUES (:template_id, :company_id, :created_by, :code, :candidate_email, :candidate_name, :max_attempts, :expires_at) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, candidate_name, max_attempts, expires_at, job_role) VALUES (:company_id, :created_by, :code, :candidate_email, :candidate_name, :max_attempts, :expires_at, :job_role) RETURNING id");
     $stmt->execute([
-        'template_id' => $templateId,
         'company_id' => $companyId,
         'created_by' => $userId,
         'code' => strtoupper(trim($code)),
         'candidate_email' => empty($candidateEmail) ? null : trim($candidateEmail),
         'candidate_name' => empty($candidateName) ? null : trim($candidateName),
         'max_attempts' => (int)$maxAttempts,
-        'expires_at' => empty($expiresAt) ? null : $expiresAt
+        'expires_at' => empty($expiresAt) ? null : $expiresAt,
+        'job_role' => empty($jobRole) ? 'Software Engineer' : trim($jobRole)
     ]);
     return $stmt->fetchColumn();
 }
 
 function listInterviewLinks($companyId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT il.*, it.title as template_title FROM interview_links il JOIN interview_templates it ON il.template_id = it.id WHERE il.company_id = :company_id ORDER BY il.created_at DESC");
+    $stmt = $db->prepare("SELECT * FROM interview_links WHERE company_id = :company_id ORDER BY created_at DESC");
     $stmt->execute(['company_id' => $companyId]);
     return $stmt->fetchAll();
 }
 
 function listCandidateResults($companyId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT s.*, it.title as template_title, il.code as link_code FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id JOIN interview_templates it ON s.template_id = it.id WHERE il.company_id = :company_id ORDER BY s.started_at DESC");
+    $stmt = $db->prepare("SELECT s.*, il.job_role as template_title, il.code as link_code FROM sessions s JOIN interview_links il ON s.interview_link_id = il.id WHERE il.company_id = :company_id ORDER BY s.started_at DESC");
     $stmt->execute(['company_id' => $companyId]);
     return $stmt->fetchAll();
 }
 
 function listCandidateHistory($candidateId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT s.*, it.title as template_title FROM sessions s LEFT JOIN interview_templates it ON s.template_id = it.id WHERE s.user_id = :candidate_id ORDER BY s.started_at DESC");
+    $stmt = $db->prepare("SELECT s.*, COALESCE(il.job_role, cp.role_title) as template_title FROM sessions s LEFT JOIN interview_links il ON s.interview_link_id = il.id LEFT JOIN candidate_profiles cp ON s.profile_id = cp.id WHERE s.user_id = :candidate_id ORDER BY s.started_at DESC");
     $stmt->execute(['candidate_id' => $candidateId]);
     return $stmt->fetchAll();
 }

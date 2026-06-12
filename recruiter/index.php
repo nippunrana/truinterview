@@ -70,47 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        if ($action === 'create_template') {
-            $title = $_POST['title'] ?? '';
-            $jobRole = $_POST['job_role'] ?? '';
-            $description = $_POST['description'] ?? '';
-            $difficulty = $_POST['difficulty'] ?? 'medium';
-            $duration = $_POST['duration_minutes'] ?? 30;
-            $customPrompt = $_POST['custom_system_prompt'] ?? '';
-            $topics = $_POST['topics'] ?? '';
-            
-            if (empty($title) || empty($jobRole)) {
-                throw new Exception("Title and Job Role are required.");
-            }
-
-            // Parse topics array from comma separated string
-            $topicsArr = array_map('trim', explode(',', $topics));
-            $topicsArr = array_filter($topicsArr);
-
-            createInterviewTemplate(
-                $company['id'],
-                $user['id'],
-                $title,
-                $description,
-                $jobRole,
-                $topicsArr,
-                $difficulty,
-                $duration,
-                $customPrompt,
-                true // MCQ enabled
-            );
-            $success = "Template '$title' created successfully.";
-        }
-
         if ($action === 'generate_link') {
-            $templateId = $_POST['template_id'] ?? '';
+            $jobRole = $_POST['job_role'] ?? '';
             $candidateName = $_POST['candidate_name'] ?? '';
             $candidateEmail = $_POST['candidate_email'] ?? '';
             $maxAttempts = $_POST['max_attempts'] ?? 1;
             $expiresAt = $_POST['expires_at'] ?? '';
             
-            if (empty($templateId)) {
-                throw new Exception("Please select a template.");
+            if (empty($jobRole)) {
+                throw new Exception("Please specify a job role.");
             }
 
             // Generate unique code
@@ -131,14 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             createInterviewLink(
-                $templateId,
                 $company['id'],
                 $user['id'],
                 $code,
                 $candidateEmail,
                 $candidateName,
                 $maxAttempts,
-                $expTimestamp
+                $expTimestamp,
+                $jobRole
             );
             $success = "Assessment invite generated successfully. Code: $code";
         }
@@ -149,7 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch dashboard data lists
 $stats = getRecruiterStats($company['id']);
-$templates = listInterviewTemplates($company['id']);
 $links = listInterviewLinks($company['id']);
 $results = listCandidateResults($company['id']);
 
@@ -253,7 +220,6 @@ $initials = substr($initials, 0, 2);
         <div class="tab-container">
           <button class="tab-btn active" onclick="switchTab('results')">Candidates Results</button>
           <button class="tab-btn" onclick="switchTab('links')">Active Invites</button>
-          <button class="tab-btn" onclick="switchTab('templates')">Job Templates</button>
           <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
         </div>
 
@@ -273,7 +239,7 @@ $initials = substr($initials, 0, 2);
                 <thead>
                   <tr>
                     <th>Candidate</th>
-                    <th>Job Template</th>
+                    <th>Job Role</th>
                     <th>Code</th>
                     <th>Started At</th>
                     <th>Status</th>
@@ -349,7 +315,7 @@ $initials = substr($initials, 0, 2);
                 <thead>
                   <tr>
                     <th>Invite Link / Code</th>
-                    <th>Job Template</th>
+                    <th>Job Role</th>
                     <th>Candidate Target</th>
                     <th>Attempts</th>
                     <th>Status</th>
@@ -378,7 +344,7 @@ $initials = substr($initials, 0, 2);
                         </div>
                         <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; margin-left: 12px;">Code: <strong style="color: var(--color-text-primary);"><?php echo htmlspecialchars($row['code']); ?></strong></div>
                       </td>
-                      <td><?php echo htmlspecialchars($row['template_title']); ?></td>
+                      <td><?php echo htmlspecialchars($row['job_role']); ?></td>
                       <td>
                         <?php if ($row['candidate_name']): ?>
                           <div style="font-weight: 600;"><?php echo htmlspecialchars($row['candidate_name']); ?></div>
@@ -404,60 +370,7 @@ $initials = substr($initials, 0, 2);
           </div>
         </div>
 
-        <!-- Tab 3: Job Templates -->
-        <div id="tab-templates" class="tab-content">
-          <div class="results-table-wrapper">
-            <?php if (empty($templates)): ?>
-              <div class="empty-state">
-                <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
-                </svg>
-                <div style="font-weight: 600; color: var(--color-text-secondary); margin-top: var(--space-2);">No Job Templates</div>
-                <p style="font-size: var(--text-xs); margin: 0; max-width: 320px; color: var(--color-text-muted);">No templates created yet. Use the sidebar form to customize parameters for assessments.</p>
-              </div>
-            <?php else: ?>
-              <table class="results-table">
-                <thead>
-                  <tr>
-                    <th>Template Title</th>
-                    <th>Job Role Target</th>
-                    <th>Difficulty</th>
-                    <th>Assessment Length</th>
-                    <th>Topics Included</th>
-                    <th>Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php foreach ($templates as $row): ?>
-                    <?php 
-                      $parsedTopics = json_decode($row['topics'], true) ?: [];
-                    ?>
-                    <tr>
-                      <td>
-                        <div style="font-weight: 600; color: var(--color-text-primary);"><?php echo htmlspecialchars($row['title']); ?></div>
-                        <div style="font-size: 0.78rem; color: var(--color-text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><?php echo htmlspecialchars($row['description']); ?></div>
-                      </td>
-                      <td><?php echo htmlspecialchars($row['job_role']); ?></td>
-                      <td>
-                        <span class="badge" style="background: #f1f5f9; text-transform: uppercase; font-size: 0.7rem; color: var(--color-text-secondary); border: 1px solid var(--color-border);">
-                          <?php echo htmlspecialchars($row['difficulty']); ?>
-                        </span>
-                      </td>
-                      <td><?php echo (int)$row['duration_minutes']; ?> mins</td>
-                      <td>
-                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                          <?php foreach ($parsedTopics as $top): ?>
-                            <span class="badge" style="background: rgba(79, 70, 229, 0.08); color: var(--color-brand-primary); font-size: 0.7rem;"><?php echo htmlspecialchars($top); ?></span>
-                          <?php endforeach; ?>
-                        </div>
-                      </td>
-                      <td style="font-size: 0.85rem; color: var(--color-text-muted);"><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
-                    </tr>
-                  <?php endforeach; ?>
-                </tbody>
-              </table>
-            <?php endif; ?>
-        </div>
+
 
         <!-- Tab 4: Settings -->
         <div id="tab-settings" class="tab-content" style="padding: 24px;">
@@ -563,13 +476,8 @@ $initials = substr($initials, 0, 2);
             <input type="hidden" name="action" value="generate_link">
 
             <div class="form-group">
-              <label for="template_id">Job Template</label>
-              <select name="template_id" id="template_id" class="form-input" required>
-                <option value="" disabled selected>-- Select Template --</option>
-                <?php foreach ($templates as $t): ?>
-                  <option value="<?php echo htmlspecialchars($t['id']); ?>"><?php echo htmlspecialchars($t['title'] . " (" . $t['job_role'] . ")"); ?></option>
-                <?php endforeach; ?>
-              </select>
+              <label for="job_role">Job Role Target</label>
+              <input type="text" name="job_role" id="job_role" class="form-input" placeholder="e.g. React/Next.js Engineer" required>
             </div>
 
             <div class="form-group">
@@ -597,55 +505,7 @@ $initials = substr($initials, 0, 2);
           </form>
         </div>
 
-        <!-- Create Template Form -->
-        <div class="dashboard-panel" style="padding: 24px;">
-          <h4 class="panel-title" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-text-primary); font-size: 1.15rem; margin-top: 0; margin-bottom: 4px;">Create Assessment Template</h4>
-          <form class="recruiter-form" method="POST" action="index.php">
-            <input type="hidden" name="action" value="create_template">
-
-            <div class="form-group">
-              <label for="title">Template Title</label>
-              <input type="text" name="title" id="title" class="form-input" placeholder="e.g. Senior Frontend Developer Assessment" required>
-            </div>
-
-            <div class="form-group">
-              <label for="job_role">Job Role Target</label>
-              <input type="text" name="job_role" id="job_role" class="form-input" placeholder="e.g. React/Next.js Engineer" required>
-            </div>
-
-            <div class="form-group">
-              <label for="description">Job Description Summary</label>
-              <textarea name="description" id="description" class="form-input" placeholder="Briefly describe the candidate expectations..." rows="3" style="resize: none; font-family: inherit;"></textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="topics">Topics (Comma separated)</label>
-              <input type="text" name="topics" id="topics" class="form-input" placeholder="e.g. React, Redux, Performance, CSS Grid">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="difficulty">Difficulty</label>
-                <select name="difficulty" id="difficulty" class="form-input">
-                  <option value="easy">Easy</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="duration_minutes">Length (Minutes)</label>
-                <input type="number" name="duration_minutes" id="duration_minutes" class="form-input" value="30" min="5" required>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="custom_system_prompt">Custom AI Prompt (Optional)</label>
-              <textarea name="custom_system_prompt" id="custom_system_prompt" class="form-input" placeholder="Instruct the AI interviewer on specific guidelines..." rows="2" style="resize: none; font-family: inherit;"></textarea>
-            </div>
-
-            <button type="submit" class="btn-submit">Save Template</button>
-          </form>
-        </div>
+        <!-- Templates removed in favor of direct job role invite codes -->
 
       </div>
 

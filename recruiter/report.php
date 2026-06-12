@@ -46,10 +46,8 @@ if ($session['current_status'] !== 'COMPLETED' || empty($session['final_score'])
 $scoreData = json_decode($session['final_score'], true);
 $responses = getCandidateResponses($sessionId);
 
-// Let's get the template title
-$stmt = $db->prepare("SELECT title FROM interview_templates WHERE id = :id");
-$stmt->execute(['id' => $session['template_id']]);
-$templateTitle = $stmt->fetchColumn() ?: 'Technical Assessment';
+// Resolve the job role title from the interview link
+$templateTitle = !empty($link['job_role']) ? $link['job_role'] : 'Technical Assessment';
 
 // Render scorecard circles offsets
 $commScore = (float)($scoreData['communication_score'] ?? 0);

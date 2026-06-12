@@ -310,7 +310,7 @@ if (!empty($inviteCode)) {
           </div>
           <?php if (!empty($inviteCode) && empty($inviteError)): ?>
             <h2>Company Assessment</h2>
-            <p style="color: var(--color-accent); font-weight: 600;">You are launching an assessment for: <?php echo htmlspecialchars($codeDetails['template_title'] ?? 'Technical Assessment'); ?></p>
+            <p style="color: var(--color-accent); font-weight: 600;">You are launching an assessment for: <?php echo htmlspecialchars($codeDetails['job_role'] ?? 'Technical Assessment'); ?></p>
           <?php else: ?>
             <h2>Configure Your Session</h2>
             <p>Enter your details below to begin your interactive mock technical interview assessment.</p>
