@@ -170,15 +170,27 @@ if ($baseResume) {
                 $isOptimized = !empty($profileChanges);
             }
             ?>
-            <div class="card-header">
-              <div class="role-title"><?php echo htmlspecialchars($profile['role_title']); ?></div>
-              <div style="display: flex; align-items: center; gap: var(--space-2);">
+            <div class="card-header" style="margin-bottom: var(--space-2);">
+              <div class="role-title" title="<?php echo htmlspecialchars($profile['role_title']); ?>"><?php echo htmlspecialchars($profile['role_title']); ?></div>
+              <div style="display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0;">
                 <div class="card-badge">Profile <?php echo $idx + 1; ?></div>
                 <button class="btn-delete-profile btn-danger-ghost" data-id="<?php echo $profile['id']; ?>" style="border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--color-text-muted); transition: color 0.2s;" onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-muted)'" title="Delete Profile">
                   <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
               </div>
             </div>
+
+            <?php if (!empty($profile['category_name'])): ?>
+              <div style="margin-bottom: var(--space-4); display: flex;">
+                <div class="category-badge premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($profile['category_description'] ?? 'No description available'); ?>">
+                  <span class="category-name"><?php echo htmlspecialchars($profile['category_name']); ?></span>
+                  <?php if (isset($profile['category_match_percentage']) && $profile['category_match_percentage'] !== ''): ?>
+                    <span class="category-divider"></span>
+                    <span class="category-match"><?php echo htmlspecialchars($profile['category_match_percentage']); ?>% Match</span>
+                  <?php endif; ?>
+                </div>
+              </div>
+            <?php endif; ?>
 
             <?php if (!$isOptimized): 
               if (!$hasResume) {

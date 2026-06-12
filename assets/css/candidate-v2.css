@@ -184,12 +184,13 @@ h6 {
   flex-direction: column;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .bento-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-float);
+  z-index: 10;
 }
 
 .card-header {
@@ -203,6 +204,11 @@ h6 {
   font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .card-badge {
@@ -896,4 +902,92 @@ input[type="file"].hidden-upload {
     transform: scale(0.8);
     opacity: 0.6;
   }
+}
+
+/* Category Badge & Premium Tooltip styling */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(79, 70, 229, 0.05); /* Brand color transparent tint */
+  border: 1px solid rgba(79, 70, 229, 0.12);
+  color: var(--color-brand-primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  cursor: help;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.category-badge:hover {
+  background: rgba(79, 70, 229, 0.09);
+  border-color: rgba(79, 70, 229, 0.25);
+  transform: translateY(-0.5px);
+}
+
+.category-divider {
+  width: 1px;
+  height: 10px;
+  background-color: rgba(79, 70, 229, 0.25);
+}
+
+.category-match {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+/* Premium CSS-only Tooltip */
+.premium-tooltip-trigger {
+  position: relative;
+}
+
+/* Tooltip Balloon */
+.premium-tooltip-trigger::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #1f2937; /* Deep charcoal dark color for premium dark styling */
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  width: max-content;
+  max-width: 220px;
+  text-align: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 90;
+}
+
+/* Tooltip Arrow */
+.premium-tooltip-trigger::before {
+  content: '';
+  position: absolute;
+  bottom: 115%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 90;
+}
+
+/* Hover states */
+.premium-tooltip-trigger:hover::after,
+.premium-tooltip-trigger:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

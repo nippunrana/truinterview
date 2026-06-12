@@ -875,14 +875,14 @@ function getAllCategories() {
 
 function getCandidateProfiles($userId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id ORDER BY created_at ASC");
+    $stmt = $db->prepare("SELECT cp.*, c.name as category_name, c.description as category_description FROM candidate_profiles cp LEFT JOIN categories c ON cp.category_id = c.uuid WHERE cp.user_id = :user_id ORDER BY cp.created_at ASC");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
 
 function getCandidateProfile($profileId, $userId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
+    $stmt = $db->prepare("SELECT cp.*, c.name as category_name, c.description as category_description FROM candidate_profiles cp LEFT JOIN categories c ON cp.category_id = c.uuid WHERE cp.id = :id AND cp.user_id = :user_id");
     $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
     return $stmt->fetch();
 }
