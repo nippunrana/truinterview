@@ -184,6 +184,149 @@ try {
         exit();
     }
 
+    if ($action === 'insert_row') {
+        // Read input (JSON or POST form)
+        $inputData = [];
+        $contentType = $_SERVER["CONTENT_TYPE"] ?? '';
+        if (stripos($contentType, 'application/json') !== false) {
+            $inputData = json_decode(file_get_contents('php://input'), true) ?? [];
+        } else {
+            $inputData = $_POST;
+        }
+
+        $table = $inputData['table'] ?? '';
+        if (!in_array($table, $allowedTables)) {
+            throw new Exception("Invalid or unauthorized table specified.");
+        }
+
+        // Fetch table columns to validate inputs
+        $colStmt = $db->prepare("SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = :table AND table_schema = 'public'");
+        $colStmt->execute(['table' => $table]);
+        $columnsInfo = $colStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $insertCols = [];
+        $insertVals = [];
+        $bindParams = [];
+
+        foreach ($columnsInfo as $col) {
+            $colName = $col['column_name'];
+            $dataType = $col['data_type'];
+            $isNullable = $col['is_nullable'];
+            $hasDefault = ($col['column_default'] !== null);
+
+            if (array_key_exists($colName, $inputData)) {
+                $val = $inputData[$colName];
+
+                // If value is empty string, determine if we should insert NULL or skip
+                if ($val === '') {
+                    if ($isNullable === 'YES') {
+                        $insertCols[] = "\"$colName\"";
+                        $insertVals[] = ":" . $colName;
+                        $bindParams[$colName] = null;
+                    } elseif ($hasDefault) {
+                        // Skip column to let database use default value
+                        continue;
+                    } else {
+                        // Not nullable, no default, but empty string
+                        if (in_array($dataType, ['character varying', 'varchar', 'text', 'character', 'char'])) {
+                            $insertCols[] = "\"$colName\"";
+                            $insertVals[] = ":" . $colName;
+                            $bindParams[$colName] = '';
+                        } else {
+                            $insertCols[] = "\"$colName\"";
+                            $insertVals[] = ":" . $colName;
+                            $bindParams[$colName] = null;
+                        }
+                    }
+                } else {
+                    $insertCols[] = "\"$colName\"";
+                    $insertVals[] = ":" . $colName;
+
+                    // Parse JSON/JSONB
+                    if (in_array($dataType, ['json', 'jsonb'])) {
+                        if (is_array($val)) {
+                            $bindParams[$colName] = json_encode($val);
+                        } else {
+                            $decoded = json_decode($val, true);
+                            if (json_last_error() !== JSON_ERROR_NONE) {
+                                throw new Exception("Invalid JSON format for column '$colName'.");
+                            }
+                            $bindParams[$colName] = $val;
+                        }
+                    } elseif ($dataType === 'boolean') {
+                        $bindParams[$colName] = filter_var($val, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
+                    } else {
+                        $bindParams[$colName] = $val;
+                    }
+                }
+            }
+        }
+
+        if (empty($insertCols)) {
+            throw new Exception("No values provided for insertion.");
+        }
+
+        $sql = "INSERT INTO \"$table\" (" . implode(", ", $insertCols) . ") VALUES (" . implode(", ", $insertVals) . ")";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($bindParams);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Row inserted successfully."
+        ]);
+        exit();
+    }
+
+    if ($action === 'delete_row') {
+        // Read input (JSON or POST form)
+        $inputData = [];
+        $contentType = $_SERVER["CONTENT_TYPE"] ?? '';
+        if (stripos($contentType, 'application/json') !== false) {
+            $inputData = json_decode(file_get_contents('php://input'), true) ?? [];
+        } else {
+            $inputData = $_POST;
+        }
+
+        $table = $inputData['table'] ?? '';
+        if (!in_array($table, $allowedTables)) {
+            throw new Exception("Invalid or unauthorized table specified.");
+        }
+
+        // Fetch primary key columns
+        $pkSql = "SELECT kcu.column_name 
+                  FROM information_schema.table_constraints tc 
+                  JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                  WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_name = :table AND tc.table_schema = 'public'";
+        
+        $pkStmt = $db->prepare($pkSql);
+        $pkStmt->execute(['table' => $table]);
+        $pkColumns = $pkStmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($pkColumns)) {
+            throw new Exception("Cannot delete row: Table has no primary key configured.");
+        }
+
+        $whereConditions = [];
+        $bindParams = [];
+        foreach ($pkColumns as $pkCol) {
+            if (!isset($inputData[$pkCol])) {
+                throw new Exception("Missing primary key value for column '$pkCol'.");
+            }
+            $whereConditions[] = "\"$pkCol\" = :$pkCol";
+            $bindParams[$pkCol] = $inputData[$pkCol];
+        }
+
+        $sql = "DELETE FROM \"$table\" WHERE " . implode(" AND ", $whereConditions);
+        $stmt = $db->prepare($sql);
+        $stmt->execute($bindParams);
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Row deleted successfully."
+        ]);
+        exit();
+    }
+
     throw new Exception("Invalid API action specified.");
 
 } catch (Exception $e) {

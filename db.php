@@ -383,6 +383,15 @@ function initSchema() {
                 $updateStmt->execute(['role_title_id' => $rtId, 'id' => $row['id']]);
             }
         }
+    // Create categories table
+    $db->exec("CREATE TABLE IF NOT EXISTS categories (
+        uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        description TEXT
+    )");
+
+    // Drop cataegories table (remove typo fallback)
+    $db->exec("DROP TABLE IF EXISTS cataegories");
     } catch (Exception $e) {
         // Fail silently
     }

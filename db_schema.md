@@ -132,3 +132,15 @@ Logs proctoring events triggered by the client-side detection or verified by Gem
 | `ai_verdict` | `TEXT` | `NULL` | Gemini Vision model's analysis explanation. |
 | `ai_confirmed` | `BOOLEAN` | `NULL` | Indicates whether the Gemini Vision model confirmed the anomaly. |
 | `created_at` | `TIMESTAMP WITH TIME ZONE` | Default `CURRENT_TIMESTAMP` | Time the alert was logged. |
+
+---
+
+### 6. `categories`
+Stores categories information for different topics or interview paths.
+
+| Field Name | Data Type | Constraints / Default | Description |
+| :--- | :--- | :--- | :--- |
+| `uuid` | `UUID` | `PRIMARY KEY`, Default `gen_random_uuid()` | Unique category identifier. |
+| `name` | `VARCHAR(255)` | `NOT NULL` | Name of the category. |
+| `description` | `TEXT` | `NULL` | Detailed description of the category. |
+

@@ -212,9 +212,17 @@ if (!empty($user['full_name'])) {
             
             <!-- Controls bar -->
             <div class="control-bar">
-              <div class="search-input-wrapper">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                <input type="text" id="search-term" class="form-input-admin" placeholder="Search rows..." oninput="handleSearch(this.value)">
+              <div style="display: flex; gap: 12px; align-items: center; flex: 1; max-width: 520px;">
+                <div class="search-input-wrapper" style="max-width: none; flex: 1;">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  <input type="text" id="search-term" class="form-input-admin" placeholder="Search rows..." oninput="handleSearch(this.value)">
+                </div>
+                <button class="btn-submit" id="btn-insert-row" onclick="openInsertModal()" style="height: 38px; padding: 0 16px; font-size: 0.85rem; border-radius: 8px; flex-shrink: 0; margin: 0;">
+                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                  </svg>
+                  <span>Insert Row</span>
+                </button>
               </div>
               
               <div class="pagination-controls">
@@ -259,6 +267,27 @@ if (!empty($user['full_name'])) {
 
       </div>
     </main>
+  </div>
+
+  <!-- Insert new row modal -->
+  <div class="cell-inspect-modal" id="insert-row-modal" onclick="closeInsertModal()">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px; height: auto; max-height: 85vh;">
+      <div class="modal-header">
+        <h4 class="modal-title" id="insert-modal-title">Insert New Row</h4>
+        <button class="btn-close-modal" onclick="closeInsertModal()">&times;</button>
+      </div>
+      <form id="insert-row-form" onsubmit="handleInsertSubmit(event)">
+        <div class="modal-body" style="gap: 16px; overflow-y: auto; max-height: calc(85vh - 140px);">
+          <div id="insert-form-fields" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Fields loaded dynamically -->
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 16px 24px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 12px; background: rgba(0, 0, 0, 0.01);">
+          <button type="button" class="btn-copy-action" style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-inner);" onclick="closeInsertModal()">Cancel</button>
+          <button type="submit" class="btn-submit" style="font-size: 0.85rem; padding: 8px 20px;">Insert Row</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Cell value details inspector modal -->
@@ -462,10 +491,13 @@ if (!empty($user['full_name'])) {
         data.rows.forEach(row => {
           const tr = document.createElement('tr');
           
-          // Action column
+           // Action column
           const tdActions = document.createElement('td');
           tdActions.style.textAlign = 'center';
           tdActions.style.padding = '8px 12px';
+          tdActions.style.display = 'flex';
+          tdActions.style.gap = '6px';
+          tdActions.style.justifyContent = 'center';
           
           const btnCopy = document.createElement('button');
           btnCopy.className = 'btn-copy-action';
@@ -479,7 +511,21 @@ if (!empty($user['full_name'])) {
           `;
           btnCopy.onclick = (e) => copyRowData(row, e);
           
+          const btnDelete = document.createElement('button');
+          btnDelete.className = 'btn-copy-action btn-delete-action';
+          btnDelete.title = 'Delete row';
+          btnDelete.style.padding = '4px';
+          btnDelete.style.borderRadius = '4px';
+          btnDelete.style.color = 'var(--color-rose)';
+          btnDelete.innerHTML = `
+            <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          `;
+          btnDelete.onclick = (e) => deleteRow(row, e);
+
           tdActions.appendChild(btnCopy);
+          tdActions.appendChild(btnDelete);
           tr.appendChild(tdActions);
 
           data.columns.forEach(col => {
@@ -820,6 +866,225 @@ if (!empty($user['full_name'])) {
       }).catch(err => {
         console.error('Row copy failed:', err);
         alert('Failed to copy row data.');
+      });
+    }
+
+    function openInsertModal() {
+      if (!activeTable) return;
+      
+      const fieldsContainer = document.getElementById('insert-form-fields');
+      fieldsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--color-text-muted);">Loading table schema...</div>';
+      document.getElementById('insert-row-modal').classList.add('active');
+      document.getElementById('insert-modal-title').textContent = `Insert New Row into "${activeTable}"`;
+
+      fetch(`api.php?action=get_table_schema&table=${encodeURIComponent(activeTable)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) {
+            alert('Error loading schema: ' + data.error);
+            closeInsertModal();
+            return;
+          }
+          activeSchemaData = data;
+          buildInsertForm(data.columns);
+        })
+        .catch(err => {
+          alert('API communication error.');
+          closeInsertModal();
+        });
+    }
+
+    function closeInsertModal() {
+      document.getElementById('insert-row-modal').classList.remove('active');
+      document.getElementById('insert-row-form').reset();
+    }
+
+    function buildInsertForm(columns) {
+      const container = document.getElementById('insert-form-fields');
+      container.innerHTML = '';
+
+      columns.forEach(col => {
+        const fieldGroup = document.createElement('div');
+        fieldGroup.className = 'form-field-group';
+
+        const label = document.createElement('label');
+        label.className = 'form-field-label';
+        
+        let labelText = col.column_name;
+        let isRequired = false;
+
+        if (col.column_default !== null || col.is_primary === 1) {
+          labelText += ' (Optional / Auto-generated)';
+        } else if (col.is_nullable === 'NO') {
+          isRequired = true;
+        } else {
+          labelText += ' (Optional)';
+        }
+
+        label.innerHTML = `${escapeHtml(labelText)}${isRequired ? ' <span style="color: var(--color-rose);">*</span>' : ''}`;
+        fieldGroup.appendChild(label);
+
+        let control;
+        const dataType = col.data_type.toLowerCase();
+
+        if (dataType === 'boolean') {
+          control = document.createElement('select');
+          control.className = 'form-field-input';
+          control.name = col.column_name;
+          
+          if (col.is_nullable === 'YES') {
+            const optNull = document.createElement('option');
+            optNull.value = '';
+            optNull.textContent = 'NULL (Default)';
+            control.appendChild(optNull);
+          }
+          
+          const optTrue = document.createElement('option');
+          optTrue.value = 'true';
+          optTrue.textContent = 'True';
+          control.appendChild(optTrue);
+
+          const optFalse = document.createElement('option');
+          optFalse.value = 'false';
+          optFalse.textContent = 'False';
+          control.appendChild(optFalse);
+
+          if (col.column_default !== null) {
+            if (col.column_default.includes('true')) {
+              control.value = 'true';
+            } else if (col.column_default.includes('false')) {
+              control.value = 'false';
+            }
+          }
+        } else if (dataType === 'json' || dataType === 'jsonb') {
+          control = document.createElement('textarea');
+          control.className = 'form-field-input';
+          control.name = col.column_name;
+          control.rows = 3;
+          control.placeholder = '{}';
+          if (isRequired) control.required = true;
+          
+          if (col.column_default !== null) {
+            let def = col.column_default;
+            if (def.includes('::')) {
+              def = def.substring(0, def.indexOf('::'));
+            }
+            def = def.trim().replace(/^['"]|['"]$/g, '');
+            control.value = def;
+          }
+        } else if (dataType === 'text' || (dataType.includes('char') && !dataType.includes('var') && col.character_maximum_length > 100)) {
+          control = document.createElement('textarea');
+          control.className = 'form-field-input';
+          control.name = col.column_name;
+          control.rows = 3;
+          if (isRequired) control.required = true;
+        } else {
+          control = document.createElement('input');
+          control.type = 'text';
+          control.className = 'form-field-input';
+          control.name = col.column_name;
+          if (isRequired) control.required = true;
+
+          if (col.column_default !== null) {
+            let def = col.column_default;
+            if (def.includes('::')) {
+              def = def.substring(0, def.indexOf('::'));
+            }
+            def = def.trim().replace(/^['"]|['"]$/g, '');
+            control.placeholder = `Default: ${def}`;
+          } else if (col.is_primary === 1 && dataType === 'uuid') {
+            control.placeholder = 'Auto-generated UUID';
+          }
+        }
+
+        fieldGroup.appendChild(control);
+        container.appendChild(fieldGroup);
+      });
+    }
+
+    function handleInsertSubmit(event) {
+      event.preventDefault();
+      
+      const form = event.target;
+      const formData = new FormData(form);
+      const payload = {
+        table: activeTable
+      };
+
+      for (const [key, value] of formData.entries()) {
+        payload[key] = value;
+      }
+
+      fetch('api.php?action=insert_row', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) {
+          alert('Error inserting row: ' + data.error);
+          return;
+        }
+        
+        alert('Row inserted successfully!');
+        closeInsertModal();
+        
+        currentPage = 1;
+        loadActiveTableData();
+      })
+      .catch(err => {
+        alert('API communication error.');
+      });
+    }
+
+    function deleteRow(row, event) {
+      event.stopPropagation();
+      
+      if (!confirm(`Are you sure you want to delete this row from "${activeTable}"?`)) {
+        return;
+      }
+      
+      if (!activeSchemaData || activeSchemaData.table !== activeTable) {
+        alert("Schema data not loaded. Please refresh.");
+        return;
+      }
+      
+      const pkCols = activeSchemaData.columns.filter(col => col.is_primary === 1).map(col => col.column_name);
+      if (pkCols.length === 0) {
+        alert("Cannot delete: This table has no primary key column defined.");
+        return;
+      }
+      
+      const payload = {
+        table: activeTable
+      };
+      
+      pkCols.forEach(col => {
+        payload[col] = row[col];
+      });
+      
+      fetch('api.php?action=delete_row', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) {
+          alert('Error deleting row: ' + data.error);
+          return;
+        }
+        
+        alert('Row deleted successfully!');
+        loadActiveTableData();
+      })
+      .catch(err => {
+        alert('API communication error.');
       });
     }
 
