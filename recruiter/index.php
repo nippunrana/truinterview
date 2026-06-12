@@ -176,7 +176,7 @@ $initials = substr($initials, 0, 2);
     <!-- Header -->
     <header class="recruiter-header">
       <a href="../index.php" class="brand-wrapper">
-        <svg style="width: 28px; height: 28px; color: #06b6d4;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <svg style="width: 28px; height: 28px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
         </svg>
         <span class="brand-title">TruInterview</span>
@@ -198,22 +198,34 @@ $initials = substr($initials, 0, 2);
     <!-- Stats Grid -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-title">Invite Links</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div class="stat-title">Invite Links</div>
+          <svg style="width: 20px; height: 20px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+        </div>
         <div class="stat-value"><?php echo $stats['total_links']; ?></div>
         <div class="stat-desc">Invitation codes generated</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">Candidates Tested</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div class="stat-title">Candidates Tested</div>
+          <svg style="width: 20px; height: 20px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        </div>
         <div class="stat-value"><?php echo $stats['total_sessions']; ?></div>
         <div class="stat-desc">Candidate assessment runs</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">Completed Assessments</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div class="stat-title">Completed Assessments</div>
+          <svg style="width: 20px; height: 20px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+        </div>
         <div class="stat-value"><?php echo $stats['completed_sessions']; ?></div>
         <div class="stat-desc">Evaluations compiled by Gemini</div>
       </div>
       <div class="stat-card">
-        <div class="stat-title">Avg Candidate Rating</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+          <div class="stat-title">Avg Candidate Rating</div>
+          <svg style="width: 20px; height: 20px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.364 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+        </div>
         <div class="stat-value">
           <?php echo $stats['average_score'] > 0 ? $stats['average_score'] . '/10' : '-'; ?>
         </div>
@@ -253,7 +265,8 @@ $initials = substr($initials, 0, 2);
                 <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A2.25 2.25 0 0112.75 21.5h-1.5a2.25 2.25 0 01-2.25-2.268v-.11a2.25 2.25 0 00-.786-3.07M11.25 14.25c0-1.113-.285-2.16-.786-3.07M12 9a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z"></path>
                 </svg>
-                <div>No candidate assessment data yet. Invite candidate via code to generate evaluations.</div>
+                <div style="font-weight: 600; color: var(--color-text-secondary); margin-top: var(--space-2);">No Candidate Results Yet</div>
+                <p style="font-size: var(--text-xs); margin: 0; max-width: 320px; color: var(--color-text-muted);">Candidate assessment reports will populate here once they start and complete their interviews.</p>
               </div>
             <?php else: ?>
               <table class="results-table">
@@ -291,7 +304,7 @@ $initials = substr($initials, 0, 2);
                         <div style="font-size: 0.78rem; color: var(--color-text-muted);"><?php echo htmlspecialchars($row['email']); ?></div>
                       </td>
                       <td><?php echo htmlspecialchars($row['template_title']); ?></td>
-                      <td style="font-family: monospace; font-weight: 700; color: var(--color-cyan);"><?php echo htmlspecialchars($row['link_code']); ?></td>
+                      <td style="font-family: monospace; font-weight: 700; color: var(--color-brand-primary);"><?php echo htmlspecialchars($row['link_code']); ?></td>
                       <td><?php echo date('M d, Y h:i A', strtotime($row['started_at'])); ?></td>
                       <td>
                         <span class="badge badge-<?php echo strtolower($status); ?>">
@@ -307,7 +320,7 @@ $initials = substr($initials, 0, 2);
                       </td>
                       <td>
                         <?php if ($status === 'COMPLETED'): ?>
-                          <a href="report.php?session_id=<?php echo urlencode($row['id']); ?>" class="btn-logout" style="border-color: var(--color-cyan); color: #06b6d4; padding: 4px 10px; font-size: 0.8rem;">View Report</a>
+                          <a href="report.php?session_id=<?php echo urlencode($row['id']); ?>" class="btn btn-outline" style="border-color: var(--color-brand-primary); color: var(--color-brand-primary); padding: 4px 10px; font-size: 0.8rem;">View Report</a>
                         <?php else: ?>
                           <span style="color: var(--color-text-muted); font-size: 0.85rem;">Unavailable</span>
                         <?php endif; ?>
@@ -328,7 +341,8 @@ $initials = substr($initials, 0, 2);
                 <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244m6.562-7.843L12 12m2.828-9.9a13.389 13.389 0 00-2.828-9.9"></path>
                 </svg>
-                <div>No invitation links created yet. Complete the setup form in the sidebar.</div>
+                <div style="font-weight: 600; color: var(--color-text-secondary); margin-top: var(--space-2);">No Active Invites</div>
+                <p style="font-size: var(--text-xs); margin: 0; max-width: 320px; color: var(--color-text-muted);">No invitation links created yet. Use the sidebar generator to create candidate invite codes.</p>
               </div>
             <?php else: ?>
               <table class="results-table">
@@ -375,7 +389,7 @@ $initials = substr($initials, 0, 2);
                       </td>
                       <td style="font-variant-numeric: tabular-nums;"><?php echo $row['attempts_used']; ?> / <?php echo $row['max_attempts']; ?></td>
                       <td>
-                        <span class="badge <?php echo $active ? 'badge-active' : 'badge-expired'; ?>">
+                        <span class="badge <?php echo $active ? 'badge-active' : ($isMaxed ? 'badge-used' : 'badge-expired'); ?>">
                           <?php echo $active ? 'Active' : ($isMaxed ? 'Used' : 'Expired'); ?>
                         </span>
                       </td>
@@ -398,7 +412,8 @@ $initials = substr($initials, 0, 2);
                 <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
                 </svg>
-                <div>No job templates created yet. Set up one in the sidebar form.</div>
+                <div style="font-weight: 600; color: var(--color-text-secondary); margin-top: var(--space-2);">No Job Templates</div>
+                <p style="font-size: var(--text-xs); margin: 0; max-width: 320px; color: var(--color-text-muted);">No templates created yet. Use the sidebar form to customize parameters for assessments.</p>
               </div>
             <?php else: ?>
               <table class="results-table">
@@ -432,7 +447,7 @@ $initials = substr($initials, 0, 2);
                       <td>
                         <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                           <?php foreach ($parsedTopics as $top): ?>
-                            <span class="badge" style="background: rgba(6, 182, 212, 0.08); color: var(--color-cyan); font-size: 0.7rem;"><?php echo htmlspecialchars($top); ?></span>
+                            <span class="badge" style="background: rgba(79, 70, 229, 0.08); color: var(--color-brand-primary); font-size: 0.7rem;"><?php echo htmlspecialchars($top); ?></span>
                           <?php endforeach; ?>
                         </div>
                       </td>
@@ -450,7 +465,7 @@ $initials = substr($initials, 0, 2);
             <input type="hidden" name="action" value="update_settings">
             
             <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--color-border); padding: 24px; border-radius: 12px;">
-              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-cyan); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-brand-primary); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                 <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 TruGen AI Setup
               </h3>
@@ -465,7 +480,7 @@ $initials = substr($initials, 0, 2);
                 </span>
               </div>
               
-              <div style="background: rgba(6, 182, 212, 0.04); border-left: 3px solid var(--color-cyan); padding: 16px; border-radius: 8px; margin-top: 16px;">
+              <div style="background: rgba(79, 70, 229, 0.04); border-left: 3px solid var(--color-brand-primary); padding: 16px; border-radius: 8px; margin-top: 16px;">
                 <h4 style="margin-top: 0; margin-bottom: 6px; font-size: 0.9rem; color: var(--color-text-primary); font-weight: 600;">How to Configure your TruGen Agent LLM Section</h4>
                 <p style="margin: 0; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45;">
                   To enable TruInterview to drive the conversation, configure these settings in your TruGen dashboard LLM Section:
@@ -477,9 +492,9 @@ $initials = substr($initials, 0, 2);
                 </ul>
               </div>
             </div>
-
+ 
             <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--color-border); padding: 24px; border-radius: 12px;">
-              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-cyan); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--color-brand-primary); font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                 <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                 AI Brain Settings
               </h3>
@@ -498,7 +513,7 @@ $initials = substr($initials, 0, 2);
                 <div class="form-group">
                   <label for="model_chat_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-size: 0.88rem; color: var(--color-text-primary);">Dialogue (Chat) Model Override</span>
-                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Low latency models (Flash/Flash-Lite)</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-brand-primary);">Recommended: Low latency models (Flash/Flash-Lite)</span>
                   </label>
                   <select name="model_chat_task" id="model_chat_task" class="form-input" style="padding: 8px 12px;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast conversation flow)</option>
@@ -510,7 +525,7 @@ $initials = substr($initials, 0, 2);
                 <div class="form-group">
                   <label for="model_vision_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-size: 0.88rem; color: var(--color-text-primary);">Screen Context (Vision) Model Override</span>
-                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for code layout comprehension</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-brand-primary);">Recommended: Pro for code layout comprehension</span>
                   </label>
                   <select name="model_vision_task" id="model_vision_task" class="form-input" style="padding: 8px 12px;">
                     <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed & understanding)</option>
@@ -522,7 +537,7 @@ $initials = substr($initials, 0, 2);
                 <div class="form-group">
                   <label for="model_eval_task" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-size: 0.88rem; color: var(--color-text-primary);">Evaluation (Grading) Model Override</span>
-                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-cyan);">Recommended: Pro for deep reasoning & metric scoring</span>
+                    <span style="font-weight: normal; font-size: 0.76rem; color: var(--color-brand-primary);">Recommended: Pro for deep reasoning & metric scoring</span>
                   </label>
                   <select name="model_eval_task" id="model_eval_task" class="form-input" style="padding: 8px 12px;">
                     <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep reasoning metric scorecard report generation)</option>
@@ -533,7 +548,7 @@ $initials = substr($initials, 0, 2);
               </div>
             </div>
             
-            <button type="submit" class="btn-submit" style="align-self: flex-start; min-width: 180px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); margin-top: 10px;">Save Settings</button>
+            <button type="submit" class="btn-submit" style="align-self: flex-start; min-width: 180px; margin-top: 10px;">Save Settings</button>
           </form>
         </div>
       </div>
@@ -543,7 +558,7 @@ $initials = substr($initials, 0, 2);
         
         <!-- Generate Assessment Invite Link Form -->
         <div class="dashboard-panel" style="padding: 24px;">
-          <h4 class="panel-title" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-size: 1.1rem;">Generate Invite Code</h4>
+          <h4 class="panel-title" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-text-primary); font-size: 1.15rem; margin-top: 0; margin-bottom: 4px;">Generate Invite Code</h4>
           <form class="recruiter-form" method="POST" action="index.php">
             <input type="hidden" name="action" value="generate_link">
 
@@ -584,7 +599,7 @@ $initials = substr($initials, 0, 2);
 
         <!-- Create Template Form -->
         <div class="dashboard-panel" style="padding: 24px;">
-          <h4 class="panel-title" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-size: 1.1rem;">Create Assessment Template</h4>
+          <h4 class="panel-title" style="border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--color-text-primary); font-size: 1.15rem; margin-top: 0; margin-bottom: 4px;">Create Assessment Template</h4>
           <form class="recruiter-form" method="POST" action="index.php">
             <input type="hidden" name="action" value="create_template">
 
@@ -628,7 +643,7 @@ $initials = substr($initials, 0, 2);
               <textarea name="custom_system_prompt" id="custom_system_prompt" class="form-input" placeholder="Instruct the AI interviewer on specific guidelines..." rows="2" style="resize: none; font-family: inherit;"></textarea>
             </div>
 
-            <button type="submit" class="btn-submit" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">Save Template</button>
+            <button type="submit" class="btn-submit">Save Template</button>
           </form>
         </div>
 
