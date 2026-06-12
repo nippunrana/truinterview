@@ -395,7 +395,7 @@ $levelDescriptions = [
               <?php endif; ?>
             </div>
             <?php if ($hasResume && $isOptimized && $profileLevel < 10): ?>
-              <div style="margin-top: var(--space-2); font-size: 11px; color: var(--color-text-secondary); text-align: center; font-weight: 500; font-family: 'Inter', sans-serif;">
+              <div class="pass-hint tech-mono" style="margin-top: var(--space-2); font-size: 10px; text-align: center; font-weight: 500;">
                 Score 60% or higher to pass.
               </div>
             <?php endif; ?>
@@ -513,13 +513,13 @@ $levelDescriptions = [
                 <!-- Level difficulty info -->
                 <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                   <span style="color: var(--color-brand-primary);">⚡</span>
-                  <span><?php echo htmlspecialchars($maLevelName); ?> (Level <?php echo $maLevelVal; ?>)</span>
+                  <span><?php echo htmlspecialchars($maLevelName); ?> (<span class="tech-mono">Level <?php echo $maLevelVal; ?></span>)</span>
                 </div>
 
                 <!-- Attempts Remaining -->
                 <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                   <span style="color: var(--color-text-muted);">🔄</span>
-                  <span>Attempts: <?php echo (int)($ma['attempts_used'] ?? 0); ?>/<?php echo (int)($ma['max_attempts'] ?? 1); ?></span>
+                  <span>Attempts: <span class="tech-mono"><?php echo (int)($ma['attempts_used'] ?? 0); ?>/<?php echo (int)($ma['max_attempts'] ?? 1); ?></span></span>
                 </div>
                 
                 <!-- Expiration Date -->
@@ -529,13 +529,13 @@ $levelDescriptions = [
                 ?>
                   <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                     <span style="color: var(--color-text-muted);">📅</span>
-                    <span>Expires: <?php echo $expiryFormatted; ?></span>
+                    <span>Expires: <span class="tech-mono"><?php echo $expiryFormatted; ?></span></span>
                   </div>
                 <?php endif; ?>
 
                 <!-- Category Match Percentage -->
                 <?php if (isset($ma['category_match_percentage']) && $ma['category_match_percentage'] > 0): ?>
-                  <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.15); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-weight: 700; color: var(--color-success);">
+                  <div class="tech-mono" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.15); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-weight: 700; color: var(--color-success);">
                     <span><?php echo htmlspecialchars($ma['category_match_percentage']); ?>% Match</span>
                   </div>
                 <?php endif; ?>
@@ -607,10 +607,10 @@ $levelDescriptions = [
                       <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px; background: rgba(79, 70, 229, 0.1); color: var(--color-brand-primary); text-transform: uppercase;">Optimized</span>
                     <?php endif; ?>
                     <span><?php echo htmlspecialchars($displayRole); ?></span>
-                    <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
+                    <span class="tech-mono" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
                   </div>
                   <div style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">
-                    Uploaded on <?php echo date('M d, Y h:i A', $baseResume['date']); ?>
+                    Uploaded on <span class="tech-mono"><?php echo date('M d, Y h:i A', $baseResume['date']); ?></span>
                   </div>
                 </div>
 
@@ -712,10 +712,10 @@ $levelDescriptions = [
                             <span class="resume-badge-base" style="font-size: 8px; padding: 1px 4px; background: rgba(79, 70, 229, 0.1); color: var(--color-brand-primary);">Optimized Resume</span>
                           <?php endif; ?>
                           <span style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden;"><?php echo htmlspecialchars($displayRole); ?></span>
-                          <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
+                          <span class="tech-mono" style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: var(--color-bg-subtle); color: var(--color-text-secondary); font-weight: 600; text-transform: uppercase;"><?php echo htmlspecialchars($ext); ?></span>
                         </div>
                         <div class="resume-item-date">
-                          Uploaded <?php echo date('M d, Y', $res['date']); ?>
+                          Uploaded <span class="tech-mono"><?php echo date('M d, Y', $res['date']); ?></span>
                         </div>
                       </div>
 
