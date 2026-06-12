@@ -561,6 +561,13 @@ function getLatestStartedSession() {
     return $stmt->fetch();
 }
 
+function getLatestActiveSession() {
+    $db = getDB();
+    // Only match unassociated sessions started within the last 4 hours to reduce cross-session confusion
+    $stmt = $db->query("SELECT * FROM sessions WHERE current_status NOT IN ('COMPLETED') AND trugen_conversation_id IS NULL AND started_at >= NOW() - INTERVAL '4 hours' ORDER BY started_at DESC LIMIT 1");
+    return $stmt->fetch();
+}
+
 function saveCandidateResponse($sessionId, $questionId, $selectedOption, $isCorrect) {
     $db = getDB();
     $stmt = $db->prepare("INSERT INTO candidate_responses (session_id, question_id, selected_option, is_correct) VALUES (:session_id, :question_id, :selected_option, :is_correct)");

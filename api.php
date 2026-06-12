@@ -766,20 +766,23 @@ try {
         $eventPayload = $event['payload'] ?? [];
         
         $session = getSessionByConversationId($convId);
-        if (!$session && !in_array($eventName, ['call_ended', 'participant_left', 'max_call_duration_timeout'])) {
-            // Auto-associate the conversation_id with the latest STARTED session
-            $session = getLatestStartedSession();
+        if (!$session && !in_array($eventName, ['participant_left', 'max_call_duration_timeout'])) {
+            // For call_ended, search all active sessions; for others, only unassociated STARTED ones
+            if ($eventName === 'call_ended') {
+                $session = getLatestActiveSession();
+            } else {
+                $session = getLatestStartedSession();
+            }
             if ($session) {
                 updateSessionConversation($session['id'], $convId);
                 $session = getSession($session['id']);
             }
         }
-        
+
         if (!$session) {
-            // Create a temporary session for testing if no active session exists
-            $sessionId = createSession("Test Candidate", "test@example.com");
-            updateSessionConversation($sessionId, $convId);
-            $session = getSession($sessionId);
+            // No matching session found — skip processing rather than creating a phantom test session
+            echo json_encode(["status" => "ignored", "message" => "No active session found for webhook event: " . $eventName]);
+            exit;
         }
         
         $sessionId = $session['id'];
@@ -792,15 +795,15 @@ try {
             logTranscript($sessionId, 'AGENT', $text);
             
             $db = getDB();
-            if (($session['current_status'] ?? '') === 'TERMINATING') {
-                // Keep the status as 'TERMINATING' so it is not overwritten
-            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false || 
-                stripos($text, 'generate your feedback report') !== false || 
+            if (in_array($session['current_status'] ?? '', ['TERMINATING', 'COMPLETED'])) {
+                // Keep terminal states so they are not overwritten by late-arriving webhooks
+            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false ||
+                stripos($text, 'generate your feedback report') !== false ||
                 stripos($text, 'analyze your responses') !== false)) {
-                
+
                 $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
                 $stmt->execute(['id' => $sessionId]);
-                
+
                 if (!empty($convId)) {
                     terminateTruGenConversation($convId);
                 }
@@ -817,20 +820,22 @@ try {
             logTranscript($sessionId, 'AGENT', $text);
             
             $db = getDB();
-            if (($session['current_status'] ?? '') === 'TERMINATING') {
+            if (($session['current_status'] ?? '') === 'COMPLETED') {
+                // Don't overwrite a completed session with a late-arriving stopped_speaking event
+            } elseif (($session['current_status'] ?? '') === 'TERMINATING') {
                 $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
                 $stmt->execute(['id' => $sessionId]);
-                
+
                 if (!empty($convId)) {
                     terminateTruGenConversation($convId);
                 }
-            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false || 
-                stripos($text, 'generate your feedback report') !== false || 
+            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false ||
+                stripos($text, 'generate your feedback report') !== false ||
                 stripos($text, 'analyze your responses') !== false)) {
-                
+
                 $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
                 $stmt->execute(['id' => $sessionId]);
-                
+
                 if (!empty($convId)) {
                     terminateTruGenConversation($convId);
                 }

@@ -1042,7 +1042,7 @@ async function transitionToCompleted(immediate = false) {
 
         if (analyzingDiv) analyzingDiv.remove();
         
-        location.reload();
+        location.href = 'interview.php?session_id=' + sessionId;
       } else {
         if (analyzingDiv) analyzingDiv.remove();
         alert('Error ending session: ' + data.message);
