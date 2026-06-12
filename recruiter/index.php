@@ -319,7 +319,7 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
       </div>
 
       <!-- Candidate Results / History Section -->
-      <section class="resume-section" style="margin-top: var(--space-8);">
+      <section class="resume-section" style="margin-top: var(--space-14);">
         <div class="resume-section-header">
           <h2 class="resume-section-title">Candidate Submissions</h2>
           <p class="resume-section-subtitle">Review completed candidate interview sessions and proctoring logs.</p>

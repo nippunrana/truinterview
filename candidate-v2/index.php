@@ -448,7 +448,7 @@ $levelDescriptions = [
       ?>
 
       <?php if (!empty($allMatchedAssessments)): ?>
-      <section class="matched-assessments-section" style="margin-top: var(--space-8); margin-bottom: var(--space-8);">
+      <section class="matched-assessments-section" style="margin-top: var(--space-14); margin-bottom: var(--space-14);">
         <div class="resume-section-header" style="margin-bottom: var(--space-5);">
           <h2 class="resume-section-title">Open Interviews Found Matched To Your Interest</h2>
           <p class="resume-section-subtitle">We tailored these open interviews matching your active profiles. Launch a session to answer their questions.</p>
