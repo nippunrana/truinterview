@@ -631,7 +631,7 @@ function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAt
         'expires_at' => empty($expiresAt) ? null : $expiresAt,
         'job_role' => empty($jobRole) ? 'Software Engineer' : trim($jobRole),
         'job_description' => empty($jobDescription) ? null : trim($jobDescription),
-        'is_public' => $isPublic ? true : false,
+        'is_public' => $isPublic ? 'true' : 'false',
         'min_level' => (int)$minLevel
     ]);
     return $stmt->fetchColumn();

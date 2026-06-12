@@ -125,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $minLevel
             );
             
-            $_SESSION['success_msg'] = "Interview link created successfully! Code: $code";
+            $_SESSION['created_code'] = $code;
+            $_SESSION['success_msg'] = "Interview created successfully!";
             header("Location: index.php");
             exit();
         } catch (Exception $e) {
@@ -138,6 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if (isset($_SESSION['success_msg'])) {
     $successMsg = $_SESSION['success_msg'];
     unset($_SESSION['success_msg']);
+}
+$createdCode = '';
+if (isset($_SESSION['created_code'])) {
+    $createdCode = $_SESSION['created_code'];
+    unset($_SESSION['created_code']);
 }
 
 // Initials for avatar
@@ -271,9 +277,14 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
             </div>
 
             <div class="card-body" style="gap: var(--space-2); margin-top: auto;">
+              <?php
+                $cardProtocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $cardUrl = $cardProtocol . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['PHP_SELF'])) . '/interview.php?code=' . $link['code'];
+                $cardUrl = str_replace('//interview.php', '/interview.php', $cardUrl);
+              ?>
               <div class="status-item" style="padding: 10px; border-radius: var(--radius-inner); font-family: monospace; font-size: var(--text-base); display: flex; justify-content: space-between; align-items: center; background: var(--color-bg-subtle);">
-                <strong style="letter-spacing: 1px; color: var(--color-text-primary);"><?php echo htmlspecialchars($link['code']); ?></strong>
-                <button class="btn btn-outline btn-copy-code" data-code="<?php echo htmlspecialchars($link['code']); ?>" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px;" title="Copy Code">Copy</button>
+                <strong style="letter-spacing: 1px; color: var(--color-text-primary); font-size: 0.9rem;"><?php echo htmlspecialchars($link['code']); ?></strong>
+                <button class="btn btn-outline btn-copy-link" data-link="<?php echo htmlspecialchars($cardUrl); ?>" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px;" title="Copy Interview Link">Copy Link</button>
               </div>
 
               <div style="font-size: 0.75rem; color: var(--color-text-secondary); display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-2);">
@@ -377,8 +388,8 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
   <!-- Create Interview Modal -->
   <div class="modal-overlay" id="create-modal">
     <div class="modal-content" style="max-width: 600px;">
-      <h2 style="margin-bottom: var(--space-2); font-family: 'Outfit', sans-serif;">Create Assessment Link</h2>
-      <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Configure a new coding session link code for a candidate or job opening.</p>
+      <h2 style="margin-bottom: var(--space-2); font-family: 'Outfit', sans-serif;">Create Technical Interview</h2>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Configure a new technical assessment and coding session for a candidate or job opening.</p>
       
       <form id="form-create-link" method="POST" action="index.php">
         <input type="hidden" name="action" value="create_link">
@@ -439,7 +450,7 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
         <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6);">
           <button type="button" class="btn btn-outline" id="btn-close-create-modal">Cancel</button>
           <button type="submit" class="btn btn-primary">
-            <span>Generate Link</span>
+            <span>Create Interview</span>
           </button>
         </div>
       </form>
@@ -629,19 +640,19 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
       if (e.target === settingsModal) settingsModal.classList.remove('active');
     });
 
-    // Copy Code logic
-    document.querySelectorAll('.btn-copy-code').forEach(btn => {
+    // Copy Link logic
+    document.querySelectorAll('.btn-copy-link').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const code = btn.getAttribute('data-code');
-        navigator.clipboard.writeText(code).then(() => {
+        const linkUrl = btn.getAttribute('data-link');
+        navigator.clipboard.writeText(linkUrl).then(() => {
           btn.textContent = 'Copied!';
-          showToast(`Copied code: ${code}`);
+          showToast('Copied interview link to clipboard!');
           setTimeout(() => {
-            btn.textContent = 'Copy';
+            btn.textContent = 'Copy Link';
           }, 2000);
         }).catch(() => {
-          showToast('Failed to copy code', 'error');
+          showToast('Failed to copy link', 'error');
         });
       });
     });
@@ -699,5 +710,44 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
       }
     }
   </script>
+
+  <?php if (!empty($createdCode)): 
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $shareUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['PHP_SELF'])) . '/interview.php?code=' . $createdCode;
+    $shareUrl = str_replace('//interview.php', '/interview.php', $shareUrl);
+  ?>
+    <div class="modal-overlay active" id="success-modal">
+      <div class="modal-content" style="max-width: 500px; text-align: center; padding: var(--space-6);">
+        <div style="font-size: 48px; margin-bottom: var(--space-3);">🎉</div>
+        <h2 style="margin-bottom: var(--space-2); font-family: 'Outfit', sans-serif;">Interview Created!</h2>
+        <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Your assessment link is ready. Share this link with your candidates.</p>
+        
+        <div style="margin-bottom: var(--space-5);">
+          <div style="display: flex; gap: var(--space-2); background: var(--color-bg-subtle); padding: 8px 12px; border-radius: var(--radius-inner); border: 1px solid var(--color-border); align-items: center;">
+            <input type="text" id="success-share-url" class="form-input" style="flex: 1; border: none; background: transparent; font-family: monospace; font-size: 0.85rem; padding: 0; color: var(--color-text-primary);" readonly value="<?php echo htmlspecialchars($shareUrl); ?>">
+            <button class="btn btn-primary" onclick="copySuccessLink()" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 6px; white-space: nowrap;">Copy Link</button>
+          </div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: var(--space-3);">
+          <button class="btn btn-outline" onclick="closeSuccessModal()" style="padding: 8px 24px;">Dismiss</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      function copySuccessLink() {
+        const urlInput = document.getElementById('success-share-url');
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+          showToast('Link copied to clipboard!');
+        }).catch(() => {
+          showToast('Failed to copy link', 'error');
+        });
+      }
+      function closeSuccessModal() {
+        document.getElementById('success-modal').classList.remove('active');
+      }
+    </script>
+  <?php endif; ?>
 </body>
 </html>
