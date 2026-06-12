@@ -1,5 +1,6 @@
 <?php
 // trugen_service.php - TruGen AI Integration Helpers
+require_once __DIR__ . '/db.php';
 
 /**
  * Cleans response text by stripping emojis, markdown elements,
@@ -43,6 +44,31 @@ function cleanSpeechText($text) {
 }
 
 /**
+ * Resolves the TruGen API key for a given conversation ID, checking the creator's user settings first, then falling back to env.
+ */
+function getTruGenApiKey($conversationId) {
+    if (!empty($conversationId) && $conversationId !== 'mock_id') {
+        try {
+            $session = getSessionByConversationId($conversationId);
+            if ($session) {
+                $settings = getSessionUserSettings($session['id']);
+                if (!empty($settings['custom_trugen_api_key'])) {
+                    return $settings['custom_trugen_api_key'];
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Error resolving custom TruGen API key: " . $e->getMessage());
+        }
+    }
+    
+    $apiKey = getenv('TRUGEN_API_KEY');
+    if (!$apiKey) {
+        $apiKey = $_ENV['TRUGEN_API_KEY'] ?? '';
+    }
+    return $apiKey;
+}
+
+/**
  * Interacts with the TruGen speak API endpoint to inject dialogue speech to the candidate.
  */
 function injectSpeakText($conversationId, $text) {
@@ -50,10 +76,7 @@ function injectSpeakText($conversationId, $text) {
         return true;
     }
     
-    $apiKey = getenv('TRUGEN_API_KEY');
-    if (!$apiKey) {
-        $apiKey = $_ENV['TRUGEN_API_KEY'] ?? '';
-    }
+    $apiKey = getTruGenApiKey($conversationId);
     
     if (empty($apiKey)) {
         error_log("TruGen API key not found in environment.");
@@ -101,10 +124,7 @@ function terminateTruGenConversation($conversationId) {
         return true;
     }
     
-    $apiKey = getenv('TRUGEN_API_KEY');
-    if (!$apiKey) {
-        $apiKey = $_ENV['TRUGEN_API_KEY'] ?? '';
-    }
+    $apiKey = getTruGenApiKey($conversationId);
     
     if (empty($apiKey)) {
         error_log("TruGen API key not found in environment.");

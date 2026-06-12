@@ -83,6 +83,9 @@ function initSchema() {
     // Add custom settings columns to users table
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_agent_id VARCHAR(100)");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_gemini_api_key VARCHAR(255)");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_api_key VARCHAR(255)");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_key_scope VARCHAR(50) DEFAULT 'invite_only'");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS trugen_key_scope VARCHAR(50) DEFAULT 'invite_only'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
@@ -732,20 +735,11 @@ function getSessionApiKey($session) {
     if (!$session) {
         return null;
     }
-    $db = getDB();
-    if (!empty($session['interview_link_id'])) {
-        $stmt = $db->prepare("SELECT u.custom_gemini_api_key FROM users u JOIN interview_links il ON u.id = il.created_by WHERE il.id = :id");
-        $stmt->execute(['id' => $session['interview_link_id']]);
-        $key = $stmt->fetchColumn();
-        if (!empty($key)) {
-            return $key;
-        }
-    } elseif (!empty($session['user_id'])) {
-        $stmt = $db->prepare("SELECT custom_gemini_api_key FROM users WHERE id = :id");
-        $stmt->execute(['id' => $session['user_id']]);
-        $key = $stmt->fetchColumn();
-        if (!empty($key)) {
-            return $key;
+    $settings = getSessionUserSettings($session['id']);
+    if ($settings && !empty($settings['custom_gemini_api_key'])) {
+        $scope = $settings['gemini_key_scope'] ?? 'invite_only';
+        if ($scope === 'everywhere' || !empty($session['interview_link_id'])) {
+            return $settings['custom_gemini_api_key'];
         }
     }
     return null;
@@ -759,15 +753,17 @@ function getSessionUserSettings($sessionId) {
     if (!$session) {
         return null;
     }
-    $recruiterId = null;
+    $targetUserId = null;
     if (!empty($session['interview_link_id'])) {
         $stmt = $db->prepare("SELECT created_by FROM interview_links WHERE id = :id");
         $stmt->execute(['id' => $session['interview_link_id']]);
-        $recruiterId = $stmt->fetchColumn();
+        $targetUserId = $stmt->fetchColumn();
+    } elseif (!empty($session['user_id'])) {
+        $targetUserId = $session['user_id'];
     }
-    if ($recruiterId) {
-        $stmt = $db->prepare("SELECT custom_trugen_agent_id, custom_gemini_api_key, model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
-        $stmt->execute(['id' => $recruiterId]);
+    if ($targetUserId) {
+        $stmt = $db->prepare("SELECT custom_trugen_agent_id, custom_trugen_api_key, trugen_key_scope, custom_gemini_api_key, gemini_key_scope, model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
+        $stmt->execute(['id' => $targetUserId]);
         return $stmt->fetch();
     }
     return null;
