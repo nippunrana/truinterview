@@ -444,6 +444,69 @@ try {
         exit;
     }
     
+    if ($action === 'greet_candidate') {
+        $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
+        $convId = $_GET['conversation_id'] ?? '';
+        
+        if (empty($sessionId) || empty($convId)) {
+            throw new Exception("Session ID and Conversation ID are required");
+        }
+        
+        $session = getSession($sessionId);
+        if (!$session) {
+            throw new Exception("Session not found");
+        }
+        
+        $db = getDB();
+        // 1. Update session to associate conversation ID and set status
+        $stmt = $db->prepare("UPDATE sessions SET trugen_conversation_id = :convId, current_status = 'IN_PROGRESS' WHERE id = :id");
+        $stmt->execute(['convId' => $convId, 'id' => $sessionId]);
+        
+        // 2. Determine topic X (job role)
+        $jobRole = 'Software Engineer';
+        if (!empty($session['interview_link_id'])) {
+            $link = getInterviewLink($session['interview_link_id']);
+            if ($link) {
+                $jobRole = $link['job_role'] ?: 'Software Engineer';
+            }
+        } elseif (!empty($session['profile_id'])) {
+            $profile = getCandidateProfile($session['profile_id'], $session['user_id']);
+            if ($profile) {
+                $resumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                if (!empty($resumeData['detected_role'])) {
+                    $jobRole = $resumeData['detected_role'];
+                } elseif (!empty($profile['role_title'])) {
+                    $jobRole = $profile['role_title'];
+                }
+            }
+        }
+        
+        // 3. Construct standard greeting message
+        $candidateName = $session['candidate_name'] ?? 'Candidate';
+        $greetingText = "Hello " . $candidateName . "! I am Alex, your AI interviewer. Are you ready to start the interview on the topic " . $jobRole . "?";
+        
+        // 4. Check if we have already logged a greeting in transcripts (to avoid double greetings on page reload or re-connection)
+        $stmt = $db->prepare("SELECT COUNT(*) FROM transcripts WHERE session_id = :session_id AND speaker = 'AGENT'");
+        $stmt->execute(['session_id' => $sessionId]);
+        $agentMsgCount = (int)$stmt->fetchColumn();
+        
+        if ($agentMsgCount === 0) {
+            // Write agent greeting to transcripts log
+            logTranscript($sessionId, 'AGENT', $greetingText);
+            
+            // 5. Speak it to Huma-1
+            require_once __DIR__ . '/trugen_service.php';
+            injectSpeakText($convId, cleanSpeechText($greetingText));
+        }
+        
+        echo json_encode([
+            "status" => "success",
+            "message" => "Greeting triggered",
+            "greeting" => $greetingText
+        ]);
+        exit;
+    }
+
     if ($action === 'status') {
         $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
         if (empty($sessionId)) {
@@ -455,7 +518,10 @@ try {
             throw new Exception("Session not found");
         }
         
-        $transcripts = getTranscripts($sessionId);
+        $transcripts = [];
+        if (isset($_GET['init']) && $_GET['init'] === '1') {
+            $transcripts = getTranscripts($sessionId);
+        }
         
         echo json_encode([
             "status" => "success",

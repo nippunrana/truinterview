@@ -745,6 +745,13 @@ async function triggerBrowserAlert(alertType, severity, clientDetails) {
         const data = await response.json();
         console.log(`[Browser Proctor response]`, data);
         
+        const isBrowserAlert = ['tab_switch', 'fullscreen_exit', 'copy_paste_attempt', 'cursor_left_screen', 'device_change', 'screen_share_stopped'].includes(alertType);
+        const aiVerdict = isBrowserAlert ? 'Browser-native telemetry logged.' : 'AI analysis skipped.';
+        const logMessage = `Proctor warning: [Type: ${alertType}] [Severity: ${severity}] AI Confirmed: Yes - Verdict: ${aiVerdict}`;
+        if (window.addLocalTranscript) {
+            window.addLocalTranscript('SYSTEM', logMessage);
+        }
+        
         // Show non-intrusive warning banner at the top of the screen
         if (window.showProctorBanner) {
             if (alertType === 'tab_switch') {

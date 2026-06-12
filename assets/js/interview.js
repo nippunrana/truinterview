@@ -440,9 +440,85 @@ function updateTimer() {
   document.getElementById('timer-display').innerText = `${mins}:${secs}`;
 }
 
-function pollStatus() {
+function addLocalTranscript(speaker, message) {
   if (!sessionId) return;
-  fetch(`api.php?action=status&session_id=${sessionId}`)
+  const key = `transcripts_${sessionId}`;
+  let localTrans = [];
+  try {
+    localTrans = JSON.parse(sessionStorage.getItem(key)) || [];
+  } catch (e) {
+    localTrans = [];
+  }
+  
+  // De-duplicate consecutive identical messages for the same speaker (matching server-side logic)
+  if (localTrans.length > 0) {
+    const last = localTrans[localTrans.length - 1];
+    if (last.speaker === speaker && last.message.trim() === message.trim()) {
+      return;
+    }
+  }
+  
+  localTrans.push({
+    speaker: speaker,
+    message: message,
+    timestamp: new Date().toISOString()
+  });
+  
+  sessionStorage.setItem(key, JSON.stringify(localTrans));
+  renderLocalTranscripts();
+}
+window.addLocalTranscript = addLocalTranscript;
+
+function renderLocalTranscripts() {
+  const transcriptsContainer = document.getElementById('transcripts-feed');
+  if (!transcriptsContainer) return;
+  
+  const key = `transcripts_${sessionId}`;
+  let localTrans = [];
+  try {
+    localTrans = JSON.parse(sessionStorage.getItem(key)) || [];
+  } catch (e) {
+    localTrans = [];
+  }
+  
+  transcriptsContainer.innerHTML = '';
+  localTrans.forEach(msg => {
+    const row = document.createElement('div');
+    let typeClass = 'system';
+    if (msg.speaker === 'USER') typeClass = 'candidate';
+    if (msg.speaker === 'AGENT') typeClass = 'agent';
+    
+    row.className = `transcript-message ${typeClass}`;
+    row.innerHTML = `
+      <span class="message-sender">${msg.speaker}</span>
+      <span class="message-text">${escapeHtml(msg.message)}</span>
+    `;
+    transcriptsContainer.appendChild(row);
+  });
+  transcriptsContainer.scrollTop = transcriptsContainer.scrollHeight;
+}
+
+let greetingTriggered = false;
+function triggerGreetingOnce(convId) {
+  if (greetingTriggered) return;
+  greetingTriggered = true;
+  
+  console.log("Triggering auto-greeting for conversation:", convId);
+  fetch(`api.php?action=greet_candidate&conversation_id=${encodeURIComponent(convId)}&session_id=${sessionId}`)
+    .then(res => res.json())
+    .then(data => {
+      console.log("Greeting status:", data);
+      if (data.status === 'success' && data.greeting) {
+        addLocalTranscript('AGENT', data.greeting);
+      }
+    })
+    .catch(err => console.error("Error triggering greeting:", err));
+}
+
+function pollStatus(isInit = false) {
+  if (!sessionId) return;
+  const url = isInit ? `api.php?action=status&session_id=${sessionId}&init=1` : `api.php?action=status&session_id=${sessionId}`;
+  fetch(url)
   .then(res => res.json())
   .then(data => {
     if (data.status === 'success') {
@@ -453,23 +529,10 @@ function pollStatus() {
       const statusText = document.getElementById('session-status-text');
       if (statusText) statusText.innerText = data.session.current_status;
       
-      const transcriptsContainer = document.getElementById('transcripts-feed');
-      if (transcriptsContainer) {
-        transcriptsContainer.innerHTML = '';
-        data.transcripts.forEach(msg => {
-          const row = document.createElement('div');
-          let typeClass = 'system';
-          if (msg.speaker === 'USER') typeClass = 'candidate';
-          if (msg.speaker === 'AGENT') typeClass = 'agent';
-          
-          row.className = `transcript-message ${typeClass}`;
-          row.innerHTML = `
-            <span class="message-sender">${msg.speaker}</span>
-            <span class="message-text">${msg.message}</span>
-          `;
-          transcriptsContainer.appendChild(row);
-        });
-        transcriptsContainer.scrollTop = transcriptsContainer.scrollHeight;
+      if (isInit && data.transcripts) {
+        const key = `transcripts_${sessionId}`;
+        sessionStorage.setItem(key, JSON.stringify(data.transcripts));
+        renderLocalTranscripts();
       }
     }
     // Perform MCQ poll to synchronize state
@@ -824,8 +887,8 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
       updateTimer();
       timerInterval = setInterval(updateTimer, 1000);
-      pollStatus();
-      pollInterval = setInterval(pollStatus, 3000);
+      pollStatus(true); // Call status with init=1 on first load to populate sessionStorage
+      pollInterval = setInterval(() => pollStatus(false), 3000); // Polling does not need transcripts
       pollMCQState();
 
       // Start browser proctoring wizard (shows integrity setup overlay)
@@ -1310,6 +1373,34 @@ window.addEventListener('message', (event) => {
   if (event.origin && event.origin.includes('trugen.ai')) {
     console.log('TruGen message received:', event.data);
     const data = event.data;
+    
+    // Check if the message contains connection info or conversation_id to trigger the initial greeting
+    if (data && typeof data === 'object') {
+      const convId = data.conversation_id || data.conversationId || data.roomId || data.room_name || data.roomName;
+      if (convId && typeof convId === 'string' && convId.length > 10) {
+        triggerGreetingOnce(convId);
+      }
+      
+      // Listen to pipeline speaker events to update the local transcript storage in real-time
+      if (data.event && data.event.name) {
+        const eventName = data.event.name;
+        const eventPayload = data.event.payload || {};
+        let text = eventPayload.text || '';
+        if (Array.isArray(text)) {
+          text = text.join(' ');
+        }
+        text = text.trim();
+        
+        if (text) {
+          if (eventName === 'agent.started_speaking') {
+            addLocalTranscript('AGENT', text);
+          } else if (eventName === 'utterance_committed') {
+            addLocalTranscript('USER', text);
+          }
+        }
+      }
+    }
+    
     if (data && (
       data.type === 'call_ended' || 
       data.event === 'call_ended' ||

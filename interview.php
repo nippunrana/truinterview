@@ -22,26 +22,33 @@ if (!$isLocal && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off')) {
 }
 
 $profileId = $_GET['profile_id'] ?? '';
-$sessionId = $_COOKIE['session_id'] ?? '';
+$inviteCode = $_GET['code'] ?? '';
+$sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
 $session = null;
 $trugenAgentId = '';
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
     if ($session) {
-        if (!empty($profileId) && (!isset($session['profile_id']) || $session['profile_id'] != $profileId)) {
+        $hasTarget = !empty($profileId) || !empty($inviteCode);
+        if ($hasTarget && $session['current_status'] === 'COMPLETED') {
+            $session = null;
+            setcookie("session_id", "", time() - 3600, "/");
+            $_COOKIE['session_id'] = "";
+            $sessionId = "";
+        } elseif (!empty($profileId) && (!isset($session['profile_id']) || $session['profile_id'] != $profileId)) {
             $session = null;
             setcookie("session_id", "", time() - 3600, "/");
             $_COOKIE['session_id'] = "";
             $sessionId = "";
         } else {
+            if (isset($_GET['session_id'])) {
+                setcookie("session_id", $sessionId, time() + 86400, "/");
+            }
             $userSettings = getSessionUserSettings($session['id']);
             $trugenAgentId = (!empty($userSettings['custom_trugen_agent_id'])) ? $userSettings['custom_trugen_agent_id'] : getenv('TRUGEN_AGENT_ID');
         }
     }
 }
-
-// Handle invite code parameter
-$inviteCode = $_GET['code'] ?? '';
 $prefName = '';
 $prefEmail = '';
 
