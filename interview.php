@@ -28,7 +28,7 @@ $trugenAgentId = '';
 if (!empty($sessionId)) {
     $session = getSession($sessionId);
     if ($session) {
-        if ((!empty($profileId) && (!isset($session['profile_id']) || $session['profile_id'] != $profileId)) || $session['current_status'] === 'COMPLETED') {
+        if (!empty($profileId) && (!isset($session['profile_id']) || $session['profile_id'] != $profileId)) {
             $session = null;
             setcookie("session_id", "", time() - 3600, "/");
             $_COOKIE['session_id'] = "";
