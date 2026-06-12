@@ -188,6 +188,22 @@ try {
         if ($session['current_status'] !== 'COMPLETED') {
             $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
             $stmt->execute(['id' => $sessionId]);
+            
+            // Re-fetch updated session to ensure we have correct properties after state transition
+            $session = getSession($sessionId);
+        }
+
+        // If the session has an associated profile_id and it is a completed practice session,
+        // update the candidate profile level to match or exceed this session's target level.
+        if (!empty($session['profile_id']) && ($session['session_type'] ?? '') === 'practice') {
+            $sessionLevel = (int)($session['level'] ?? 0);
+            if ($sessionLevel > 0) {
+                $stmtProfile = $db->prepare("UPDATE candidate_profiles SET level = GREATEST(level, :level) WHERE id = :profile_id");
+                $stmtProfile->execute([
+                    'level' => $sessionLevel,
+                    'profile_id' => $session['profile_id']
+                ]);
+            }
         }
         
         // Terminate TruGen conversation if there is an active session

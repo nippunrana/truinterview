@@ -100,6 +100,34 @@ if ($baseResume) {
         }
     }
 }
+
+$levelNames = [
+    0 => "Novice",
+    1 => "Terminology",
+    2 => "Mechanics",
+    3 => "Implementation",
+    4 => "Analysis",
+    5 => "Troubleshooting",
+    6 => "Integration",
+    7 => "Optimization",
+    8 => "Security",
+    9 => "Governance",
+    10 => "Strategic Leadership"
+];
+
+$levelDescriptions = [
+    0 => "Initial level. Upload your resume and optimize it to start practicing.",
+    1 => "Terminology & Recall: Baseline technical vocabulary and definitions.",
+    2 => "Basic Mechanics: Understanding the underlying inner workings.",
+    3 => "Standard Implementation: Basic execution and common coding patterns.",
+    4 => "Comparative Analysis: Trade-offs and choosing the right tool.",
+    5 => "Troubleshooting: Debugging, profiling, and root-cause analysis.",
+    6 => "Component Integration: State coordination and API boundaries.",
+    7 => "Scale & Optimization: Concurrency, caching, and heavy workloads.",
+    8 => "Security & Constraints: Compliance, access control, and trust logic.",
+    9 => "System Governance: CI/CD architecture and development velocity.",
+    10 => "Strategic Leadership: Business alignment and architectural strategy."
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -192,6 +220,36 @@ if ($baseResume) {
               </div>
             <?php endif; ?>
 
+            <?php
+            $profileLevel = (int)($profile['level'] ?? 0);
+            $levelTooltip = $levelDescriptions[$profileLevel];
+            if ($profileLevel === 0) {
+                if ($hasResume && $isOptimized) {
+                    $levelTooltip = "Resume optimized! Take your first practice interview to reach Level 1.";
+                } else {
+                    $levelTooltip = "Initial level. Upload and optimize your resume to unlock practice interviews.";
+                }
+            } else if ($profileLevel < 10) {
+                $levelTooltip = "Level {$profileLevel}: " . $levelDescriptions[$profileLevel] . " Complete this interview to reach Level " . ($profileLevel + 1) . "!";
+            }
+            ?>
+            <div class="level-container <?php echo $profileLevel === 10 ? 'level-10' : ''; ?> premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($levelTooltip); ?>">
+              <div class="level-header">
+                <span class="level-title-label">
+                  <svg style="width: 13px; height: 13px;" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                  Level <?php echo $profileLevel; ?>/10
+                </span>
+                <span class="level-name"><?php echo htmlspecialchars($levelNames[$profileLevel]); ?></span>
+              </div>
+              <div class="level-bar-pips">
+                <?php for ($i = 1; $i <= 10; $i++): ?>
+                  <span class="level-pip <?php echo $i <= $profileLevel ? 'active' : ''; ?>" title="Level <?php echo $i; ?>: <?php echo htmlspecialchars($levelNames[$i]); ?>"></span>
+                <?php endfor; ?>
+              </div>
+            </div>
+
             <?php if (!$isOptimized): 
               if (!$hasResume) {
                   $progressPercent = 15;
@@ -250,6 +308,21 @@ if ($baseResume) {
                         <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
                       <?php endif; ?>
                     </div>
+                    <?php if ($profileLevel < 10): ?>
+                      <div style="margin-top: var(--space-2); font-size: 0.78rem; color: var(--color-success); font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                        <svg style="width: 14px; height: 14px; flex-shrink: 0; color: var(--color-success);" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Start practice interview to reach Level <?php echo $profileLevel + 1; ?>!</span>
+                      </div>
+                    <?php else: ?>
+                      <div style="margin-top: var(--space-2); font-size: 0.78rem; color: #d97706; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                        <svg style="width: 14px; height: 14px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <span>Ultimate mastery achieved!</span>
+                      </div>
+                    <?php endif; ?>
                   </div>
                 <?php elseif ($hasResume && !$isOptimized): 
                   $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Resume';
