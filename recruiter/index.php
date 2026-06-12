@@ -190,8 +190,8 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
   <link rel="stylesheet" href="../assets/css/recruiter.css">
 </head>
 <body>
-  <div class="v2-layout">
-    <header class="v2-header">
+  <header class="v2-header">
+    <div class="v2-header-inner">
       <a href="index.php" class="brand-wrapper">
         <svg style="width: 28px; height: 28px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -217,8 +217,10 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
         <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
         <a href="../logout.php" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
-    </header>
+    </div>
+  </header>
 
+  <div class="v2-layout">
     <main>
       <h1 class="title-main">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's find your next great hire.</h1>
       <p class="subtitle-main">

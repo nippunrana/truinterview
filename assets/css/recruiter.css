@@ -107,3 +107,77 @@
 .recruiter-table tr:hover {
   background-color: var(--color-bg-subtle);
 }
+
+/* --- Recruiter Header & Hero Override fixes for light background --- */
+
+/* Sticky & Blurry Header overrides */
+.v2-header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Make header elements readable on the light background */
+.brand-wrapper {
+  color: var(--color-text-primary) !important;
+}
+
+.brand-title {
+  color: var(--color-text-primary) !important;
+}
+
+.v2-header .brand-wrapper svg {
+  color: var(--color-brand-primary) !important;
+}
+
+/* Create Interview Button Theme Adjustments */
+.v2-header .btn-header-join {
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 118, 110, 0.2);
+}
+
+.v2-header .btn-header-join:hover {
+  background: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
+  color: #fff;
+  box-shadow: 0 4px 6px rgba(15, 118, 110, 0.25);
+}
+
+/* Settings button readable colors */
+.v2-header #btn-open-settings-modal {
+  color: var(--color-text-secondary) !important;
+}
+
+.v2-header #btn-open-settings-modal:hover {
+  color: var(--color-text-primary) !important;
+}
+
+/* Avatar styling */
+.v2-header .avatar-circle {
+  background: var(--color-brand-light) !important;
+  color: var(--color-brand-primary) !important;
+  border: 1px solid rgba(15, 118, 110, 0.15) !important;
+}
+
+/* Make title and subtitle text readable (not white) */
+.title-main {
+  color: var(--color-text-primary) !important;
+  text-shadow: none !important;
+}
+
+.subtitle-main {
+  color: var(--color-text-secondary) !important;
+}
