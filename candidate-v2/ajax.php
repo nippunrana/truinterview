@@ -52,7 +52,7 @@ if ($action === 'create_profile') {
     }
 
     $categoryId = null;
-    $matchPercentage = null;
+    $matchPercentage = 0;
 
     try {
         $db = getDB();

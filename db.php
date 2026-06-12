@@ -922,10 +922,14 @@ function deleteCandidateProfile($profileId, $userId) {
 function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVersion = null, $needsHumanReview = false, $optimizationChanges = null, $detectedRole = null, $originalPath = null, $userEnteredRole = null, $userEnteredDescription = null) {
     $db = getDB();
     
-    // Fetch current resume_data JSON if exists to preserve other keys
-    $stmt = $db->prepare("SELECT resume_data FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
+    // Fetch current resume_data JSON and category fields if they exist
+    $stmt = $db->prepare("SELECT resume_data, category_id, category_match_percentage FROM candidate_profiles WHERE id = :id AND user_id = :user_id");
     $stmt->execute(['id' => $profileId, 'user_id' => $userId]);
-    $existingJson = $stmt->fetchColumn();
+    $profileRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    $existingJson = $profileRow['resume_data'] ?? '';
+    $categoryId = $profileRow['category_id'] ?? null;
+    $matchPercentage = $profileRow['category_match_percentage'] ?? null;
+    
     $resumeData = !empty($existingJson) ? json_decode($existingJson, true) : [];
     if (!is_array($resumeData)) {
         $resumeData = [];
@@ -941,6 +945,35 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
     }
     if ($detectedRole !== null) {
         $resumeData['detected_role'] = $detectedRole;
+        
+        // Re-evaluate category match using detected_role
+        try {
+            $userStmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+            $userStmt->execute(['id' => $userId]);
+            $userFull = $userStmt->fetch(PDO::FETCH_ASSOC);
+            
+            $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
+            $apiKey = $userFull['custom_gemini_api_key'] ?? null;
+            
+            require_once __DIR__ . '/ai_service.php';
+            $categories = getAllCategories();
+            
+            $aiResult = matchRoleToCategory($detectedRole, $categories, $model, $apiKey);
+            if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
+                if ($aiResult['match_percentage'] >= 15) {
+                    $categoryId = $aiResult['category_id'];
+                    $matchPercentage = (int)$aiResult['match_percentage'];
+                } else {
+                    $categoryId = null;
+                    $matchPercentage = 0;
+                }
+            } else {
+                $categoryId = null;
+                $matchPercentage = 0;
+            }
+        } catch (Exception $e) {
+            // Fail silently, keep existing values
+        }
     }
     if ($originalPath !== null) {
         $resumeData['original_path'] = $originalPath;
@@ -984,13 +1017,17 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
             optimized_resume_path = :path, 
             text_version = :text_version, 
             needs_human_review = :needs_human_review, 
-            resume_data = :resume_data 
+            resume_data = :resume_data,
+            category_id = :category_id,
+            category_match_percentage = :category_match_percentage
             WHERE id = :id AND user_id = :user_id");
         return $stmt->execute([
             'path' => $resumePath,
             'text_version' => $textVersion,
             'needs_human_review' => $needsHumanReview ? 1 : 0,
             'resume_data' => $jsonVal,
+            'category_id' => $categoryId,
+            'category_match_percentage' => $matchPercentage,
             'id' => $profileId,
             'user_id' => $userId
         ]);
@@ -998,12 +1035,16 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
         $stmt = $db->prepare("UPDATE candidate_profiles SET 
             optimized_resume_path = :path, 
             needs_human_review = :needs_human_review, 
-            resume_data = :resume_data 
+            resume_data = :resume_data,
+            category_id = :category_id,
+            category_match_percentage = :category_match_percentage
             WHERE id = :id AND user_id = :user_id");
         return $stmt->execute([
             'path' => $resumePath,
             'needs_human_review' => $needsHumanReview ? 1 : 0,
             'resume_data' => $jsonVal,
+            'category_id' => $categoryId,
+            'category_match_percentage' => $matchPercentage,
             'id' => $profileId,
             'user_id' => $userId
         ]);

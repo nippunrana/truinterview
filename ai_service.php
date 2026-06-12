@@ -571,19 +571,59 @@ function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model =
  */
 function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash', $apiKey = null) {
     if (empty($categories)) {
-        return ['category_id' => null, 'match_percentage' => null];
+        return ['category_id' => null, 'match_percentage' => 0];
     }
     
     $categoriesJson = json_encode($categories);
     
     $prompt = "<context>\n" .
-              "You are an expert HR assistant matching job roles to a predefined list of categories.\n" .
+              "You are an expert HR taxonomy analyst mapping raw job titles to a standardized category list.\n" .
               "</context>\n" .
               "<task>\n" .
-              "Given a job role, and a list of categories (each with a uuid, name, and description), find the best matching category.\n" .
-              "If a matching category is found, provide its uuid and a match_percentage (0 to 100).\n" .
-              "If the role does not reasonably match any category, return null for both.\n" .
+              "Analyze the raw job title provided in <role> and evaluate it against the category definitions in <categories>. Select the single category that best matches the role, and assign a match score based on the rubric.\n" .
               "</task>\n" .
+              "<input_schemaspec>\n" .
+              "The categories list is a JSON array of objects, where each object has:\n" .
+              "- uuid: String (The unique identifier for the category. This must be the value returned as category_id).\n" .
+              "- name: String (The category title).\n" .
+              "- description: String (Details about what skills, languages, or responsibilities are covered under this category).\n" .
+              "</input_schemaspec>\n" .
+              "<constraints>\n" .
+              "1. Grounding Rule: The category_id returned MUST exist in the provided <categories> list. Do NOT invent, guess, or hallucinate a UUID.\n" .
+              "2. Select the single best category. If no category represents a fit of 50% or more, set category_id to null and match_percentage to 0.\n" .
+              "3. Score Calibration Rubric:\n" .
+              "   - 100: Exact Match (Synonymous title, exact same core function and seniority/level).\n" .
+              "   - 75: Strong Match (Same core function/domain, but slight specialization variation, e.g. web vs mobile, or specific tool/framework).\n" .
+              "   - 50: Partial Match (Related field, tangential overlap, or sibling department with distinct primary focus).\n" .
+              "   - 0: No Match (Does not fit into any provided category).\n" .
+              "4. Return ONLY valid JSON matching the schema in <output_format>. Do not output markdown, preambles, or post-text.\n" .
+              "</constraints>\n" .
+              "<few_shot_examples>\n" .
+              "Example 1:\n" .
+              "- Input Role: \"React Native Developer\"\n" .
+              "- Input Categories: [\n" .
+              "    {\"uuid\": \"cfaa3cae-5ba0-4158-aea8-74753c2872d5\", \"name\": \"Frontend Development\", \"description\": \"Focuses on creating user interfaces and web experiences using HTML, CSS, JavaScript, and modern frameworks like React or Vue.\"},\n" .
+              "    {\"uuid\": \"b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2\", \"name\": \"Backend Development\", \"description\": \"Focuses on database design, server-side APIs, systems logic...\"}\n" .
+              "  ]\n" .
+              "- Expected Output:\n" .
+              "{\n" .
+              "  \"rationale\": \"React Native is a framework for building user interfaces (Frontend), but specialized for mobile instead of traditional web.\",\n" .
+              "  \"category_id\": \"cfaa3cae-5ba0-4158-aea8-74753c2872d5\",\n" .
+              "  \"match_percentage\": 75\n" .
+              "}\n\n" .
+              "Example 2:\n" .
+              "- Input Role: \"Sales Representative\"\n" .
+              "- Input Categories: [\n" .
+              "    {\"uuid\": \"cfaa3cae-5ba0-4158-aea8-74753c2872d5\", \"name\": \"Frontend Development\", \"description\": \"Focuses on creating user interfaces...\"},\n" .
+              "    {\"uuid\": \"b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2\", \"name\": \"Backend Development\", \"description\": \"Focuses on database design...\"}\n" .
+              "  ]\n" .
+              "- Expected Output:\n" .
+              "{\n" .
+              "  \"rationale\": \"A sales representative role has no overlaps with frontend or backend software development.\",\n" .
+              "  \"category_id\": null,\n" .
+              "  \"match_percentage\": 0\n" .
+              "}\n" .
+              "</few_shot_examples>\n" .
               "<role>\n" .
               $roleTitle . "\n" .
               "</role>\n" .
@@ -591,12 +631,16 @@ function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash
               $categoriesJson . "\n" .
               "</categories>\n" .
               "<output_format>\n" .
-              "Return ONLY this JSON:\n" .
               "{\n" .
-              "  \"category_id\": string (uuid) | null,\n" .
-              "  \"match_percentage\": integer | null\n" .
+              "  \"rationale\": \"string (1-2 sentences explaining why this category and score were chosen)\",\n" .
+              "  \"category_id\": \"string (uuid) | null\",\n" .
+              "  \"match_percentage\": 100 | 75 | 50 | 0\n" .
               "}\n" .
-              "</output_format>";
+              "</output_format>\n" .
+              "<verification>\n" .
+              "- Ensure category_id is either null or a string matching one of the UUIDs in <categories> exactly.\n" .
+              "- Confirm match_percentage is exactly one of [100, 75, 50, 0].\n" .
+              "</verification>";
               
     $payload = [
         "contents" => [
@@ -626,13 +670,13 @@ function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash
         if ($result && array_key_exists('category_id', $result)) {
             return [
                 'category_id' => $result['category_id'],
-                'match_percentage' => isset($result['match_percentage']) ? (int)$result['match_percentage'] : null
+                'match_percentage' => isset($result['match_percentage']) ? (int)$result['match_percentage'] : 0
             ];
         }
         
-        return ['category_id' => null, 'match_percentage' => null];
+        return ['category_id' => null, 'match_percentage' => 0];
     } catch (Exception $e) {
-        return ['category_id' => null, 'match_percentage' => null];
+        return ['category_id' => null, 'match_percentage' => 0];
     }
 }
 
