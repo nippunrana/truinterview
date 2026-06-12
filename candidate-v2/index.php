@@ -803,7 +803,14 @@ $levelDescriptions = [
                   $sessionType = $session['session_type'] ?? 'assessment';
                   $sessionDate = !empty($session['started_at']) ? date('M j, Y', strtotime($session['started_at'])) : '—';
                 ?>
-                  <tr id="submission-row-<?php echo htmlspecialchars($session['id']); ?>">
+                  <?php $isViewable = ($session['current_status'] === 'COMPLETED' && !empty($session['final_score'])); ?>
+                  <tr
+                    id="submission-row-<?php echo htmlspecialchars($session['id']); ?>"
+                    <?php if ($isViewable): ?>
+                      onclick="window.location.href='report.php?session_id=<?php echo urlencode($session['id']); ?>'"
+                      style="cursor: pointer;"
+                    <?php endif; ?>
+                  >
                     <td>
                       <div style="font-weight: 700; color: var(--color-text-primary);"><?php echo htmlspecialchars($session['template_title'] ?? 'Unknown Role'); ?></div>
                     </td>
@@ -819,7 +826,7 @@ $levelDescriptions = [
                     <td style="text-align: center; font-size: 0.78rem; color: var(--color-text-secondary);">
                       <?php echo $sessionDate; ?>
                     </td>
-                    <td style="text-align: right;">
+                    <td style="text-align: right;" onclick="event.stopPropagation()">
                       <button
                         class="btn btn-outline"
                         style="padding: 6px 12px; font-size: 0.78rem; color: var(--color-danger); border-color: var(--color-danger);"
