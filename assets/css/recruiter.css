@@ -181,3 +181,24 @@
 .subtitle-main {
   color: var(--color-text-secondary) !important;
 }
+
+/* Delete button styling with hover transition */
+.btn-delete-link {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+
+.btn-delete-link:hover {
+  color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.1);
+  transform: scale(1.08);
+}
+

@@ -651,7 +651,7 @@ function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAt
 
 function listInterviewLinks($companyId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM interview_links WHERE company_id = :company_id ORDER BY created_at DESC");
+    $stmt = $db->prepare("SELECT * FROM interview_links WHERE company_id = :company_id AND status != 'deleted' ORDER BY created_at DESC");
     $stmt->execute(['company_id' => $companyId]);
     return $stmt->fetchAll();
 }
@@ -708,7 +708,7 @@ function getRecruiterStats($companyId) {
     $db = getDB();
 
     // Total links
-    $stmt = $db->prepare("SELECT COUNT(*) FROM interview_links WHERE company_id = :company_id");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM interview_links WHERE company_id = :company_id AND status != 'deleted'");
     $stmt->execute(['company_id' => $companyId]);
     $totalLinks = (int)$stmt->fetchColumn();
 

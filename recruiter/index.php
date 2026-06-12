@@ -77,6 +77,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit();
 }
 
+// Check for delete_link action (AJAX POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_link') {
+    header('Content-Type: application/json');
+    $linkId = $_POST['link_id'] ?? '';
+    
+    if (empty($linkId)) {
+        echo json_encode(['success' => false, 'message' => 'Link ID is required.']);
+        exit();
+    }
+    
+    try {
+        $stmtDelete = $db->prepare("UPDATE interview_links SET status = 'deleted' WHERE id = :id AND company_id = :company_id");
+        $stmtDelete->execute([
+            'id' => $linkId,
+            'company_id' => $company['id']
+        ]);
+        echo json_encode(['success' => true, 'message' => 'Assessment link deleted successfully.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
+
 // Fetch Stats, Links, and candidate results
 $stats = getRecruiterStats($company['id']);
 $links = listInterviewLinks($company['id']);
@@ -283,7 +307,14 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
             <div class="card-header" style="margin-bottom: var(--space-2); align-items: flex-start;">
               <div class="role-title" title="<?php echo htmlspecialchars($link['job_role']); ?>" style="line-height: 1.3; font-weight: 700;"><?php echo htmlspecialchars($link['job_role']); ?></div>
               <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
-                <span class="card-badge" style="font-size: 0.65rem; padding: 2px 6px;"><?php echo $displayStatus; ?></span>
+                <div style="display: flex; gap: var(--space-1); align-items: center;">
+                  <span class="card-badge" style="font-size: 0.65rem; padding: 2px 6px;"><?php echo $displayStatus; ?></span>
+                  <button class="btn-delete-link" data-id="<?php echo $link['id']; ?>" data-role="<?php echo htmlspecialchars($link['job_role']); ?>" data-code="<?php echo htmlspecialchars($link['code']); ?>" title="Delete Assessment Link">
+                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                </div>
                 <span class="card-badge" style="font-size: 0.65rem; padding: 2px 6px; background: <?php echo !empty($link['is_public']) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'; ?>; color: <?php echo !empty($link['is_public']) ? 'var(--color-success)' : 'var(--color-danger)'; ?>;">
                   <?php echo !empty($link['is_public']) ? 'Public' : 'Private'; ?>
                 </span>
@@ -612,6 +643,22 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
     </div>
   </div>
 
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="delete-confirm-modal">
+    <div class="modal-content" style="max-width: 450px; text-align: center; padding: var(--space-6);">
+      <div style="font-size: 40px; margin-bottom: var(--space-2); color: var(--color-danger);">⚠️</div>
+      <h3 style="margin-bottom: var(--space-2); font-family: 'Outfit', sans-serif; font-size: var(--text-lg); font-weight: 700;">Delete Assessment Link</h3>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.5; margin-bottom: var(--space-5);">
+        Are you sure you want to delete the assessment link for <strong id="delete-modal-role" style="color: var(--color-text-primary);"></strong> (Code: <strong id="delete-modal-code" style="color: var(--color-brand-primary);"></strong>)? Candidates will no longer be able to access the interview using this link.
+      </p>
+      
+      <div style="display: flex; justify-content: center; gap: var(--space-3);">
+        <button class="btn btn-outline" id="btn-cancel-delete" style="padding: 8px 20px;">Cancel</button>
+        <button class="btn btn-primary" id="btn-confirm-delete" style="padding: 8px 20px; background: var(--color-danger); color: white;">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
 
   <script>
@@ -677,10 +724,68 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
       settingsModal.classList.remove('active');
     });
 
+    let linkToDeleteId = null;
+    const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+    const deleteModalRole = document.getElementById('delete-modal-role');
+    const deleteModalCode = document.getElementById('delete-modal-code');
+
+    document.querySelectorAll('.btn-delete-link').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        linkToDeleteId = btn.getAttribute('data-id');
+        deleteModalRole.textContent = btn.getAttribute('data-role');
+        deleteModalCode.textContent = btn.getAttribute('data-code');
+        deleteConfirmModal.classList.add('active');
+      });
+    });
+
+    document.getElementById('btn-cancel-delete').addEventListener('click', () => {
+      deleteConfirmModal.classList.remove('active');
+      linkToDeleteId = null;
+    });
+
     // Close modal on clicking overlay
     window.addEventListener('click', (e) => {
       if (e.target === createModal) createModal.classList.remove('active');
       if (e.target === settingsModal) settingsModal.classList.remove('active');
+      if (e.target === deleteConfirmModal) {
+        deleteConfirmModal.classList.remove('active');
+        linkToDeleteId = null;
+      }
+    });
+
+    document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
+      if (!linkToDeleteId) return;
+      const btnConfirm = document.getElementById('btn-confirm-delete');
+      const originalHtml = btnConfirm.innerHTML;
+      btnConfirm.innerHTML = '<span class="spinner"></span> Deleting...';
+      btnConfirm.disabled = true;
+
+      const formData = new URLSearchParams();
+      formData.append('action', 'delete_link');
+      formData.append('link_id', linkToDeleteId);
+
+      try {
+        const res = await fetch('index.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          showToast(data.message, 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.message || 'Error deleting link', 'error');
+          btnConfirm.innerHTML = originalHtml;
+          btnConfirm.disabled = false;
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+        btnConfirm.innerHTML = originalHtml;
+        btnConfirm.disabled = false;
+      }
     });
 
     // Copy Link logic
