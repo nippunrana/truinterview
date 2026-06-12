@@ -156,9 +156,9 @@ $levelDescriptions = [
 </head>
 <body>
 
-  <div class="v2-layout">
-    
-    <header class="v2-header">
+  <!-- Header -->
+  <header class="v2-header">
+    <div class="v2-header-inner">
       <a href="index.php" class="brand-wrapper">
         <svg style="width: 28px; height: 28px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -174,15 +174,18 @@ $levelDescriptions = [
         </button>
         <!-- END OPTION C -->
 
-        <button id="btn-open-settings-modal" class="btn btn-outline" style="padding: 6px; border: none; background: transparent; color: var(--color-text-secondary);" title="Settings">
+        <button id="btn-open-settings-modal" class="btn btn-outline-header" style="padding: 6px; border: none; background: transparent;" title="Settings">
           <svg style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         </button>
         <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
-        <a href="../logout.php" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
+        <a href="../logout.php" class="btn btn-outline-header" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <main>
+  <!-- Hero Section -->
+  <section class="v2-hero">
+    <div class="v2-hero-inner">
       <h1 class="title-main">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's get you hired.</h1>
       <p class="subtitle-main">
         <?php if ($profileCount === 0): ?>
@@ -195,7 +198,7 @@ $levelDescriptions = [
           Your target roles are locked in. Focus on perfecting your optimized resumes and mastering your mock interviews for these 3 positions.
         <?php endif; ?>
       </p>
-
+      
       <div class="bento-grid">
         
         <?php foreach ($profiles as $idx => $profile): ?>
@@ -411,6 +414,12 @@ $levelDescriptions = [
         <?php endif; ?>
         
       </div>
+    </div>
+  </section>
+
+  <!-- Main Content Layout -->
+  <div class="v2-layout">
+    <main>
 
       <!-- MATCHED PUBLIC ASSESSMENTS SECTION -->
       <?php
