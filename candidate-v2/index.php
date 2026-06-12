@@ -14,6 +14,19 @@ $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $profiles = getCandidateProfiles($user['id']);
 
+// Fetch active public interview links with company names
+$publicLinksStmt = $db->prepare("
+    SELECT il.*, c.name as company_name, c.logo_url
+    FROM interview_links il
+    JOIN companies c ON il.company_id = c.id
+    WHERE il.status = 'active'
+      AND il.is_public = TRUE
+      AND (il.expires_at IS NULL OR il.expires_at > CURRENT_TIMESTAMP)
+    ORDER BY il.created_at DESC
+");
+$publicLinksStmt->execute();
+$publicLinks = $publicLinksStmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Retroactively backfill detected_role for profiles missing the key in JSON
 $profilesUpdated = false;
 foreach ($profiles as $idx => $profile) {
@@ -339,6 +352,74 @@ $levelDescriptions = [
                   </div>
                 <?php endif; ?>
               </div>
+
+              <?php 
+              // Query matched public assessments
+              $matchedAssessments = [];
+              $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
+              $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
+              $profileSlug = preg_replace('/-+/', '-', $profileSlug);
+              $profileSlug = trim($profileSlug, '-');
+
+              foreach ($publicLinks as $pLink) {
+                  $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
+                  $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
+                  $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
+                  $pLinkSlug = trim($pLinkSlug, '-');
+                  
+                  if ($profileSlug === $pLinkSlug) {
+                      $matchedAssessments[] = $pLink;
+                  }
+              }
+              ?>
+              
+              <?php if (!empty($matchedAssessments)): ?>
+                <div class="matched-assessments-section" style="margin-top: var(--space-4); border-top: 1px solid var(--color-border); padding-top: var(--space-3); width: 100%;">
+                  <div style="font-size: var(--text-xs); font-weight: 700; color: var(--color-brand-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-2); display: flex; align-items: center; gap: 4px;">
+                    <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Available Public Assessments
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+                    <?php foreach ($matchedAssessments as $ma): 
+                      $maLevelVal = (int)($ma['min_level'] ?? 0);
+                      $maLevelName = $levelNames[$maLevelVal] ?? "Novice";
+                      $hasRequiredLevel = ($profileLevel >= $maLevelVal);
+                    ?>
+                      <div style="background: var(--color-bg-subtle); padding: var(--space-2); border-radius: var(--radius-inner); display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--color-border);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2);">
+                          <div style="min-width: 0;">
+                            <div style="font-weight: 700; font-size: 0.82rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo htmlspecialchars($ma['company_name']); ?></div>
+                            <div style="font-size: 0.72rem; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?php echo htmlspecialchars($ma['job_role']); ?></div>
+                          </div>
+                          <span class="card-badge" style="font-size: 0.65rem; padding: 2px 4px; background: <?php echo $hasRequiredLevel ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'; ?>; color: <?php echo $hasRequiredLevel ? 'var(--color-success)' : 'var(--color-danger)'; ?>; flex-shrink: 0;">
+                            Req L<?php echo $maLevelVal; ?>
+                          </span>
+                        </div>
+                        
+                        <?php if (!empty($ma['job_description'])): ?>
+                          <div style="font-size: 0.72rem; color: var(--color-text-secondary); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="<?php echo htmlspecialchars($ma['job_description']); ?>">
+                            <?php echo htmlspecialchars($ma['job_description']); ?>
+                          </div>
+                        <?php endif; ?>
+
+                        <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 2px;">
+                          <?php if ($hasRequiredLevel): ?>
+                            <a href="../interview.php?code=<?php echo urlencode($ma['code']); ?>" class="btn btn-primary" style="padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">
+                              Take Assessment &rarr;
+                            </a>
+                          <?php else: ?>
+                            <div style="font-size: 0.68rem; color: var(--color-danger); font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">
+                              🔒 Locked (Requires L<?php echo $maLevelVal; ?> - <?php echo htmlspecialchars($maLevelName); ?>)
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    <?php endforeach; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
             </div>
 
             <div class="card-actions">

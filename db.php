@@ -140,10 +140,16 @@ function initSchema() {
         expires_at TIMESTAMP WITH TIME ZONE,
         status VARCHAR(20) DEFAULT 'active',
         job_role VARCHAR(150) NOT NULL DEFAULT 'Software Engineer',
+        job_description TEXT,
+        is_public BOOLEAN NOT NULL DEFAULT FALSE,
+        min_level INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
 
     $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS job_role VARCHAR(150) NOT NULL DEFAULT 'Software Engineer'");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS job_description TEXT");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE");
+    $db->exec("ALTER TABLE interview_links ADD COLUMN IF NOT EXISTS min_level INTEGER NOT NULL DEFAULT 0");
 
     // Create sessions table
     $db->exec("CREATE TABLE IF NOT EXISTS sessions (
@@ -613,18 +619,20 @@ function getInterviewLink($id) {
     return $stmt->fetch();
 }
 
-function createInterviewLink($companyId, $userId, $code, $candidateEmail, $candidateName, $maxAttempts, $expiresAt, $jobRole) {
+function createInterviewLink($companyId, $userId, $code, $candidateEmail, $maxAttempts, $expiresAt, $jobRole, $jobDescription = null, $isPublic = false, $minLevel = 0) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, candidate_name, max_attempts, expires_at, job_role) VALUES (:company_id, :created_by, :code, :candidate_email, :candidate_name, :max_attempts, :expires_at, :job_role) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO interview_links (company_id, created_by, code, candidate_email, max_attempts, expires_at, job_role, job_description, is_public, min_level) VALUES (:company_id, :created_by, :code, :candidate_email, :max_attempts, :expires_at, :job_role, :job_description, :is_public, :min_level) RETURNING id");
     $stmt->execute([
         'company_id' => $companyId,
         'created_by' => $userId,
         'code' => strtoupper(trim($code)),
         'candidate_email' => empty($candidateEmail) ? null : trim($candidateEmail),
-        'candidate_name' => empty($candidateName) ? null : trim($candidateName),
         'max_attempts' => (int)$maxAttempts,
         'expires_at' => empty($expiresAt) ? null : $expiresAt,
-        'job_role' => empty($jobRole) ? 'Software Engineer' : trim($jobRole)
+        'job_role' => empty($jobRole) ? 'Software Engineer' : trim($jobRole),
+        'job_description' => empty($jobDescription) ? null : trim($jobDescription),
+        'is_public' => $isPublic ? true : false,
+        'min_level' => (int)$minLevel
     ]);
     return $stmt->fetchColumn();
 }

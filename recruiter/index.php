@@ -89,11 +89,13 @@ $sessionsCount = count($results);
 $errorMsg = '';
 $successMsg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_link') {
-    $candidateName = trim($_POST['candidate_name'] ?? '');
     $candidateEmail = trim($_POST['candidate_email'] ?? '');
     $jobRole = trim($_POST['job_role'] ?? 'Software Engineer');
     $maxAttempts = (int)($_POST['max_attempts'] ?? 3);
     $expiresAt = trim($_POST['expires_at'] ?? '');
+    $jobDescription = trim($_POST['job_description'] ?? '');
+    $isPublic = isset($_POST['is_public']) && $_POST['is_public'] === '1';
+    $minLevel = (int)($_POST['min_level'] ?? 0);
     
     if (empty($jobRole)) {
         $errorMsg = "Job role is required.";
@@ -115,10 +117,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $user['id'],
                 $code,
                 !empty($candidateEmail) ? $candidateEmail : null,
-                !empty($candidateName) ? $candidateName : null,
                 $maxAttempts,
                 $expiresVal,
-                $jobRole
+                $jobRole,
+                !empty($jobDescription) ? $jobDescription : null,
+                $isPublic,
+                $minLevel
             );
             
             $_SESSION['success_msg'] = "Interview link created successfully! Code: $code";
@@ -232,19 +236,37 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
           $expiryStr = !empty($link['expires_at']) ? date('M d, Y', strtotime($link['expires_at'])) : 'Never';
           $isExpired = !empty($link['expires_at']) && (strtotime($link['expires_at']) < time());
           $displayStatus = $isActive ? ($isExpired ? 'Expired' : 'Active') : 'Inactive';
+          
+          $levelNames = [
+              0 => "Novice", 1 => "Terminology", 2 => "Mechanics", 3 => "Implementation",
+              4 => "Analysis", 5 => "Troubleshooting", 6 => "Integration", 7 => "Optimization",
+              8 => "Security", 9 => "Governance", 10 => "Strategic Leadership"
+          ];
+          $minLevelVal = (int)($link['min_level'] ?? 0);
+          $minLevelName = $levelNames[$minLevelVal] ?? "Novice";
         ?>
           <div class="bento-card">
-            <div class="card-header" style="margin-bottom: var(--space-2);">
-              <div class="role-title" title="<?php echo htmlspecialchars($link['job_role']); ?>"><?php echo htmlspecialchars($link['job_role']); ?></div>
-              <span class="card-badge" style="font-size: 0.72rem; padding: 2px 6px;"><?php echo $displayStatus; ?></span>
+            <div class="card-header" style="margin-bottom: var(--space-2); align-items: flex-start;">
+              <div class="role-title" title="<?php echo htmlspecialchars($link['job_role']); ?>" style="line-height: 1.3; font-weight: 700;"><?php echo htmlspecialchars($link['job_role']); ?></div>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
+                <span class="card-badge" style="font-size: 0.65rem; padding: 2px 6px;"><?php echo $displayStatus; ?></span>
+                <span class="card-badge" style="font-size: 0.65rem; padding: 2px 6px; background: <?php echo !empty($link['is_public']) ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'; ?>; color: <?php echo !empty($link['is_public']) ? 'var(--color-success)' : 'var(--color-danger)'; ?>;">
+                  <?php echo !empty($link['is_public']) ? 'Public' : 'Private'; ?>
+                </span>
+              </div>
             </div>
 
-            <div style="margin-bottom: var(--space-4); font-size: var(--text-sm); color: var(--color-text-secondary); flex-grow: 1;">
-              <?php if (!empty($link['candidate_name'])): ?>
-                For: <strong><?php echo htmlspecialchars($link['candidate_name']); ?></strong>
-                <div style="font-size: 0.75rem; color: var(--color-text-muted);"><?php echo htmlspecialchars($link['candidate_email']); ?></div>
-              <?php else: ?>
-                <span style="color: var(--color-text-muted); font-style: italic;">Public Link</span>
+            <div style="margin-bottom: var(--space-4); font-size: var(--text-sm); color: var(--color-text-secondary); flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+              <?php if (!empty($link['candidate_email'])): ?>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">Candidate: <strong><?php echo htmlspecialchars($link['candidate_email']); ?></strong></div>
+              <?php endif; ?>
+              <div style="font-size: 0.72rem; color: var(--color-text-secondary);">
+                Min Level: <strong>L<?php echo $minLevelVal; ?> - <?php echo htmlspecialchars($minLevelName); ?></strong>
+              </div>
+              <?php if (!empty($link['job_description'])): ?>
+                <div style="font-size: 0.78rem; color: var(--color-text-muted); margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;" title="<?php echo htmlspecialchars($link['job_description']); ?>">
+                  <?php echo htmlspecialchars($link['job_description']); ?>
+                </div>
               <?php endif; ?>
             </div>
 
@@ -354,7 +376,7 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
 
   <!-- Create Interview Modal -->
   <div class="modal-overlay" id="create-modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 600px;">
       <h2 style="margin-bottom: var(--space-2); font-family: 'Outfit', sans-serif;">Create Assessment Link</h2>
       <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Configure a new coding session link code for a candidate or job opening.</p>
       
@@ -367,8 +389,8 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="candidate_name">Candidate Name (Optional)</label>
-          <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="e.g. John Doe" autocomplete="off">
+          <label class="form-label" for="job_description">Job Description (Optional)</label>
+          <textarea id="job_description" name="job_description" class="form-input" placeholder="Describe the role, responsibilities, and qualifications..." rows="3" style="resize: vertical; font-family: inherit; font-size: inherit;"></textarea>
         </div>
 
         <div class="form-group">
@@ -376,13 +398,39 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
           <input type="email" id="candidate_email" name="candidate_email" class="form-input" placeholder="e.g. john.doe@example.com" autocomplete="off">
         </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="is_public">Visibility</label>
+            <select id="is_public" name="is_public" class="form-input">
+              <option value="0" selected>Private</option>
+              <option value="1">Public</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="min_level">Minimum Level</label>
+            <select id="min_level" name="min_level" class="form-input">
+              <option value="0" selected>Level 0: Novice</option>
+              <option value="1">Level 1: Terminology</option>
+              <option value="2">Level 2: Mechanics</option>
+              <option value="3">Level 3: Implementation</option>
+              <option value="4">Level 4: Analysis</option>
+              <option value="5">Level 5: Troubleshooting</option>
+              <option value="6">Level 6: Integration</option>
+              <option value="7">Level 7: Optimization</option>
+              <option value="8">Level 8: Security</option>
+              <option value="9">Level 9: Governance</option>
+              <option value="10">Level 10: Strategic Leadership</option>
+            </select>
+          </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="max_attempts">Max Attempts</label>
             <input type="number" id="max_attempts" name="max_attempts" class="form-input" min="1" max="10" value="3" required>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" for="expires_at">Expiry Date (Optional)</label>
             <input type="date" id="expires_at" name="expires_at" class="form-input">
           </div>
