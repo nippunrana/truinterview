@@ -346,7 +346,7 @@ if (!empty($inviteCode)) {
             <?php endif; ?>
           </div>
           
-          <?php if (empty($inviteCode)): ?>
+          <?php if (empty($inviteCode) || !empty($profileId)): ?>
             <div style="margin-top: 16px; margin-bottom: 24px; padding: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--color-border); border-radius: var(--radius-inner);">
               <h3 style="margin-top: 0; font-size: 0.95rem; color: var(--color-text-primary); margin-bottom: 12px; font-weight: 600; text-align: left;">Practice Test AI Brain Selection</h3>
               
