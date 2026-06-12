@@ -110,22 +110,71 @@ Target Level: {$targetLevel} out of 10.
 Level {$targetLevel} Definition: {$levelDescription}
 </context>
 
-{$historyContext}<task>
+{$historyContext}
+
+<task>
 Generate exactly 10 technical interview questions aligned strictly with the Level {$targetLevel} definition.
-For each question, also provide a crisp, factual expected answer.
+Out of these 10 questions:
+- Around 6 questions must be standard open-ended technical questions (type: "open").
+- Around 4 questions must be Multiple-Choice Questions (type: "mcq").
+For each question, provide a corresponding correct answer.
 </task>
 
 <constraints>
 - If <history> is present, ensure the new questions cover different TOPICS than those in <history>. Do not repeat concepts.
-- Answers must be factual and strictly under 100 words.
+- For standard open-ended questions (type: "open"):
+  - The "question" is the technical question.
+  - The "options" field must be omitted or set to null.
+  - The "answer" must be a factual explanation strictly under 100 words.
+- For MCQ questions (type: "mcq"):
+  - The "question" is the multiple-choice question. Do not include or embed options A, B, C, or D in this string.
+  - The "options" object must contain exactly four keys: "A", "B", "C", and "D", each mapping to a unique, clear option string.
+  - The "answer" must be exactly the correct option letter (one of "A", "B", "C", or "D").
 - Do NOT include conversational filler, introductions, pleasantries, or motivational fluff.
 - Rely solely on the JSON schema for output formatting. Do not output anything outside the JSON.
 </constraints>
 
-<example>
-Example Question (Level 2: Basic Mechanics): "How does JavaScript handle asynchronous operations?"
-Example Answer: "JavaScript uses an event loop and a single-threaded call stack. Asynchronous operations like I/O or timers are offloaded to Web APIs. When they complete, their callbacks are pushed to the task queue. The event loop continuously checks if the call stack is empty; if so, it dequeues the next callback from the queue and pushes it onto the stack for execution."
-</example>
+<examples>
+Example 1: Open-Ended Question
+{
+  "type": "open",
+  "question": "How does JavaScript handle asynchronous operations?",
+  "options": null,
+  "answer": "JavaScript uses an event loop and a single-threaded call stack. Asynchronous operations like I/O or timers are offloaded to Web APIs. When they complete, their callbacks are pushed to the task queue. The event loop continuously checks if the call stack is empty; if so, it dequeues the next callback from the queue and pushes it onto the stack for execution."
+}
+
+Example 2: Multiple-Choice Question (MCQ)
+{
+  "type": "mcq",
+  "question": "Which CSS property is used to align grid items vertically inside their cell?",
+  "options": {
+    "A": "align-items",
+    "B": "justify-items",
+    "C": "align-content",
+    "D": "grid-gap"
+  },
+  "answer": "A"
+}
+</examples>
+
+<output_format>
+Return ONLY a JSON array of exactly 10 objects matching the response schema:
+[
+  {
+    "type": "open" | "mcq",
+    "question": "string",
+    "options": { "A": "string", "B": "string", "C": "string", "D": "string" } | null,
+    "answer": "string"
+  }
+]
+</output_format>
+
+<verification>
+- Ensure the output is valid JSON matching the schema.
+- Confirm there are exactly 10 objects in the array.
+- Confirm that exactly 4 of these objects have type 'mcq' and contain the populated 'options' keys.
+- Ensure 'answer' for MCQs is exactly one of the letters: 'A', 'B', 'C', or 'D'.
+</verification>
 EOT;
 
     // 4. Call Gemini
@@ -134,16 +183,31 @@ EOT;
         "items" => [
             "type" => "OBJECT",
             "properties" => [
+                "type" => [
+                    "type" => "STRING",
+                    "description" => "The type of question, either 'open' or 'mcq'."
+                ],
                 "question" => [
                     "type" => "STRING",
-                    "description" => "The interview question."
+                    "description" => "The text of the question (do not embed options A, B, C, D in this string)."
+                ],
+                "options" => [
+                    "type" => "OBJECT",
+                    "properties" => [
+                        "A" => ["type" => "STRING"],
+                        "B" => ["type" => "STRING"],
+                        "C" => ["type" => "STRING"],
+                        "D" => ["type" => "STRING"]
+                    ],
+                    "required" => ["A", "B", "C", "D"],
+                    "description" => "For MCQ questions, provide four options. For open questions, this field is not present or null."
                 ],
                 "answer" => [
                     "type" => "STRING",
-                    "description" => "A straight-forward answer in less than 100 words without fluff."
+                    "description" => "For open questions, a factual explanation strictly under 100 words. For MCQ, the correct option letter (A, B, C, or D)."
                 ]
             ],
-            "required" => ["question", "answer"]
+            "required" => ["type", "question", "answer"]
         ]
     ];
 
