@@ -1,1 +1,69 @@
-/* Recruiter Dashboard Styles - Redesign in progress */
+@import url('candidate-v2.css');
+
+/* Recruiter Dashboard specific styles */
+
+.recruiter-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  margin-top: var(--space-5);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.btn-copy-code {
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.btn-copy-code:hover {
+  background: var(--color-brand-primary);
+  color: #fff;
+  border-color: var(--color-brand-primary);
+}
+
+.submissions-table-wrapper {
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-outer);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.recruiter-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px;
+}
+
+.recruiter-table th {
+  padding: var(--space-3);
+  font-weight: 700;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.recruiter-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.recruiter-table tr:last-child td {
+  border-bottom: none;
+}
+
+.recruiter-table tr {
+  transition: background-color 0.2s ease;
+}
+
+.recruiter-table tr:hover {
+  background-color: var(--color-bg-subtle);
+}
