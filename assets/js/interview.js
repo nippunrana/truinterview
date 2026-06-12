@@ -515,10 +515,9 @@ function triggerGreetingOnce(convId) {
     .catch(err => console.error("Error triggering greeting:", err));
 }
 
-function pollStatus(isInit = false) {
+function pollStatus() {
   if (!sessionId) return;
-  const url = isInit ? `api.php?action=status&session_id=${sessionId}&init=1` : `api.php?action=status&session_id=${sessionId}`;
-  fetch(url)
+  fetch(`api.php?action=status&session_id=${sessionId}`)
   .then(res => res.json())
   .then(data => {
     if (data.status === 'success') {
@@ -528,11 +527,15 @@ function pollStatus(isInit = false) {
       }
       const statusText = document.getElementById('session-status-text');
       if (statusText) statusText.innerText = data.session.current_status;
-      
-      if (isInit && data.transcripts) {
+
+      if (data.transcripts && data.transcripts.length > 0) {
         const key = `transcripts_${sessionId}`;
-        sessionStorage.setItem(key, JSON.stringify(data.transcripts));
-        renderLocalTranscripts();
+        let local = [];
+        try { local = JSON.parse(sessionStorage.getItem(key)) || []; } catch(e) {}
+        if (data.transcripts.length >= local.length) {
+          sessionStorage.setItem(key, JSON.stringify(data.transcripts));
+          renderLocalTranscripts();
+        }
       }
     }
     // Perform MCQ poll to synchronize state
@@ -887,8 +890,8 @@ window.addEventListener('DOMContentLoaded', () => {
     } else {
       updateTimer();
       timerInterval = setInterval(updateTimer, 1000);
-      pollStatus(true); // Call status with init=1 on first load to populate sessionStorage
-      pollInterval = setInterval(() => pollStatus(false), 3000); // Polling does not need transcripts
+      pollStatus();
+      pollInterval = setInterval(pollStatus, 3000);
       pollMCQState();
 
       // Start browser proctoring wizard (shows integrity setup overlay)

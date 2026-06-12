@@ -518,10 +518,7 @@ try {
             throw new Exception("Session not found");
         }
         
-        $transcripts = [];
-        if (isset($_GET['init']) && $_GET['init'] === '1') {
-            $transcripts = getTranscripts($sessionId);
-        }
+        $transcripts = getTranscripts($sessionId);
         
         echo json_encode([
             "status" => "success",
