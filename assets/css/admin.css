@@ -643,3 +643,72 @@ body.admin-body {
     padding: 12px;
   }
 }
+
+/* Copy Table Structure button and dropdown */
+.btn-copy-action {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-expressive);
+}
+
+.btn-copy-action:hover {
+  background-color: var(--color-cyan-glow);
+  color: var(--color-cyan);
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+.btn-copy-action:active {
+  transform: scale(0.95);
+}
+
+.copy-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: none;
+  flex-direction: column;
+  z-index: 50;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.copy-dropdown-menu.active {
+  display: flex;
+}
+
+.copy-dropdown-menu button {
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: var(--transition-expressive);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.copy-dropdown-menu button:hover:not(:disabled) {
+  background-color: var(--color-cyan-glow);
+  color: var(--color-cyan);
+}
+
+.copy-dropdown-menu button:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+

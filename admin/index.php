@@ -91,7 +91,21 @@ if (!empty($user['full_name'])) {
       <!-- Top Dynamic Header -->
       <header class="main-header">
         <div class="header-meta">
-          <h1 class="header-title" id="view-title">Admin Console</h1>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <h1 class="header-title" id="view-title">Admin Console</h1>
+            <div style="position: relative; display: inline-block; line-height: 1;">
+              <button id="btn-copy-structure" class="btn-copy-action" style="display: none;" title="Copy table structure" onclick="toggleCopyMenu(event)">
+                <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                </svg>
+              </button>
+              <div id="copy-menu" class="copy-dropdown-menu">
+                <button onclick="copyStructureAs('sql', event)">Copy as SQL (DDL)</button>
+                <button onclick="copyStructureAs('markdown', event)">Copy as Markdown Table</button>
+                <button onclick="copyStructureAs('csv', event)">Copy as CSV Column List</button>
+              </div>
+            </div>
+          </div>
           <p class="header-subtitle" id="view-subtitle">Select a table from the sidebar to inspect its structure and browse records.</p>
         </div>
         
@@ -266,6 +280,7 @@ if (!empty($user['full_name'])) {
   <script>
     let activeTable = '';
     let activeTab = 'schema'; // schema or data
+    let activeSchemaData = null;
     
     // Data view state
     let searchString = '';
@@ -284,6 +299,7 @@ if (!empty($user['full_name'])) {
 
       // Update headers
       document.getElementById('view-title').textContent = tableName;
+      document.getElementById('btn-copy-structure').style.display = 'inline-flex';
       document.getElementById('view-subtitle').textContent = `Table schema and records browser for "${tableName}".`;
       document.getElementById('tab-controls').style.display = 'flex';
 
@@ -349,6 +365,7 @@ if (!empty($user['full_name'])) {
     }
 
     function renderSchema(data) {
+      activeSchemaData = data;
       document.getElementById('schema-view').style.display = 'block';
       
       // Render columns
@@ -413,6 +430,14 @@ if (!empty($user['full_name'])) {
       const thead = document.getElementById('data-headers-thead');
       thead.innerHTML = '';
       const trHeader = document.createElement('tr');
+      
+      // Action Column Header
+      const thActions = document.createElement('th');
+      thActions.style.width = '60px';
+      thActions.style.textAlign = 'center';
+      thActions.textContent = 'Action';
+      trHeader.appendChild(thActions);
+
       data.columns.forEach(col => {
         const th = document.createElement('th');
         th.className = 'sortable';
@@ -432,10 +457,31 @@ if (!empty($user['full_name'])) {
       const tbody = document.getElementById('data-rows-tbody');
       tbody.innerHTML = '';
       if (data.rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${data.columns.length}" style="text-align: center; padding: 48px; color: var(--color-text-muted);">No records found matching filters.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${data.columns.length + 1}" style="text-align: center; padding: 48px; color: var(--color-text-muted);">No records found matching filters.</td></tr>`;
       } else {
         data.rows.forEach(row => {
           const tr = document.createElement('tr');
+          
+          // Action column
+          const tdActions = document.createElement('td');
+          tdActions.style.textAlign = 'center';
+          tdActions.style.padding = '8px 12px';
+          
+          const btnCopy = document.createElement('button');
+          btnCopy.className = 'btn-copy-action';
+          btnCopy.title = 'Copy row data (JSON)';
+          btnCopy.style.padding = '4px';
+          btnCopy.style.borderRadius = '4px';
+          btnCopy.innerHTML = `
+            <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+            </svg>
+          `;
+          btnCopy.onclick = (e) => copyRowData(row, e);
+          
+          tdActions.appendChild(btnCopy);
+          tr.appendChild(tdActions);
+
           data.columns.forEach(col => {
             const td = document.createElement('td');
             td.className = 'font-mono-cell';
@@ -568,6 +614,212 @@ if (!empty($user['full_name'])) {
         }, 1500);
       }).catch(err => {
         console.error('Copy failed:', err);
+      });
+    }
+
+    function toggleCopyMenu(event) {
+      event.stopPropagation();
+      const menu = document.getElementById('copy-menu');
+      if (menu) {
+        menu.classList.toggle('active');
+      }
+    }
+
+    function copyStructureAs(format, event) {
+      if (!activeTable) return;
+      
+      // If we already have the schema data for the active table, use it
+      if (activeSchemaData && activeSchemaData.table === activeTable) {
+        performCopy(format, activeSchemaData, event);
+      } else {
+        // Fetch it on the fly
+        const btn = event.currentTarget;
+        const originalText = btn.textContent;
+        btn.textContent = 'Loading...';
+        btn.disabled = true;
+        
+        fetch(`api.php?action=get_table_schema&table=${encodeURIComponent(activeTable)}`)
+          .then(res => res.json())
+          .then(data => {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            if (!data.success) {
+              alert('Error loading schema: ' + data.error);
+              return;
+            }
+            activeSchemaData = data; // Cache it
+            performCopy(format, data, event);
+          })
+          .catch(err => {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            alert('API communication error.');
+          });
+      }
+    }
+
+    function performCopy(format, data, event) {
+      let content = '';
+      if (format === 'sql') {
+        content = generateSQL(data);
+      } else if (format === 'markdown') {
+        content = generateMarkdown(data);
+      } else if (format === 'csv') {
+        content = generateCSV(data);
+      }
+      
+      navigator.clipboard.writeText(content).then(() => {
+        const btn = event.currentTarget;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.color = 'var(--color-emerald)';
+        
+        const mainBtn = document.getElementById('btn-copy-structure');
+        if (mainBtn) {
+          mainBtn.style.color = 'var(--color-emerald)';
+          mainBtn.style.borderColor = 'var(--color-emerald)';
+        }
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.color = '';
+          if (mainBtn) {
+            mainBtn.style.color = '';
+            mainBtn.style.borderColor = '';
+          }
+          const menu = document.getElementById('copy-menu');
+          if (menu) {
+            menu.classList.remove('active');
+          }
+        }, 1500);
+      }).catch(err => {
+        console.error('Copy failed:', err);
+        alert('Failed to copy to clipboard.');
+      });
+    }
+
+    function generateSQL(data) {
+      const tableName = data.table;
+      let sql = `CREATE TABLE public."${tableName}" (\n`;
+      
+      const colLines = data.columns.map(col => {
+        let line = `  "${col.column_name}" ${col.data_type}`;
+        if (col.is_nullable === 'NO') {
+          line += ' NOT NULL';
+        }
+        if (col.column_default !== null) {
+          line += ` DEFAULT ${col.column_default}`;
+        }
+        return line;
+      });
+
+      // Find primary keys
+      const pkCols = data.columns.filter(col => col.is_primary === 1).map(col => `"${col.column_name}"`);
+      if (pkCols.length > 0) {
+        colLines.push(`  CONSTRAINT "${tableName}_pkey" PRIMARY KEY (${pkCols.join(', ')})`);
+      }
+
+      // Add foreign keys constraints
+      data.foreign_keys.forEach(fk => {
+        const constraintName = `${tableName}_${fk.local_column}_fkey`;
+        colLines.push(`  CONSTRAINT "${constraintName}" FOREIGN KEY ("${fk.local_column}") REFERENCES public."${fk.foreign_table}" ("${fk.foreign_column}")`);
+      });
+
+      sql += colLines.join(',\n') + '\n);';
+
+      // Add indexes
+      if (data.indexes && data.indexes.length > 0) {
+        sql += '\n\n';
+        const indexLines = data.indexes.map(idx => {
+          let def = idx.indexdef;
+          if (!def.endsWith(';')) def += ';';
+          return def;
+        });
+        sql += indexLines.join('\n');
+      }
+
+      return sql;
+    }
+
+    function generateMarkdown(data) {
+      const tableName = data.table;
+      let md = `## Table: ${tableName}\n\n`;
+      md += `| Column Name | Data Type | Nullable | Default Value | Keys / Constraints |\n`;
+      md += `| :--- | :--- | :--- | :--- | :--- |\n`;
+      
+      data.columns.forEach(col => {
+        let keys = [];
+        if (col.is_primary) keys.push('PK');
+        if (col.is_foreign) keys.push('FK');
+        
+        if (col.is_foreign) {
+          const fk = data.foreign_keys.find(f => f.local_column === col.column_name);
+          if (fk) {
+            keys.push(`Ref: ${fk.foreign_table}(${fk.foreign_column})`);
+          }
+        }
+        
+        const nullableStr = col.is_nullable === 'YES' ? 'Yes' : 'No';
+        const defaultStr = col.column_default !== null ? `\`${col.column_default}\`` : '*NULL*';
+        const keysStr = keys.length > 0 ? keys.join(', ') : '-';
+        
+        md += `| **${col.column_name}** | \`${col.data_type}\` | ${nullableStr} | ${defaultStr} | ${keysStr} |\n`;
+      });
+      
+      if (data.indexes && data.indexes.length > 0) {
+        md += `\n### Indexes\n\n`;
+        md += `| Index Name | Definition |\n`;
+        md += `| :--- | :--- |\n`;
+        data.indexes.forEach(idx => {
+          md += `| \`${idx.indexname}\` | \`${idx.indexdef}\` |\n`;
+        });
+      }
+      
+      return md;
+    }
+
+    function generateCSV(data) {
+      let csv = `column_name,data_type,is_nullable,column_default,is_primary,is_foreign\n`;
+      data.columns.forEach(col => {
+        const defaultVal = col.column_default !== null ? col.column_default.replace(/"/g, '""') : '';
+        csv += `"${col.column_name}","${col.data_type}","${col.is_nullable}","${defaultVal}",${col.is_primary},${col.is_foreign}\n`;
+      });
+      return csv;
+    }
+
+    window.addEventListener('click', function(e) {
+      const menu = document.getElementById('copy-menu');
+      const btn = document.getElementById('btn-copy-structure');
+      if (menu && menu.classList.contains('active') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.remove('active');
+      }
+    });
+
+    function copyRowData(row, event) {
+      event.stopPropagation();
+      
+      const content = JSON.stringify(row, null, 2);
+      
+      navigator.clipboard.writeText(content).then(() => {
+        const btn = event.currentTarget;
+        const originalHTML = btn.innerHTML;
+        
+        btn.innerHTML = `
+          <svg style="width: 14px; height: 14px; color: var(--color-emerald);" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+          </svg>
+        `;
+        btn.style.borderColor = 'var(--color-emerald)';
+        btn.style.background = 'var(--color-emerald-glow)';
+        
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          btn.style.borderColor = '';
+          btn.style.background = '';
+        }, 1500);
+      }).catch(err => {
+        console.error('Row copy failed:', err);
+        alert('Failed to copy row data.');
       });
     }
 
