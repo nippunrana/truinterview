@@ -3,8 +3,8 @@
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
 
-// Enforce Candidate role
-requireAuth(['candidate']);
+// Enforce role
+requireAuth(['candidate', 'recruiter']);
 $user = getCurrentUser();
 
 $path = $_GET['path'] ?? '';
@@ -15,40 +15,93 @@ if (empty($path)) {
 $db = getDB();
 $userId = $user['id'];
 
-// Retrieve resume text version and name/metadata from database
-// Search users.resume_path
-$stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$userFull = $stmt->fetch(PDO::FETCH_ASSOC);
-$resumes = getCandidateResumes($userFull['resume_path'] ?? '');
-
 $found = false;
 $textVersion = '';
 $detectedRole = '';
 $needsHumanReview = false;
 $ext = strtoupper(pathinfo($path, PATHINFO_EXTENSION));
 
-foreach ($resumes as $r) {
-    if ($r['path'] === $path) {
-        $textVersion = $r['text_version'] ?? '';
-        $detectedRole = $r['detected_role'] ?? 'Resume';
-        $needsHumanReview = !empty($r['needs_human_review']);
-        $found = true;
-        break;
-    }
-}
+if ($user['role'] === 'candidate') {
+    // Retrieve resume text version and name/metadata from database
+    // Search users.resume_path
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
 
-if (!$found) {
-    // Search candidate_profiles
-    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id AND optimized_resume_path = :path");
-    $stmt->execute(['user_id' => $userId, 'path' => $path]);
-    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($profile) {
-        $textVersion = $profile['text_version'] ?? '';
-        $detectedRole = $profile['role_title'] ?? 'Role Resume';
-        $needsHumanReview = !empty($profile['needs_human_review']);
-        $found = true;
+    foreach ($resumes as $r) {
+        if ($r['path'] === $path) {
+            $textVersion = $r['text_version'] ?? '';
+            $detectedRole = $r['detected_role'] ?? 'Resume';
+            $needsHumanReview = !empty($r['needs_human_review']);
+            $found = true;
+            break;
+        }
     }
+
+    if (!$found) {
+        // Search candidate_profiles
+        $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id AND optimized_resume_path = :path");
+        $stmt->execute(['user_id' => $userId, 'path' => $path]);
+        $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($profile) {
+            $textVersion = $profile['text_version'] ?? '';
+            $detectedRole = $profile['role_title'] ?? 'Role Resume';
+            $needsHumanReview = !empty($profile['needs_human_review']);
+            $found = true;
+        }
+    }
+} else if ($user['role'] === 'recruiter') {
+    // Find candidate profile matching the path
+    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE optimized_resume_path = :path");
+    $stmt->execute(['path' => $path]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$profile) {
+        die("Error: Resume document not found.");
+    }
+    
+    // Check access match
+    $company = getRecruiterCompany($userId);
+    if (!$company) {
+        die("Access denied. No company profile found.");
+    }
+    
+    // Get all company active links
+    $stmtLinks = $db->prepare("SELECT * FROM interview_links WHERE company_id = :company_id AND status = 'active'");
+    $stmtLinks->execute(['company_id' => $company['id']]);
+    $companyLinks = $stmtLinks->fetchAll(PDO::FETCH_ASSOC);
+    
+    $hasMatch = false;
+    foreach ($companyLinks as $pLink) {
+        $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
+        $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
+        $profileSlug = preg_replace('/-+/', '-', $profileSlug);
+        $profileSlug = trim($profileSlug, '-');
+
+        $isCategoryMatch = (!empty($profile['category_id']) && !empty($pLink['category_id']) && $profile['category_id'] === $pLink['category_id']);
+        
+        $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
+        $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
+        $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
+        $pLinkSlug = trim($pLinkSlug, '-');
+        
+        $isRoleMatch = ($profileSlug === $pLinkSlug);
+        
+        if ($isCategoryMatch || $isRoleMatch) {
+            $hasMatch = true;
+            break;
+        }
+    }
+    
+    if (!$hasMatch) {
+        die("Access denied. You do not have an active matching job for this candidate.");
+    }
+    
+    $textVersion = $profile['text_version'] ?? '';
+    $detectedRole = $profile['role_title'] ?? 'Role Resume';
+    $needsHumanReview = !empty($profile['needs_human_review']);
+    $found = true;
 }
 
 if (!$found) {
@@ -132,12 +185,14 @@ function parseMarkdownToHtml($markdown) {
           </span>
         <?php endif; ?>
         
+        <?php if ($user['role'] === 'candidate'): ?>
         <button id="save-btn" onclick="saveText()" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem; border-radius: 8px;">
           <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
           </svg>
           Save Changes
         </button>
+        <?php endif; ?>
       </div>
     </header>
 
@@ -196,7 +251,7 @@ function parseMarkdownToHtml($markdown) {
         
         <div class="editor-textarea-wrapper">
           <div class="line-numbers" id="line-numbers">1</div>
-          <textarea id="editor-textarea" class="editor-textarea" spellcheck="false" placeholder="Paste or edit plain text resume here..." onscroll="syncScroll()" oninput="updateLineNumbers()"><?php echo htmlspecialchars($textVersion); ?></textarea>
+          <textarea id="editor-textarea" class="editor-textarea" spellcheck="false" placeholder="Paste or edit plain text resume here..." onscroll="syncScroll()" oninput="updateLineNumbers()" <?php if ($user['role'] !== 'candidate') echo 'readonly'; ?>><?php echo htmlspecialchars($textVersion); ?></textarea>
         </div>
       </div>
 

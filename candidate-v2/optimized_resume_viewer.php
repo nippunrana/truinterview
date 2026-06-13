@@ -3,8 +3,8 @@
 require_once __DIR__ . '/../auth.php';
 require_once __DIR__ . '/../db.php';
 
-// Enforce Candidate role
-requireAuth(['candidate']);
+// Enforce role
+requireAuth(['candidate', 'recruiter']);
 $user = getCurrentUser();
 
 $path = $_GET['path'] ?? '';
@@ -15,37 +15,100 @@ if (empty($path)) {
 $db = getDB();
 $userId = $user['id'];
 
-$stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
-$stmt->execute(['id' => $userId]);
-$userFull = $stmt->fetch(PDO::FETCH_ASSOC);
-$resumes = getCandidateResumes($userFull['resume_path'] ?? '');
-
 $optimizedResume = null;
 $originalResume = null;
+$resumes = [];
 
-// 1. Find the optimized resume by path
-foreach ($resumes as $r) {
-    if ($r['path'] === $path) {
-        $optimizedResume = $r;
-        break;
+if ($user['role'] === 'candidate') {
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+    $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
+    $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+
+    // 1. Find the optimized resume by path
+    foreach ($resumes as $r) {
+        if ($r['path'] === $path) {
+            $optimizedResume = $r;
+            break;
+        }
     }
-}
 
-if (!$optimizedResume) {
-    // Look in candidate_profiles for this user
-    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id AND optimized_resume_path = :path");
-    $stmt->execute(['user_id' => $userId, 'path' => $path]);
+    if (!$optimizedResume) {
+        // Look in candidate_profiles for this user
+        $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE user_id = :user_id AND optimized_resume_path = :path");
+        $stmt->execute(['user_id' => $userId, 'path' => $path]);
+        $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($profile) {
+            $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+            $optimizedResume = [
+                'path' => $profile['optimized_resume_path'],
+                'text_version' => $profile['text_version'] ?? '',
+                'optimization_changes' => $profileResumeData['optimization_changes'] ?? [],
+                'original_path' => $profileResumeData['original_path'] ?? null,
+                'detected_role' => $profileResumeData['detected_role'] ?? 'Optimized Resume'
+            ];
+        }
+    }
+} else if ($user['role'] === 'recruiter') {
+    // Find the profile matching the path
+    $stmt = $db->prepare("SELECT * FROM candidate_profiles WHERE optimized_resume_path = :path");
+    $stmt->execute(['path' => $path]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($profile) {
-        $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-        $optimizedResume = [
-            'path' => $profile['optimized_resume_path'],
-            'text_version' => $profile['text_version'] ?? '',
-            'optimization_changes' => $profileResumeData['optimization_changes'] ?? [],
-            'original_path' => $profileResumeData['original_path'] ?? null,
-            'detected_role' => $profileResumeData['detected_role'] ?? 'Optimized Resume'
-        ];
+    if (!$profile) {
+        die("Error: Optimized resume not found.");
     }
+    
+    // Check access: recruiter must share a category or job role match with this candidate profile
+    $company = getRecruiterCompany($userId);
+    if (!$company) {
+        die("Access denied. No company profile found.");
+    }
+    
+    // Get all company active links
+    $stmtLinks = $db->prepare("SELECT * FROM interview_links WHERE company_id = :company_id AND status = 'active'");
+    $stmtLinks->execute(['company_id' => $company['id']]);
+    $companyLinks = $stmtLinks->fetchAll(PDO::FETCH_ASSOC);
+    
+    $hasMatch = false;
+    foreach ($companyLinks as $pLink) {
+        $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
+        $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
+        $profileSlug = preg_replace('/-+/', '-', $profileSlug);
+        $profileSlug = trim($profileSlug, '-');
+
+        $isCategoryMatch = (!empty($profile['category_id']) && !empty($pLink['category_id']) && $profile['category_id'] === $pLink['category_id']);
+        
+        $pLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($pLink['job_role'])));
+        $pLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $pLinkSlug);
+        $pLinkSlug = preg_replace('/-+/', '-', $pLinkSlug);
+        $pLinkSlug = trim($pLinkSlug, '-');
+        
+        $isRoleMatch = ($profileSlug === $pLinkSlug);
+        
+        if ($isCategoryMatch || $isRoleMatch) {
+            $hasMatch = true;
+            break;
+        }
+    }
+    
+    if (!$hasMatch) {
+        die("Access denied. You do not have an active matching job for this candidate.");
+    }
+    
+    $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+    $optimizedResume = [
+        'path' => $profile['optimized_resume_path'],
+        'text_version' => $profile['text_version'] ?? '',
+        'optimization_changes' => $profileResumeData['optimization_changes'] ?? [],
+        'original_path' => $profileResumeData['original_path'] ?? null,
+        'detected_role' => $profileResumeData['detected_role'] ?? 'Optimized Resume'
+    ];
+    
+    // Load candidate's other resumes to support history & original resume extraction
+    $stmtCand = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
+    $stmtCand->execute(['id' => $profile['user_id']]);
+    $candFull = $stmtCand->fetch(PDO::FETCH_ASSOC);
+    $resumes = getCandidateResumes($candFull['resume_path'] ?? '');
 }
 
 if (!$optimizedResume) {

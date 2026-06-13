@@ -109,6 +109,56 @@ $results = listCandidateResults($company['id']);
 $linksCount = count($links);
 $sessionsCount = count($results);
 
+// Fetch candidate profiles that match the recruiter's active interview links by category or role title
+$matchedCandidates = [];
+$activeLinks = [];
+foreach ($links as $link) {
+    if ($link['status'] === 'active' && (empty($link['expires_at']) || strtotime($link['expires_at']) > time())) {
+        $activeLinks[] = $link;
+    }
+}
+
+if (!empty($activeLinks)) {
+    // Retrieve all candidate profiles that have a category or role title
+    $stmtProfiles = $db->prepare("
+        SELECT cp.*, u.full_name as candidate_name, u.email as candidate_email, c.name as category_name, c.description as category_description
+        FROM candidate_profiles cp
+        JOIN users u ON cp.user_id = u.id
+        LEFT JOIN categories c ON cp.category_id = c.uuid
+        ORDER BY cp.created_at DESC
+    ");
+    $stmtProfiles->execute();
+    $allCandidateProfiles = $stmtProfiles->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($allCandidateProfiles as $profile) {
+        $matchedJobs = [];
+        foreach ($activeLinks as $aLink) {
+            $profileSlug = preg_replace('/\s+/', '-', strtolower(trim($profile['role_title'])));
+            $profileSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $profileSlug);
+            $profileSlug = preg_replace('/-+/', '-', $profileSlug);
+            $profileSlug = trim($profileSlug, '-');
+
+            $isCategoryMatch = (!empty($profile['category_id']) && !empty($aLink['category_id']) && $profile['category_id'] === $aLink['category_id']);
+            
+            $aLinkSlug = preg_replace('/\s+/', '-', strtolower(trim($aLink['job_role'])));
+            $aLinkSlug = preg_replace('/[^a-zA-Z0-9\-]/', '', $aLinkSlug);
+            $aLinkSlug = preg_replace('/-+/', '-', $aLinkSlug);
+            $aLinkSlug = trim($aLinkSlug, '-');
+            
+            $isRoleMatch = ($profileSlug === $aLinkSlug);
+
+            if ($isCategoryMatch || $isRoleMatch) {
+                $matchedJobs[] = $aLink;
+            }
+        }
+
+        if (!empty($matchedJobs)) {
+            $profile['matched_jobs'] = $matchedJobs;
+            $matchedCandidates[] = $profile;
+        }
+    }
+}
+
 // POST handler for creating interview links
 $errorMsg = '';
 $successMsg = '';
@@ -204,6 +254,12 @@ foreach ($words as $w) {
 }
 $initials = substr($initials, 0, 2);
 $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
+
+$levelNames = [
+    0 => "Novice", 1 => "Terminology", 2 => "Mechanics", 3 => "Implementation",
+    4 => "Analysis", 5 => "Troubleshooting", 6 => "Integration", 7 => "Optimization",
+    8 => "Security", 9 => "Governance", 10 => "Strategic Leadership"
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -295,11 +351,6 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
           $isExpired = !empty($link['expires_at']) && (strtotime($link['expires_at']) < time());
           $displayStatus = $isActive ? ($isExpired ? 'Expired' : 'Active') : 'Inactive';
           
-          $levelNames = [
-              0 => "Novice", 1 => "Terminology", 2 => "Mechanics", 3 => "Implementation",
-              4 => "Analysis", 5 => "Troubleshooting", 6 => "Integration", 7 => "Optimization",
-              8 => "Security", 9 => "Governance", 10 => "Strategic Leadership"
-          ];
           $minLevelVal = (int)($link['min_level'] ?? 0);
           $minLevelName = $levelNames[$minLevelVal] ?? "Novice";
         ?>
@@ -357,6 +408,101 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
           </div>
         <?php endforeach; ?>
       </div>
+
+      <!-- MATCHED CANDIDATES SECTION -->
+      <?php if (!empty($matchedCandidates)): ?>
+      <section class="matched-assessments-section" style="margin-top: var(--space-10); margin-bottom: var(--space-10);">
+        <div class="resume-section-header" style="margin-bottom: var(--space-5);">
+          <h2 class="resume-section-title">Talent Pool Matches For Your Open Roles</h2>
+          <p class="resume-section-subtitle">We found these candidate profiles matching active job roles in your company. Review their resumes and invite them to take an interview.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <?php foreach ($matchedCandidates as $cand): 
+            $candLevelVal = (int)($cand['level'] ?? 0);
+            $candLevelName = $levelNames[$candLevelVal] ?? "Novice";
+            
+            $matchedJobsTitles = [];
+            foreach ($cand['matched_jobs'] as $mj) {
+                $matchedJobsTitles[] = $mj['job_role'];
+            }
+            $matchedJobsText = implode(", ", $matchedJobsTitles);
+            
+            $hasResume = !empty($cand['optimized_resume_path']);
+            
+            // Get candidate initials for avatar placeholder
+            $cWords = explode(" ", $cand['candidate_name']);
+            $cInitials = "";
+            foreach ($cWords as $cw) {
+                if (!empty($cw)) $cInitials .= strtoupper($cw[0]);
+            }
+            $cInitials = substr($cInitials, 0, 2);
+          ?>
+            <div class="assessment-bar" style="background: var(--color-bg-surface); border: 1px solid var(--color-border); padding: var(--space-4) var(--space-5); border-radius: var(--radius-outer); display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);">
+              
+              <!-- Left Side: Candidate Avatar & Info -->
+              <div style="display: flex; gap: var(--space-4); align-items: center; min-width: 0; flex: 1;">
+                <div style="width: 42px; height: 42px; border-radius: 8px; background: var(--color-brand-light); color: var(--color-brand-primary); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; border: 1px solid var(--color-brand-light); flex-shrink: 0;">
+                  <?php echo htmlspecialchars($cInitials); ?>
+                </div>
+                
+                <div style="min-width: 0;">
+                  <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: 2px;">
+                    <span style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary);"><?php echo htmlspecialchars($cand['candidate_name']); ?></span>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted);">interested in</span>
+                    <span style="font-weight: 600; font-size: var(--text-sm); color: var(--color-text-secondary);"><?php echo htmlspecialchars($cand['role_title']); ?></span>
+                  </div>
+                  
+                  <?php if (!empty($cand['category_name'])): ?>
+                    <div style="font-size: 0.75rem; color: var(--color-text-secondary); line-height: 1.4; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                      <span>Category: <strong><?php echo htmlspecialchars($cand['category_name']); ?></strong></span>
+                      <?php if (!empty($cand['category_match_percentage'])): ?>
+                        <span style="color: var(--color-text-muted);">•</span>
+                        <span style="color: var(--color-brand-primary); font-weight: 600;"><?php echo htmlspecialchars($cand['category_match_percentage']); ?>% Match</span>
+                      <?php endif; ?>
+                    </div>
+                  <?php endif; ?>
+
+                  <div style="font-size: 0.7rem; color: var(--color-brand-primary); font-weight: 500; display: flex; align-items: center; gap: 4px;">
+                    <svg style="width: 12px; height: 12px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    <span>Matches your active role(s): <strong><?php echo htmlspecialchars($matchedJobsText); ?></strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Middle: Metadata Badges -->
+              <div style="display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; font-size: 0.72rem; color: var(--color-text-secondary);">
+                <!-- Unlocked Level -->
+                <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span style="color: var(--color-brand-primary);">⚡</span>
+                  <span>Unlocked: <span class="tech-mono">L<?php echo $candLevelVal; ?> - <?php echo htmlspecialchars($candLevelName); ?></span></span>
+                </div>
+
+                <!-- Resume Status -->
+                <div style="background: var(--color-bg-subtle); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                  <span style="color: var(--color-text-muted);">📄</span>
+                  <span>Resume: <strong><?php echo $hasResume ? 'Optimized' : 'None'; ?></strong></span>
+                </div>
+              </div>
+
+              <!-- Right Side: Action Buttons -->
+              <div style="display: flex; gap: var(--space-2); flex-shrink: 0;">
+                <?php if ($hasResume): ?>
+                  <a href="../candidate-v2/optimized_resume_viewer.php?path=<?php echo urlencode($cand['optimized_resume_path']); ?>" target="_blank" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-inner); font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center; height: 38px; border: 1px solid var(--color-border); color: var(--color-text-primary); transition: all 0.2s;">
+                    View Resume
+                  </a>
+                <?php endif; ?>
+                
+                <button class="btn btn-primary btn-invite-candidate" data-email="<?php echo htmlspecialchars($cand['candidate_email']); ?>" data-role="<?php echo htmlspecialchars($cand['role_title']); ?>" style="padding: 8px 16px; font-size: 0.8rem; border-radius: var(--radius-inner); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; border: none; height: 38px; background: var(--color-brand-primary); color: white; transition: all 0.2s;">
+                  Invite &rarr;
+                </button>
+              </div>
+
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
 
       <!-- Candidate Results / History Section -->
       <section class="resume-section" style="margin-top: var(--space-14);">
@@ -742,6 +888,24 @@ $firstName = !empty($words[0]) ? $words[0] : 'Recruiter';
     document.getElementById('btn-cancel-delete').addEventListener('click', () => {
       deleteConfirmModal.classList.remove('active');
       linkToDeleteId = null;
+    });
+
+    // Invite candidate trigger to pre-populate and open the create assessment modal
+    document.querySelectorAll('.btn-invite-candidate').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const email = btn.getAttribute('data-email');
+        const role = btn.getAttribute('data-role');
+        
+        // Open the create modal
+        createModal.classList.add('active');
+        
+        // Populate fields
+        document.getElementById('candidate_email').value = email;
+        document.getElementById('job_role').value = role;
+        
+        // Focus the job role field
+        setTimeout(() => document.getElementById('job_role').focus(), 50);
+      });
     });
 
     // Close modal on clicking overlay
