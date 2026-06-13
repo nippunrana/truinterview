@@ -62,18 +62,9 @@ if (!empty($sessionId)) {
     <div class="stripe-bg"></div>
     <div class="hero-container">
       <div class="hero-content">
-        <div class="badge sponsor-badge">
-          <span class="google-dots">
-            <span class="g-dot g-blue"></span>
-            <span class="g-dot g-red"></span>
-            <span class="g-dot g-yellow"></span>
-            <span class="g-dot g-green"></span>
-          </span>
-          <span>Powered by Google Gemini 3.5 &amp; TruGen.ai</span>
-        </div>
-        <h1 class="hero-title">Overcome technical interview anxiety with Google Gemini &amp; TruGen.ai</h1>
+        <h1 class="hero-title">Don't let assessment anxiety stand between you and your next offer</h1>
         <p class="hero-description">
-          Converse naturally with a real-time conversational voice agent powered by <strong>TruGen.ai</strong>, share your coding screen context evaluated by <strong>Google Gemini Vision</strong>, and ace your screening assessments.
+          LeetCoding in isolation doesn't prepare you to explain your thoughts live. Reclaim your confidence with a real-time conversational AI interviewer that listens, talks back, and evaluates your screen canvas when you get stuck.
         </p>
         <div class="hero-actions-wrapper">
           <div class="hero-actions">
@@ -122,28 +113,16 @@ if (!empty($sessionId)) {
       </div>
     </div>
 
-    <!-- Tech Logo Bar -->
+    <!-- Powered By Bar -->
     <div class="tech-logobar">
-      <div class="tech-container">
-        <span class="tech-label">Core Hackathon Stack:</span>
-        <div class="tech-logos">
-          <div class="tech-item">
-            <svg class="tech-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            <span>Google Gemini 3.5</span>
-          </div>
-          <div class="tech-item">
-            <svg class="tech-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-            <span>TruGen.ai Real-time Audio</span>
-          </div>
-          <div class="tech-item">
-            <svg class="tech-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3M4 17v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3M9 12h6M12 9v6"/></svg>
-            <span>PHP 7.4+</span>
-          </div>
-          <div class="tech-item">
-            <svg class="tech-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>PostgreSQL DB</span>
-          </div>
-        </div>
+      <div class="tech-container" style="justify-content: center; gap: var(--space-2); font-weight: 600; font-size: 0.9rem;">
+        <span class="google-dots">
+          <span class="g-dot g-blue"></span>
+          <span class="g-dot g-red"></span>
+          <span class="g-dot g-yellow"></span>
+          <span class="g-dot g-green"></span>
+        </span>
+        <span style="color: var(--text-secondary);">Powered by Google Gemini 3.5 &amp; TruGen.ai</span>
       </div>
     </div>
   </section>
