@@ -111,7 +111,10 @@ sequenceDiagram
 
 ## 🗄️ Database Schema
 
-The database setup runs automatically on load via `db.php` if tables do not exist. 
+The database setup is run via CLI migrations to optimize runtime performance. To initialize or update the database tables, run:
+```bash
+php db.php migrate
+```
 
 ### 1. `users`
 Stores user profile accounts.
@@ -280,8 +283,8 @@ Define a `.env` file in the root directory to store database connection details 
 # Database Credentials
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_NAME=truinterview
-DB_USER=your_postgres_user
+DB_NAME=truinterview_db_1
+DB_USER=truinterview_usr_1
 DB_PASSWORD=your_postgres_password
 
 # API Credentials
@@ -301,12 +304,15 @@ GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
     cd truinterview
     ```
 
-2.  **Configure Database**:
-    Ensure PostgreSQL is running and create a database corresponding to `DB_NAME` in your `.env` configuration.
+2.  **Configure Database & Run Migrations**:
+    Ensure PostgreSQL is running, create the database, and configure your credentials in `.env`:
     ```sql
-    CREATE DATABASE truinterview;
+    CREATE DATABASE truinterview_db_1;
     ```
-    *Note: The schema will be automatically generated and populated with default seed categories and users on the first application reload.*
+    Then, initialize the database tables by running the CLI migration command:
+    ```bash
+    php db.php migrate
+    ```
 
 3.  **Deploy Env File**:
     Create a `.env` file in the root directory utilizing the environment template keys shown in the configuration section.

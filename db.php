@@ -116,6 +116,27 @@ function initSchema() {
         joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // Create categories table
+    $db->exec("CREATE TABLE IF NOT EXISTS categories (
+        uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        description TEXT
+    )");
+
+    // Create candidate_profiles table for V2 role-based profiles
+    $db->exec("CREATE TABLE IF NOT EXISTS candidate_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        role_title VARCHAR(150) NOT NULL,
+        role_title_id VARCHAR(150),
+        optimized_resume_path TEXT,
+        text_version TEXT,
+        needs_human_review BOOLEAN DEFAULT FALSE,
+        resume_data JSONB,
+        level INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // Run DB migrations to remove templates and add job_role to links
     try {
         $db->exec("ALTER TABLE IF EXISTS interview_links DROP CONSTRAINT IF EXISTS interview_links_template_id_fkey CASCADE");
@@ -288,19 +309,7 @@ function initSchema() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // Create candidate_profiles table for V2 role-based profiles
-    $db->exec("CREATE TABLE IF NOT EXISTS candidate_profiles (
-        id SERIAL PRIMARY KEY,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        role_title VARCHAR(150) NOT NULL,
-        role_title_id VARCHAR(150),
-        optimized_resume_path TEXT,
-        text_version TEXT,
-        needs_human_review BOOLEAN DEFAULT FALSE,
-        resume_data JSONB,
-        level INTEGER DEFAULT 0,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    )");
+
     
     // Ensure column exists for existing tables
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS role_title_id VARCHAR(150)");
@@ -386,12 +395,7 @@ function initSchema() {
                 $updateStmt->execute(['role_title_id' => $rtId, 'id' => $row['id']]);
             }
         }
-    // Create categories table
-    $db->exec("CREATE TABLE IF NOT EXISTS categories (
-        uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        description TEXT
-    )");
+
 
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(uuid) ON DELETE SET NULL");
     $db->exec("ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS category_match_percentage INTEGER");
@@ -1048,9 +1052,13 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
     }
 }
 
-// Auto-init tables on load
-try {
-    initSchema();
-} catch (Exception $e) {
-    // Fail silently in imports, let endpoints report errors if they happen
+// Only run the schema initializer when run explicitly from the command line: php db.php migrate
+if (php_sapi_name() === 'cli' && isset($argv[1]) && $argv[1] === 'migrate') {
+    try {
+        initSchema();
+        echo "Database schema initialized/migrated successfully.\n";
+    } catch (Exception $e) {
+        echo "Error: " . $e->getMessage() . "\n";
+        exit(1);
+    }
 }
