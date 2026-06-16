@@ -12,6 +12,11 @@ if (!empty($sessionId)) {
         exit();
     }
 }
+
+// Redirect to the WordPress homepage
+header('Location: /');
+exit();
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
