@@ -1,6 +1,6 @@
 // assets/js/candidate-v2.js - Candidate Hub Dashboard client-side behaviors
 
-document.addEventListener('DOMContentLoaded', () => {
+const initCandidateHub = () => {
   const toastContainer = document.getElementById('toast-container');
   function showToast(message, type = 'success') {
     const toast = document.createElement('div');
@@ -560,7 +560,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
           await stopLoadingText(msg, 2000);
           document.getElementById('ai-loading-overlay').classList.remove('active');
-          showPostUploadModal(data.path);
+          if (window.IS_ONBOARDING_STATE) {
+            showOnboardingSuccessModal(data.path, data.detected_role);
+          } else {
+            showPostUploadModal(data.path);
+          }
         } else {
           await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
@@ -726,7 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
             await stopLoadingText(msg, 2000);
             if (window.isGlobalUpload) {
               document.getElementById('ai-loading-overlay').classList.remove('active');
-              showPostUploadModal(data.path);
+              if (window.IS_ONBOARDING_STATE) {
+                showOnboardingSuccessModal(data.path, data.detected_role);
+              } else {
+                showPostUploadModal(data.path);
+              }
             } else {
               window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
             }
@@ -911,4 +919,184 @@ document.addEventListener('DOMContentLoaded', () => {
     pendingDeleteSessionId = sessionId;
     deleteSubmissionModal.classList.add('active');
   };
-});
+
+  // --- Onboarding Flow Logic ---
+  const onboardingSuccessModal = document.getElementById('onboarding-success-modal');
+  const onboardingRoleInput = document.getElementById('onboarding_role_title');
+  let onboardingResumePath = null;
+
+  function showOnboardingSuccessModal(resumePath, detectedRole) {
+    onboardingResumePath = resumePath;
+    if (onboardingRoleInput) {
+      onboardingRoleInput.value = detectedRole || 'Software Engineer';
+    }
+    if (onboardingSuccessModal) {
+      onboardingSuccessModal.classList.add('active');
+      setTimeout(() => onboardingRoleInput.focus(), 50);
+    }
+  }
+
+  // Onboarding Drag and Drop + Trigger Upload
+  const onboardingDropZone = document.getElementById('onboarding-drop-zone');
+  const onboardingUploadTrigger = document.getElementById('btn-onboarding-upload-trigger');
+  const onboardingFileInput = document.getElementById('onboarding-resume-file-input');
+  const btnOnboardingJoin = document.getElementById('btn-onboarding-join');
+
+  if (onboardingDropZone && onboardingFileInput) {
+    // Click triggers file selector
+    onboardingDropZone.addEventListener('click', (e) => {
+      // Don't trigger if clicked on the join button
+      if (e.target.closest('#btn-onboarding-join')) return;
+      // Don't trigger if click bubbled up from the file input itself
+      if (e.target === onboardingFileInput) return;
+      // Don't double click if trigger button was clicked
+      if (e.target !== onboardingUploadTrigger && onboardingUploadTrigger.contains(e.target)) return;
+      onboardingFileInput.click();
+    });
+
+    if (onboardingUploadTrigger) {
+      onboardingUploadTrigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onboardingFileInput.click();
+      });
+    }
+
+    // Drag events
+    ['dragenter', 'dragover'].forEach(eventName => {
+      onboardingDropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onboardingDropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      onboardingDropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onboardingDropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    // Handle dropped file
+    onboardingDropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        handleOnboardingUpload(files[0]);
+      }
+    });
+
+    // Handle selected file
+    onboardingFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleOnboardingUpload(e.target.files[0]);
+      }
+    });
+  }
+
+  // Unified upload function for onboarding
+  async function handleOnboardingUpload(file) {
+    const formData = new FormData();
+    formData.append('action', 'upload_global_resume');
+    formData.append('resume_file', file);
+
+    window.isGlobalUpload = true;
+    document.getElementById('ai-loading-overlay').classList.add('active');
+    startLoadingText();
+
+    try {
+      const res = await fetch('ajax.php', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
+        await stopLoadingText(msg, 2000);
+        document.getElementById('ai-loading-overlay').classList.remove('active');
+        showOnboardingSuccessModal(data.path, data.detected_role);
+      } else {
+        await stopLoadingText(null, 0);
+        document.getElementById('ai-loading-overlay').classList.remove('active');
+        if (data.error_type === 'name_mismatch') {
+          window.pendingTempFilename = data.temp_filename;
+          const profileName = window.CANDIDATE_USER_NAME || 'Candidate';
+          const extractedName = data.extracted_name || 'Unknown Name';
+          
+          document.getElementById('mismatch-modal-text').innerHTML = `The resume uploaded is not for <strong>${escapeHTML(profileName)}</strong> but instead it is showing the name <strong>${escapeHTML(extractedName)}</strong>.<br><br>Do you really want to upload this to your profile or want to skip it?`;
+          document.getElementById('mismatch-modal').classList.add('active');
+        } else {
+          showToast(data.message || 'Error uploading file', 'error');
+        }
+      }
+    } catch (err) {
+      await stopLoadingText(null, 0);
+      document.getElementById('ai-loading-overlay').classList.remove('active');
+      showToast('Network error during upload', 'error');
+    }
+  }
+
+  // Onboarding Modal button events
+  const btnOnboardingSubmit = document.getElementById('btn-onboarding-submit');
+
+  if (btnOnboardingSubmit) {
+    btnOnboardingSubmit.addEventListener('click', async () => {
+      const roleTitle = onboardingRoleInput.value.trim();
+      if (!roleTitle) {
+        showToast('Please enter a target role title.', 'error');
+        return;
+      }
+
+      btnOnboardingSubmit.innerHTML = '<span class="spinner"></span> Creating Profile...';
+      btnOnboardingSubmit.disabled = true;
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('action', 'create_profile');
+        formData.append('role_title', roleTitle);
+        formData.append('base_resume_path', onboardingResumePath);
+
+        const res = await fetch('ajax.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          showToast('Profile created successfully! Routing to optimizer...', 'success');
+          // Redirect directly to the resume optimizer
+          setTimeout(() => {
+            window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(onboardingResumePath) + '&profile_id=' + encodeURIComponent(data.profile_id);
+          }, 1000);
+        } else {
+          showToast(data.message || 'Error creating profile', 'error');
+          btnOnboardingSubmit.innerHTML = '<span>Create Profile & Start Optimization</span>';
+          btnOnboardingSubmit.disabled = false;
+        }
+      } catch (err) {
+        showToast('Network error while setting up profile', 'error');
+        btnOnboardingSubmit.innerHTML = '<span>Create Profile & Start Optimization</span>';
+        btnOnboardingSubmit.disabled = false;
+      }
+    });
+  }
+
+  if (btnOnboardingJoin) {
+    btnOnboardingJoin.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      joinModal.classList.add('active');
+      setTimeout(() => document.getElementById('input-option-c').focus(), 50);
+    });
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCandidateHub);
+} else {
+  initCandidateHub();
+}

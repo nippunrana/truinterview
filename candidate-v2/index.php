@@ -96,6 +96,8 @@ if (!$baseResume && !empty($resumes)) {
     $baseResume['is_base'] = true;
 }
 
+$isEmptyState = ($profileCount === 0 && !$baseResume);
+
 $baseResumeHasOptimized = false;
 $baseResumeOptPath = '';
 if ($baseResume) {
@@ -155,6 +157,160 @@ $levelDescriptions = [
   <script>
     window.CANDIDATE_USER_NAME = <?php echo json_encode($user['full_name'] ?? ''); ?>;
   </script>
+  
+  <style>
+  /* Onboarding Flow Screen Styles */
+  .onboarding-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-8);
+    width: 100%;
+  }
+
+  .onboarding-upload-card {
+    background: var(--color-bg-surface);
+    border: 2px dashed rgba(79, 70, 229, 0.3);
+    border-radius: var(--radius-outer);
+    padding: var(--space-8) var(--space-6);
+    width: 100%;
+    max-width: 580px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+    margin-bottom: var(--space-6);
+  }
+
+  .onboarding-upload-card:hover, .onboarding-upload-card.dragover {
+    border-color: var(--color-brand-primary);
+    background: rgba(79, 70, 229, 0.02);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
+  }
+
+  .onboarding-upload-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .upload-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--color-brand-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+    margin-bottom: var(--space-3);
+  }
+
+  .onboarding-upload-card:hover .upload-icon-wrapper {
+    transform: scale(1.05);
+  }
+
+  .onboarding-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 840px;
+    margin-top: var(--space-10);
+    gap: var(--space-4);
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    padding: var(--space-5) var(--space-6);
+    border-radius: var(--radius-outer);
+    border: 1px solid var(--color-border);
+  }
+
+  .onboarding-step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 1;
+  }
+
+  .onboarding-step .step-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-bg-subtle);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    border: 2px solid var(--color-border);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .onboarding-step.active .step-num {
+    background: var(--color-brand-primary);
+    color: #fff;
+    border-color: var(--color-brand-primary);
+    box-shadow: 0 0 0 4px var(--color-brand-light);
+  }
+
+  .onboarding-step.completed .step-num {
+    background: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
+  }
+
+  .onboarding-step .step-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+
+  .onboarding-step .step-title {
+    font-weight: 700;
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+  }
+
+  .onboarding-step .step-desc {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  .step-connector {
+    height: 2px;
+    background: var(--color-border);
+    flex: 0.5;
+    min-width: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .onboarding-stepper {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-4);
+      padding: var(--space-4);
+    }
+    
+    .step-connector {
+      display: none;
+    }
+    
+    .onboarding-step {
+      width: 100%;
+    }
+  }
+  </style>
+
+  <script>
+    window.IS_ONBOARDING_STATE = <?php echo json_encode($isEmptyState); ?>;
+  </script>
 </head>
 <body>
 
@@ -188,239 +344,303 @@ $levelDescriptions = [
   <!-- Hero Section -->
   <section class="v2-hero">
     <div class="v2-hero-inner">
-      <h1 class="title-main">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's get you hired.</h1>
-      <p class="subtitle-main">
-        <?php if ($profileCount === 0): ?>
-          Your interview prep starts here. Create your first role profile so you can get an AI-tailored resume and start practicing live mock interviews.
-        <?php elseif ($profileCount === 1): ?>
-          You're on the board. You can add 2 more distinct roles. Upload a resume to get it optimized, then jump into a practice interview to sharpen your pitch.
-        <?php elseif ($profileCount === 2): ?>
-          You're building your range with room for 1 more role. Keep refining your resumes and practicing so you can walk into your real interviews completely prepared.
-        <?php else: ?>
-          Your target roles are locked in. Focus on perfecting your optimized resumes and mastering your mock interviews for these 3 positions.
-        <?php endif; ?>
-      </p>
-      
-      <div class="bento-grid">
+      <?php if ($isEmptyState): ?>
+        <h1 class="title-main" style="text-align: center;">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's get you hired.</h1>
+        <p class="subtitle-main" style="text-align: center; margin-left: auto; margin-right: auto;">
+          Your interview prep starts here. Upload your base resume so that our AI can analyze your expertise, configure your target profile, and help you start practicing.
+        </p>
         
-        <?php foreach ($profiles as $idx => $profile): ?>
-          <div class="bento-card" data-profile-id="<?php echo $profile['id']; ?>">
-            <?php
-            $hasResume = !empty($profile['optimized_resume_path']);
-            $isOptimized = false;
-            $profileChanges = null;
-            $profileResumeData = [];
-            if ($hasResume) {
-                $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
-                $profileChanges = $profileResumeData['optimization_changes'] ?? null;
-                $isOptimized = !empty($profileChanges);
-            }
-            ?>
-            <div class="card-header" style="margin-bottom: var(--space-2);">
-              <div class="role-title" title="<?php echo htmlspecialchars($profile['role_title']); ?>"><?php echo htmlspecialchars($profile['role_title']); ?></div>
-              <div style="display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0;">
-                <div class="card-badge">Profile <?php echo $idx + 1; ?></div>
-                <button class="btn-delete-profile btn-danger-ghost" data-id="<?php echo $profile['id']; ?>" style="border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--color-text-muted); transition: color 0.2s;" onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-muted)'" title="Delete Profile">
-                  <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
+        <div class="onboarding-container">
+          <div class="onboarding-upload-card" id="onboarding-drop-zone">
+            <div class="onboarding-upload-inner">
+              <div class="upload-icon-wrapper">
+                <svg style="width: 42px; height: 42px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path>
+                </svg>
+              </div>
+              <h3 style="font-size: var(--text-lg); font-weight: 700; color: var(--color-text-primary); margin-top: var(--space-2); font-family: 'Outfit', sans-serif;">Upload Base Resume</h3>
+              <p style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: var(--space-1); max-width: 340px; line-height: 1.5;">
+                Drag and drop your file here, or click to browse.<br>Supports PDF, DOCX, MD, or TXT up to 5MB.
+              </p>
+              
+              <button class="btn btn-primary" id="btn-onboarding-upload-trigger" style="margin-top: var(--space-4); gap: 6px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+                <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Select Resume File
+              </button>
+              <input type="file" id="onboarding-resume-file-input" style="display: none;" accept=".pdf,.doc,.docx,.md,.txt">
+              
+
+            </div>
+          </div>
+          
+          <div class="onboarding-stepper">
+            <div class="onboarding-step active">
+              <div class="step-num">1</div>
+              <div class="step-info">
+                <span class="step-title">Upload Resume</span>
+                <span class="step-desc">Establish baseline profile</span>
               </div>
             </div>
+            <div class="step-connector"></div>
+            <div class="onboarding-step">
+              <div class="step-num">2</div>
+              <div class="step-info">
+                <span class="step-title">Confirm Role</span>
+                <span class="step-desc">Verify AI detected role</span>
+              </div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="onboarding-step">
+              <div class="step-num">3</div>
+              <div class="step-info">
+                <span class="step-title">Start Prep</span>
+                <span class="step-desc">Optimize & practice mock</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style="margin-top: var(--space-6); display: flex; flex-direction: column; align-items: center; gap: 6px;">
+            <span style="font-size: 0.82rem; color: var(--color-text-muted);">Have an interview code?</span>
+            <button type="button" id="btn-onboarding-join" class="btn btn-outline" style="padding: 8px 18px; font-size: 0.82rem; border-radius: var(--radius-inner); font-weight: 600; gap: 6px; display: inline-flex; align-items: center; border-color: rgba(79, 70, 229, 0.2); color: var(--color-brand-primary); background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(8px); box-shadow: var(--shadow-sm);">
+              <svg style="width: 14px; height: 14px; color: currentColor;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+              </svg>
+              Join Interview
+            </button>
+          </div>
+        </div>
 
-            <?php if (!empty($profile['category_name'])): ?>
-              <div style="margin-bottom: var(--space-4); display: flex;">
-                <div class="category-badge premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($profile['category_description'] ?? 'No description available'); ?>">
-                  <span class="category-name"><?php echo htmlspecialchars($profile['category_name']); ?></span>
-                  <?php if (isset($profile['category_match_percentage']) && $profile['category_match_percentage'] !== ''): ?>
-                    <span class="category-divider"></span>
-                    <span class="category-match"><?php echo htmlspecialchars($profile['category_match_percentage']); ?>% Match</span>
+      <?php else: ?>
+        <h1 class="title-main">Hi, <?php echo htmlspecialchars($firstName); ?>. Let's get you hired.</h1>
+        <p class="subtitle-main">
+          <?php if ($profileCount === 0): ?>
+            Your interview prep starts here. Create your first role profile so you can get an AI-tailored resume and start practicing live mock interviews.
+          <?php elseif ($profileCount === 1): ?>
+            You're on the board. You can add 2 more distinct roles. Upload a resume to get it optimized, then jump into a practice interview to sharpen your pitch.
+          <?php elseif ($profileCount === 2): ?>
+            You're building your range with room for 1 more role. Keep refining your resumes and practicing so you can walk into your real interviews completely prepared.
+          <?php else: ?>
+            Your target roles are locked in. Focus on perfecting your optimized resumes and mastering your mock interviews for these 3 positions.
+          <?php endif; ?>
+        </p>
+        
+        <div class="bento-grid">
+          
+          <?php foreach ($profiles as $idx => $profile): ?>
+            <div class="bento-card" data-profile-id="<?php echo $profile['id']; ?>">
+              <?php
+              $hasResume = !empty($profile['optimized_resume_path']);
+              $isOptimized = false;
+              $profileChanges = null;
+              $profileResumeData = [];
+              if ($hasResume) {
+                  $profileResumeData = !empty($profile['resume_data']) ? json_decode($profile['resume_data'], true) : [];
+                  $profileChanges = $profileResumeData['optimization_changes'] ?? null;
+                  $isOptimized = !empty($profileChanges);
+              }
+              ?>
+              <div class="card-header" style="margin-bottom: var(--space-2);">
+                <div class="role-title" title="<?php echo htmlspecialchars($profile['role_title']); ?>"><?php echo htmlspecialchars($profile['role_title']); ?></div>
+                <div style="display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0;">
+                  <div class="card-badge">Profile <?php echo $idx + 1; ?></div>
+                  <button class="btn-delete-profile btn-danger-ghost" data-id="<?php echo $profile['id']; ?>" style="border: none; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; background: transparent; color: var(--color-text-muted); transition: color 0.2s;" onmouseover="this.style.color='var(--color-danger)'" onmouseout="this.style.color='var(--color-text-muted)'" title="Delete Profile">
+                    <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  </button>
+                </div>
+              </div>
+
+              <?php if (!empty($profile['category_name'])): ?>
+                <div style="margin-bottom: var(--space-4); display: flex;">
+                  <div class="category-badge premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($profile['category_description'] ?? 'No description available'); ?>">
+                    <span class="category-name"><?php echo htmlspecialchars($profile['category_name']); ?></span>
+                    <?php if (isset($profile['category_match_percentage']) && $profile['category_match_percentage'] !== ''): ?>
+                      <span class="category-divider"></span>
+                      <span class="category-match"><?php echo htmlspecialchars($profile['category_match_percentage']); ?>% Match</span>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
+
+              <?php
+              $profileLevel = (int)($profile['level'] ?? 0);
+              $levelTooltip = $levelDescriptions[$profileLevel];
+              if ($profileLevel === 0) {
+                  if ($hasResume && $isOptimized) {
+                      $levelTooltip = "Resume optimized! Take Level 1 (Score 60%+ to pass).";
+                  } else {
+                      $levelTooltip = "Initial level. Upload and optimize your resume to unlock Level 1.";
+                  }
+              } else if ($profileLevel < 10) {
+                  $levelTooltip = "Level {$profileLevel}: " . $levelDescriptions[$profileLevel] . " Score 60%+ to reach Level " . ($profileLevel + 1) . "!";
+              }
+              ?>
+              <div class="level-container <?php echo $profileLevel === 10 ? 'level-10' : ''; ?> premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($levelTooltip); ?>">
+                <div class="level-header">
+                  <span class="level-title-label">
+                    <svg style="width: 13px; height: 13px;" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Level <?php echo $profileLevel; ?>/10
+                  </span>
+                  <span class="level-name"><?php echo htmlspecialchars($levelNames[$profileLevel]); ?></span>
+                </div>
+                <div class="level-bar-pips">
+                  <?php for ($i = 1; $i <= 10; $i++): ?>
+                    <span class="level-pip <?php echo $i <= $profileLevel ? 'active' : ''; ?>" title="Level <?php echo $i; ?>: <?php echo htmlspecialchars($levelNames[$i]); ?>"></span>
+                  <?php endfor; ?>
+                </div>
+              </div>
+
+              <?php if (!$isOptimized): 
+                if (!$hasResume) {
+                    $progressPercent = 15;
+                    $progressText = "Step 1/2: Upload base resume to unlock optimizations";
+                    $progressClass = "step-upload";
+                } else {
+                    $progressPercent = 50;
+                    $progressText = "Step 2/2: Optimize resume to unlock practice interview";
+                    $progressClass = "step-optimize";
+                }
+              ?>
+                <div class="profile-progress-tracker <?php echo $progressClass; ?>">
+                  <div class="progress-info">
+                    <span class="progress-label"><?php echo htmlspecialchars($progressText); ?></span>
+                    <span class="progress-percentage"><?php echo $progressPercent; ?>%</span>
+                  </div>
+                  <div class="progress-track-wrapper">
+                    <div class="progress-track-bar">
+                      <div class="progress-track-fill" style="width: <?php echo $progressPercent; ?>%;"></div>
+                    </div>
+                    <div class="progress-steps-nodes">
+                      <div class="progress-node node-upload <?php echo $hasResume ? 'completed' : 'active'; ?>" title="Upload Resume">
+                        <span class="node-dot"></span>
+                        <span class="node-text">Upload</span>
+                      </div>
+                      <div class="progress-node node-optimize <?php echo $isOptimized ? 'completed' : ($hasResume ? 'active' : 'upcoming'); ?>" title="Optimize Resume">
+                        <span class="node-dot"></span>
+                        <span class="node-text">Optimize</span>
+                      </div>
+                      <div class="progress-node node-ready <?php echo $isOptimized ? 'completed' : 'upcoming'; ?>" title="Ready to Practice">
+                        <span class="node-dot"></span>
+                        <span class="node-text">Ready</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <?php endif; ?>
+
+              <div class="card-body">
+                <div class="status-item">
+                  <?php if ($hasResume && $isOptimized): 
+                    $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Optimized Resume';
+                  ?>
+                    <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                      <strong><?php echo htmlspecialchars($displayRole); ?></strong>
+                      <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
+                        <a href="optimized_resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Optimized</a>
+                        <?php if (!empty($profileChanges)): ?>
+                          <span style="color: var(--color-text-muted);">•</span>
+                          <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
+                        <?php endif; ?>
+                      </div>
+                      <?php if ($profileLevel === 10): ?>
+                        <div style="margin-top: var(--space-2); font-size: 0.78rem; color: #d97706; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                          <svg style="width: 14px; height: 14px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                          </svg>
+                          <span>Ultimate mastery achieved!</span>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  <?php elseif ($hasResume && !$isOptimized): 
+                    $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Resume';
+                  ?>
+                    <svg class="status-icon status-pending" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                      <strong><?php echo htmlspecialchars($displayRole); ?></strong>
+                      <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
+                        <a href="resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Document</a>
+                      </div>
+                    </div>
+                  <?php else: ?>
+                    <svg class="status-icon status-pending" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                      <strong>No Resume Uploaded</strong>
+                      <div style="font-size: 0.75rem; margin-top: 2px;">Upload a base resume to optimize for this role.</div>
+                    </div>
                   <?php endif; ?>
                 </div>
               </div>
-            <?php endif; ?>
 
-            <?php
-            $profileLevel = (int)($profile['level'] ?? 0);
-            $levelTooltip = $levelDescriptions[$profileLevel];
-            if ($profileLevel === 0) {
-                if ($hasResume && $isOptimized) {
-                    $levelTooltip = "Resume optimized! Take Level 1 (Score 60%+ to pass).";
-                } else {
-                    $levelTooltip = "Initial level. Upload and optimize your resume to unlock Level 1.";
-                }
-            } else if ($profileLevel < 10) {
-                $levelTooltip = "Level {$profileLevel}: " . $levelDescriptions[$profileLevel] . " Score 60%+ to reach Level " . ($profileLevel + 1) . "!";
-            }
-            ?>
-            <div class="level-container <?php echo $profileLevel === 10 ? 'level-10' : ''; ?> premium-tooltip-trigger" data-tooltip="<?php echo htmlspecialchars($levelTooltip); ?>">
-              <div class="level-header">
-                <span class="level-title-label">
-                  <svg style="width: 13px; height: 13px;" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                  </svg>
-                  Level <?php echo $profileLevel; ?>/10
-                </span>
-                <span class="level-name"><?php echo htmlspecialchars($levelNames[$profileLevel]); ?></span>
-              </div>
-              <div class="level-bar-pips">
-                <?php for ($i = 1; $i <= 10; $i++): ?>
-                  <span class="level-pip <?php echo $i <= $profileLevel ? 'active' : ''; ?>" title="Level <?php echo $i; ?>: <?php echo htmlspecialchars($levelNames[$i]); ?>"></span>
-                <?php endfor; ?>
-              </div>
-            </div>
-
-            <?php if (!$isOptimized): 
-              if (!$hasResume) {
-                  $progressPercent = 15;
-                  $progressText = "Step 1/2: Upload base resume to unlock optimizations";
-                  $progressClass = "step-upload";
-              } else {
-                  $progressPercent = 50;
-                  $progressText = "Step 2/2: Optimize resume to unlock practice interview";
-                  $progressClass = "step-optimize";
-              }
-            ?>
-              <div class="profile-progress-tracker <?php echo $progressClass; ?>">
-                <div class="progress-info">
-                  <span class="progress-label"><?php echo htmlspecialchars($progressText); ?></span>
-                  <span class="progress-percentage"><?php echo $progressPercent; ?>%</span>
-                </div>
-                <div class="progress-track-wrapper">
-                  <div class="progress-track-bar">
-                    <div class="progress-track-fill" style="width: <?php echo $progressPercent; ?>%;"></div>
-                  </div>
-                  <div class="progress-steps-nodes">
-                    <div class="progress-node node-upload <?php echo $hasResume ? 'completed' : 'active'; ?>" title="Upload Resume">
-                      <span class="node-dot"></span>
-                      <span class="node-text">Upload</span>
-                    </div>
-                    <div class="progress-node node-optimize <?php echo $isOptimized ? 'completed' : ($hasResume ? 'active' : 'upcoming'); ?>" title="Optimize Resume">
-                      <span class="node-dot"></span>
-                      <span class="node-text">Optimize</span>
-                    </div>
-                    <div class="progress-node node-ready <?php echo $isOptimized ? 'completed' : 'upcoming'; ?>" title="Ready to Practice">
-                      <span class="node-dot"></span>
-                      <span class="node-text">Ready</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            <?php endif; ?>
-
-            <div class="card-body">
-              <div class="status-item">
-                <?php 
-                // Variables are already defined above
-                ?>
-                <?php if ($hasResume && $isOptimized): 
-                  $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Optimized Resume';
-                ?>
-                  <svg class="status-icon status-success" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div>
-                    <strong><?php echo htmlspecialchars($displayRole); ?></strong>
-                    <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
-                      <a href="optimized_resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Optimized</a>
-                      <?php if (!empty($profileChanges)): ?>
-                        <span style="color: var(--color-text-muted);">•</span>
-                        <a href="#" class="view-rationale-trigger" data-changes="<?php echo htmlspecialchars(json_encode($profileChanges)); ?>" style="color: var(--color-brand-primary); text-decoration: none;">View AI Rationale</a>
-                      <?php endif; ?>
-                    </div>
-                    <?php if ($profileLevel === 10): ?>
-                      <div style="margin-top: var(--space-2); font-size: 0.78rem; color: #d97706; font-weight: 600; display: flex; align-items: center; gap: 4px;">
-                        <svg style="width: 14px; height: 14px; flex-shrink: 0;" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                        </svg>
-                        <span>Ultimate mastery achieved!</span>
-                      </div>
-                    <?php endif; ?>
-                  </div>
-                <?php elseif ($hasResume && !$isOptimized): 
-                  $displayRole = !empty($profileResumeData['detected_role']) ? $profileResumeData['detected_role'] : 'Resume';
-                ?>
-                  <svg class="status-icon status-pending" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div>
-                    <strong><?php echo htmlspecialchars($displayRole); ?></strong>
-                    <div style="font-size: 0.75rem; margin-top: 2px; display: flex; gap: 6px; align-items: center;">
-                      <a href="resume_viewer.php?path=<?php echo urlencode($profile['optimized_resume_path']); ?>" target="_blank" style="color: var(--color-brand-primary); text-decoration: none;">View Document</a>
-                    </div>
-                  </div>
+              <div class="card-actions">
+                <?php if ($hasResume && $isOptimized): ?>
+                  <?php if ($profileLevel < 10): ?>
+                    <button class="btn btn-primary btn-prepare-practice" data-profile-id="<?php echo htmlspecialchars($profile['id']); ?>" style="flex: 1;">
+                      <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      Take Level <?php echo $profileLevel + 1; ?>
+                    </button>
+                  <?php else: ?>
+                    <button class="btn btn-outline" style="flex: 1; opacity: 0.65; cursor: not-allowed; gap: 6px;" disabled>
+                      <svg style="width: 16px; height: 16px; color: var(--color-success);" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                      </svg>
+                      All Levels Completed
+                    </button>
+                  <?php endif; ?>
+                <?php elseif ($hasResume && !$isOptimized): ?>
+                  <a href="resume_optimizer.php?resume_path=<?php echo urlencode($profile['optimized_resume_path']); ?>&profile_id=<?php echo urlencode($profile['id']); ?>" 
+                    class="btn btn-outline" 
+                    style="flex: 1; text-align: center; padding: 10px 0; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    Optimize Resume
+                  </a>
                 <?php else: ?>
-                  <svg class="status-icon status-pending" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div>
-                    <strong>No Resume Uploaded</strong>
-                    <div style="font-size: 0.75rem; margin-top: 2px;">Upload a base resume to optimize for this role.</div>
-                  </div>
-                <?php endif; ?>
-              </div>
-
-
-            </div>
-
-            <div class="card-actions">
-              <?php if ($hasResume && $isOptimized): ?>
-                <?php if ($profileLevel < 10): ?>
-                  <button class="btn btn-primary btn-prepare-practice" data-profile-id="<?php echo htmlspecialchars($profile['id']); ?>" style="flex: 1;">
-                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Take Level <?php echo $profileLevel + 1; ?>
-                  </button>
-                <?php else: ?>
-                  <button class="btn btn-outline" style="flex: 1; opacity: 0.65; cursor: not-allowed; gap: 6px;" disabled>
-                    <svg style="width: 16px; height: 16px; color: var(--color-success);" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                    </svg>
-                    All Levels Completed
+                  <button class="btn btn-outline btn-choose-resume" 
+                    data-profile-id="<?php echo $profile['id']; ?>"
+                    data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
+                    data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
+                    data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"
+                    data-opt-path="<?php echo htmlspecialchars($baseResumeOptPath); ?>"
+                    style="flex: 1; text-align: center; padding: 10px 0;">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload Resume
                   </button>
                 <?php endif; ?>
-              <?php elseif ($hasResume && !$isOptimized): ?>
-                <a href="resume_optimizer.php?resume_path=<?php echo urlencode($profile['optimized_resume_path']); ?>&profile_id=<?php echo urlencode($profile['id']); ?>" 
-                  class="btn btn-outline" 
-                  style="flex: 1; text-align: center; padding: 10px 0; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none;">
-                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                  Optimize Resume
-                </a>
-              <?php else: ?>
-                <button class="btn btn-outline btn-choose-resume" 
-                  data-profile-id="<?php echo $profile['id']; ?>"
-                  data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
-                  data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
-                  data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"
-                  data-opt-path="<?php echo htmlspecialchars($baseResumeOptPath); ?>"
-                  style="flex: 1; text-align: center; padding: 10px 0;">
-                  <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                  Upload Resume
-                </button>
+              </div>
+              <?php if ($hasResume && $isOptimized && $profileLevel < 10): ?>
+                <div class="pass-hint tech-mono" style="margin-top: var(--space-2); font-size: 10px; text-align: center; font-weight: 500; display: flex; flex-direction: column; gap: 2px;">
+                  <div>Questions: 4 open / 4 MCQ</div>
+                  <div>Score 60% or higher to pass.</div>
+                </div>
               <?php endif; ?>
+
             </div>
-            <?php if ($hasResume && $isOptimized && $profileLevel < 10): ?>
-              <div class="pass-hint tech-mono" style="margin-top: var(--space-2); font-size: 10px; text-align: center; font-weight: 500; display: flex; flex-direction: column; gap: 2px;">
-                <div>Questions: 4 open / 4 MCQ</div>
-                <div>Score 60% or higher to pass.</div>
-              </div>
-            <?php endif; ?>
+          <?php endforeach; ?>
 
-          </div>
-        <?php endforeach; ?>
-
-        <?php if ($canAddProfile): ?>
-          <div class="bento-card card-add" id="btn-open-create-modal">
-            <svg class="add-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
-            </svg>
-            <div style="font-weight: 600; color: var(--color-text-primary); font-size: var(--text-lg);">Add New Role</div>
-            <div style="font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 4px;">You can add <?php echo $maxProfiles - count($profiles); ?> more profile(s)</div>
-          </div>
-        <?php endif; ?>
-        
-      </div>
+          <?php if ($canAddProfile): ?>
+            <div class="bento-card card-add" id="btn-open-create-modal">
+              <svg class="add-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+              </svg>
+              <div style="font-weight: 600; color: var(--color-text-primary); font-size: var(--text-lg);">Add New Role</div>
+              <div style="font-size: var(--text-sm); color: var(--color-text-muted); margin-top: 4px;">You can add <?php echo $maxProfiles - count($profiles); ?> more profile(s)</div>
+            </div>
+          <?php endif; ?>
+          
+        </div>
+      <?php endif; ?>
     </div>
   </section>
 
-  <!-- Main Content Layout -->
   <div class="v2-layout">
     <main>
 
@@ -564,6 +784,7 @@ $levelDescriptions = [
       <?php endif; ?>
 
       <!-- RESUME MANAGEMENT SECTION -->
+      <?php if (!$isEmptyState): ?>
       <section class="resume-section">
         <div class="resume-section-header">
           <h2 class="resume-section-title">Resume Management</h2>
@@ -761,6 +982,7 @@ $levelDescriptions = [
           </div>
         </div>
       </section>
+      <?php endif; ?>
 
       <!-- My Submissions Section -->
       <section class="resume-section" style="margin-top: var(--space-14);">
@@ -863,6 +1085,6 @@ $levelDescriptions = [
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="../assets/js/candidate-v2.js" defer></script>
+  <script src="../assets/js/candidate-v2.js?v=<?php echo time(); ?>" defer></script>
 </body>
 </html>

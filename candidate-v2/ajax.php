@@ -56,7 +56,7 @@ if ($action === 'create_profile') {
 
     try {
         $db = getDB();
-        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key, resume_path FROM users WHERE id = :id");
         $stmt->execute(['id' => $user['id']]);
         $userFull = $stmt->fetch();
         
@@ -78,6 +78,29 @@ if ($action === 'create_profile') {
 
     $id = createCandidateProfile($user['id'], $roleTitle, $categoryId, $matchPercentage);
     if ($id) {
+        // Link base resume if provided
+        $baseResumePath = $_POST['base_resume_path'] ?? '';
+        if (!empty($baseResumePath)) {
+            $resumes = getCandidateResumes($userFull['resume_path'] ?? '');
+            $baseRes = null;
+            foreach ($resumes as $r) {
+                if ($r['path'] === $baseResumePath) {
+                    $baseRes = $r;
+                    break;
+                }
+            }
+            if ($baseRes) {
+                updateCandidateProfileResume(
+                    $id,
+                    $user['id'],
+                    $baseRes['path'],
+                    $baseRes['text_version'] ?? null,
+                    !empty($baseRes['needs_human_review']),
+                    null,
+                    $baseRes['detected_role'] ?? null
+                );
+            }
+        }
         echo json_encode(['success' => true, 'profile_id' => $id]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Maximum of 3 profiles allowed.']);
@@ -406,7 +429,12 @@ if ($action === 'upload_global_resume') {
             $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
             $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
 
-            echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
+            echo json_encode([
+                'success' => true,
+                'path' => $resumePath,
+                'needs_human_review' => $needsHumanReview,
+                'detected_role' => $verification['detected_role'] ?? 'Resume'
+            ]);
         } else {
             @unlink($dest);
             echo json_encode(['success' => false, 'message' => 'Failed to finalize file storage.']);
@@ -490,7 +518,12 @@ if ($action === 'commit_global_resume') {
         $stmt = $db->prepare("UPDATE users SET resume_path = :path WHERE id = :id");
         $stmt->execute(['path' => $jsonVal, 'id' => $user['id']]);
 
-        echo json_encode(['success' => true, 'path' => $resumePath, 'needs_human_review' => $needsHumanReview]);
+        echo json_encode([
+            'success' => true,
+            'path' => $resumePath,
+            'needs_human_review' => $needsHumanReview,
+            'detected_role' => $verification['detected_role'] ?? 'Resume'
+        ]);
     } else {
         @unlink($tempPath);
         echo json_encode(['success' => false, 'message' => 'Failed to save resume.']);
