@@ -68,3 +68,5 @@ ai-context.md
 uploads/*
 !uploads/.gitkeep
 CLAUDE.md
+
+temp/
