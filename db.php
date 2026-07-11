@@ -82,19 +82,18 @@ function initSchema() {
 
     // Add custom settings columns to users table
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_agent_id VARCHAR(100)");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_gemini_api_key VARCHAR(255)");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_trugen_api_key VARCHAR(255)");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS gemini_key_scope VARCHAR(50) DEFAULT 'invite_only'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS trugen_key_scope VARCHAR(50) DEFAULT 'invite_only'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS model_optimizer_task VARCHAR(50) DEFAULT 'gemini-3.5-flash'");
-    $db->exec("ALTER TABLE users ALTER COLUMN model_chat_task SET DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE users ALTER COLUMN model_vision_task SET DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE users ALTER COLUMN model_eval_task SET DEFAULT 'gemini-3.1-flash-lite'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path TEXT");
     $db->exec("ALTER TABLE users ALTER COLUMN resume_path TYPE TEXT");
+
+    // Per-task AI models now live in config/models.php; custom AI keys are no longer supported
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS custom_gemini_api_key");
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS gemini_key_scope");
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS model_chat_task");
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS model_vision_task");
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS model_eval_task");
+    $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS model_optimizer_task");
 
 
     // Create companies table
@@ -191,12 +190,9 @@ function initSchema() {
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) DEFAULT 'practice'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE sessions ALTER COLUMN model_chat_task SET DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE sessions ALTER COLUMN model_vision_task SET DEFAULT 'gemini-3.1-flash-lite'");
-    $db->exec("ALTER TABLE sessions ALTER COLUMN model_eval_task SET DEFAULT 'gemini-3.1-flash-lite'");
+    $db->exec("ALTER TABLE sessions DROP COLUMN IF EXISTS model_chat_task");
+    $db->exec("ALTER TABLE sessions DROP COLUMN IF EXISTS model_vision_task");
+    $db->exec("ALTER TABLE sessions DROP COLUMN IF EXISTS model_eval_task");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS conduct_warnings INTEGER DEFAULT 0");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS closure_reason VARCHAR(50)");
     $db->exec("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL");
@@ -240,9 +236,6 @@ function initSchema() {
                     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
                     interview_link_id UUID REFERENCES interview_links(id) ON DELETE SET NULL,
                     session_type VARCHAR(20) DEFAULT 'practice',
-                    model_chat_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
-                    model_vision_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
-                    model_eval_task VARCHAR(50) DEFAULT 'gemini-3.1-flash-lite',
                     conduct_warnings INTEGER DEFAULT 0,
                     closure_reason VARCHAR(50),
                     profile_id INTEGER REFERENCES candidate_profiles(id) ON DELETE SET NULL,
@@ -250,8 +243,8 @@ function initSchema() {
                 )");
                 
                 // Copy data from sessions_old to sessions
-                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a)
-                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, conduct_warnings, closure_reason, profile_id, q_a
+                $db->exec("INSERT INTO sessions (id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, conduct_warnings, closure_reason, profile_id, q_a)
+                    SELECT id, candidate_name, email, current_status, level, role_title_id, mcq_preference, trugen_conversation_id, started_at, completed_at, final_score, user_id, interview_link_id, session_type, conduct_warnings, closure_reason, profile_id, q_a
                     FROM sessions_old");
                 
                 // Re-add constraints pointing to sessions
@@ -417,19 +410,7 @@ function initSchema() {
             $updateStmt = $db->prepare("UPDATE interview_links SET category_id = :category_id, category_match_percentage = :match_percent WHERE id = :id");
             
             foreach ($unfilled as $row) {
-                $model = 'gemini-3.5-flash';
-                $apiKey = null;
-                if (!empty($row['created_by'])) {
-                    $userStmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :uid");
-                    $userStmt->execute(['uid' => $row['created_by']]);
-                    $userFull = $userStmt->fetch(PDO::FETCH_ASSOC);
-                    if ($userFull) {
-                        $model = $userFull['model_chat_task'] ?: $model;
-                        $apiKey = $userFull['custom_gemini_api_key'] ?: $apiKey;
-                    }
-                }
-                
-                $aiResult = matchRoleToCategory($row['job_role'], $categories, $model, $apiKey);
+                $aiResult = matchRoleToCategory($row['job_role'], $categories);
                 if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
                     if ($aiResult['match_percentage'] >= 15) {
                         $updateStmt->execute([
@@ -450,7 +431,7 @@ function initSchema() {
 }
 
 
-function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $modelChat = 'gemini-3.1-flash-lite', $modelVision = 'gemini-3.1-flash-lite', $modelEval = 'gemini-3.1-flash-lite', $profileId = null, $qaJson = null, $targetLevel = null) {
+function createSession($name, $email, $userId = null, $linkId = null, $templateId = null, $type = 'practice', $profileId = null, $qaJson = null, $targetLevel = null) {
     $db = getDB();
     $level = 0;
     $roleTitleId = null;
@@ -466,16 +447,13 @@ function createSession($name, $email, $userId = null, $linkId = null, $templateI
             $roleTitleId = $profile['role_title_id'] ?? null;
         }
     }
-    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, session_type, model_chat_task, model_vision_task, model_eval_task, profile_id, level, role_title_id, q_a) VALUES (:name, :email, :user_id, :link_id, :type, :model_chat, :model_vision, :model_eval, :profile_id, :level, :role_title_id, :q_a) RETURNING id");
+    $stmt = $db->prepare("INSERT INTO sessions (candidate_name, email, user_id, interview_link_id, session_type, profile_id, level, role_title_id, q_a) VALUES (:name, :email, :user_id, :link_id, :type, :profile_id, :level, :role_title_id, :q_a) RETURNING id");
     $stmt->execute([
         'name' => $name,
         'email' => $email,
         'user_id' => $userId,
         'link_id' => $linkId,
         'type' => $type,
-        'model_chat' => $modelChat,
-        'model_vision' => $modelVision,
-        'model_eval' => $modelEval,
         'profile_id' => $profileId,
         'level' => $level,
         'role_title_id' => $roleTitleId,
@@ -765,23 +743,6 @@ function getRecruiterStats($companyId) {
     ];
 }
 
-function getSessionApiKey($session) {
-    if (is_string($session)) {
-        $session = getSession($session);
-    }
-    if (!$session) {
-        return null;
-    }
-    $settings = getSessionUserSettings($session['id']);
-    if ($settings && !empty($settings['custom_gemini_api_key'])) {
-        $scope = $settings['gemini_key_scope'] ?? 'invite_only';
-        if ($scope === 'everywhere' || !empty($session['interview_link_id'])) {
-            return $settings['custom_gemini_api_key'];
-        }
-    }
-    return null;
-}
-
 function getSessionUserSettings($sessionId) {
     $db = getDB();
     $stmt = $db->prepare("SELECT * FROM sessions WHERE id = :id");
@@ -799,7 +760,7 @@ function getSessionUserSettings($sessionId) {
         $targetUserId = $session['user_id'];
     }
     if ($targetUserId) {
-        $stmt = $db->prepare("SELECT custom_trugen_agent_id, custom_trugen_api_key, trugen_key_scope, custom_gemini_api_key, gemini_key_scope, model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
+        $stmt = $db->prepare("SELECT custom_trugen_agent_id, custom_trugen_api_key, trugen_key_scope FROM users WHERE id = :id");
         $stmt->execute(['id' => $targetUserId]);
         return $stmt->fetch();
     }
@@ -949,17 +910,10 @@ function updateCandidateProfileResume($profileId, $userId, $resumePath, $textVer
         
         // Re-evaluate category match using detected_role
         try {
-            $userStmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
-            $userStmt->execute(['id' => $userId]);
-            $userFull = $userStmt->fetch(PDO::FETCH_ASSOC);
-            
-            $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-            $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-            
             require_once __DIR__ . '/ai_service.php';
             $categories = getAllCategories();
-            
-            $aiResult = matchRoleToCategory($detectedRole, $categories, $model, $apiKey);
+
+            $aiResult = matchRoleToCategory($detectedRole, $categories);
             if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
                 if ($aiResult['match_percentage'] >= 15) {
                     $categoryId = $aiResult['category_id'];

@@ -6,15 +6,14 @@ require_once __DIR__ . '/ai_service.php';
 
 /**
  * Extract plain text representation from a resume file.
- * For PDF files, calls Gemini once to convert it to clean markdown.
+ * For PDF files, calls the vision model once to convert it to clean markdown.
  */
-function optimizer_extract_text($filePath, $ext, $model = 'gemini-3.5-flash', $apiKey = null) {
+function optimizer_extract_text($filePath, $ext) {
     if (!file_exists($filePath)) {
         throw new Exception("Resume file not found at path: " . $filePath);
     }
 
     if ($ext === 'pdf') {
-        $pdfData = base64_encode(file_get_contents($filePath));
         $prompt = "<context>\n" .
                   "You are a precision data-extraction engine. Your task is to convert a visual resume document into clean, structurally identical Markdown.\n" .
                   "</context>\n" .
@@ -29,30 +28,18 @@ function optimizer_extract_text($filePath, $ext, $model = 'gemini-3.5-flash', $a
                   "<output_format>\n" .
                   "Output ONLY valid Markdown text. Do not include conversational filler.\n" .
                   "</output_format>";
-        
-        $contents = [
+
+        $messages = [
             [
                 "role" => "user",
-                "parts" => [
-                    [
-                        "text" => $prompt
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => "application/pdf",
-                            "data" => $pdfData
-                        ]
-                    ]
-                ]
+                "content" => array_merge(
+                    [["type" => "text", "text" => $prompt]],
+                    pdfToContentParts($filePath)
+                )
             ]
         ];
 
-        $payload = [
-            "contents" => $contents
-        ];
-
-        // Call Gemini to get raw Markdown text
-        return callGemini($payload, $model, $apiKey);
+        return callAI($messages, 'pdf_extract');
     } elseif ($ext === 'docx') {
         return extractTextFromDocx($filePath);
     } elseif ($ext === 'doc') {
@@ -65,136 +52,91 @@ function optimizer_extract_text($filePath, $ext, $model = 'gemini-3.5-flash', $a
 /**
  * Phase 1: Reality Check (Blind Analysis)
  */
-function optimizer_reality_check($resumeText, $model = 'gemini-3.5-flash', $apiKey = null) {
+function optimizer_reality_check($resumeText) {
     $systemPrompt = "You are a professional technical recruiter. Analyze the provided resume text blindly (without any job description context) to identify the target role and seniority level that the resume currently conveys based on keywords, experience weighting, and accomplishments. Output a JSON object with 'target_role', 'seniority', and 'summary' keys.";
-    
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => "Analyze this resume text and output the results:\n\n" . $resumeText]
-                ]
-            ]
-        ],
-        "systemInstruction" => [
-            "parts" => [
-                ["text" => $systemPrompt]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json",
-            "responseSchema" => [
-                "type" => "object",
-                "properties" => [
-                    "target_role" => ["type" => "string"],
-                    "seniority" => ["type" => "string"],
-                    "summary" => ["type" => "string"]
-                ],
-                "required" => ["target_role", "seniority", "summary"]
-            ]
-        ]
-    ];
 
-    $response = callGemini($payload, $model, $apiKey);
+    $response = callAI([
+        ["role" => "system", "content" => $systemPrompt],
+        ["role" => "user", "content" => "Analyze this resume text and output the results:\n\n" . $resumeText]
+    ], 'optimizer_analysis', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+            "type" => "object",
+            "properties" => [
+                "target_role" => ["type" => "string"],
+                "seniority" => ["type" => "string"],
+                "summary" => ["type" => "string"]
+            ],
+            "required" => ["target_role", "seniority", "summary"]
+        ]]]
+    ]);
     return json_decode($response, true);
 }
 
 /**
  * Phase 2: Gap Analysis & Skill Gathering
  */
-function optimizer_gap_analysis($resumeText, $targetRole, $jobDescription, $model = 'gemini-3.5-flash', $apiKey = null) {
+function optimizer_gap_analysis($resumeText, $targetRole, $jobDescription) {
     $systemPrompt = "You are an expert recruiter. Compare the candidate's resume text against the target role and the job description. Identify up to 4 major missing skills, tools, methodologies, or experiences. For each missing item, write a direct question asking the candidate if they have experience with it, offering context on why it is important. Output a JSON object containing a 'gaps' array with keys: 'skill', 'importance', and 'question'.";
 
-    $contents = "Resume:\n" . $resumeText . "\n\nTarget Role: " . $targetRole . "\n\nJob Description:\n" . $jobDescription;
+    $userContent = "Resume:\n" . $resumeText . "\n\nTarget Role: " . $targetRole . "\n\nJob Description:\n" . $jobDescription;
 
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $contents]
-                ]
-            ]
-        ],
-        "systemInstruction" => [
-            "parts" => [
-                ["text" => $systemPrompt]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json",
-            "responseSchema" => [
-                "type" => "object",
-                "properties" => [
-                    "gaps" => [
-                        "type" => "array",
-                        "items" => [
-                            "type" => "object",
-                            "properties" => [
-                                "skill" => ["type" => "string"],
-                                "importance" => ["type" => "string", "enum" => ["high", "medium"]],
-                                "question" => ["type" => "string"]
-                            ],
-                            "required" => ["skill", "importance", "question"]
-                        ]
+    $response = callAI([
+        ["role" => "system", "content" => $systemPrompt],
+        ["role" => "user", "content" => $userContent]
+    ], 'optimizer_analysis', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+            "type" => "object",
+            "properties" => [
+                "gaps" => [
+                    "type" => "array",
+                    "items" => [
+                        "type" => "object",
+                        "properties" => [
+                            "skill" => ["type" => "string"],
+                            "importance" => ["type" => "string", "enum" => ["high", "medium"]],
+                            "question" => ["type" => "string"]
+                        ],
+                        "required" => ["skill", "importance", "question"]
                     ]
-                ],
-                "required" => ["gaps"]
-            ]
-        ]
-    ];
-
-    $response = callGemini($payload, $model, $apiKey);
+                ]
+            ],
+            "required" => ["gaps"]
+        ]]]
+    ]);
     return json_decode($response, true);
 }
 
 /**
  * Phase 3: Extract Timeline Dates
  */
-function optimizer_extract_dates($resumeText, $model = 'gemini-3.5-flash', $apiKey = null) {
+function optimizer_extract_dates($resumeText) {
     $systemPrompt = "Analyze the resume text and extract all professional experience entries. For each entry, extract the company name, role title, start date, end date, and the raw date string as written. Format start_date and end_date as YYYY-MM. If the job is current, use 'Present' for the end_date. If a date cannot be parsed, use null for start_date or end_date. Output a JSON object containing an 'experiences' array.";
 
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $resumeText]
-                ]
-            ]
-        ],
-        "systemInstruction" => [
-            "parts" => [
-                ["text" => $systemPrompt]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json",
-            "responseSchema" => [
-                "type" => "object",
-                "properties" => [
-                    "experiences" => [
-                        "type" => "array",
-                        "items" => [
-                            "type" => "object",
-                            "properties" => [
-                                "company" => ["type" => "string"],
-                                "role" => ["type" => "string"],
-                                "start_date" => ["type" => "string"],
-                                "end_date" => ["type" => "string"],
-                                "raw_date_string" => ["type" => "string"]
-                            ],
-                            "required" => ["company", "role", "start_date", "end_date", "raw_date_string"]
-                        ]
+    $response = callAI([
+        ["role" => "system", "content" => $systemPrompt],
+        ["role" => "user", "content" => $resumeText]
+    ], 'optimizer_analysis', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+            "type" => "object",
+            "properties" => [
+                "experiences" => [
+                    "type" => "array",
+                    "items" => [
+                        "type" => "object",
+                        "properties" => [
+                            "company" => ["type" => "string"],
+                            "role" => ["type" => "string"],
+                            "start_date" => ["type" => "string"],
+                            "end_date" => ["type" => "string"],
+                            "raw_date_string" => ["type" => "string"]
+                        ],
+                        "required" => ["company", "role", "start_date", "end_date", "raw_date_string"]
                     ]
-                ],
-                "required" => ["experiences"]
-            ]
-        ]
-    ];
-
-    $response = callGemini($payload, $model, $apiKey);
+                ]
+            ],
+            "required" => ["experiences"]
+        ]]]
+    ]);
     return json_decode($response, true);
 }
 
@@ -412,7 +354,7 @@ function optimizer_verify_dates_math($experiencesData) {
 /**
  * Phase 4: Final Rewrite & Deep Analysis
  */
-function optimizer_generate_rewrite($resumeText, $targetRole, $jobDescription, $gapAnswers, $verifiedDatesData, $model = 'gemini-3.5-flash', $apiKey = null) {
+function optimizer_generate_rewrite($resumeText, $targetRole, $jobDescription, $gapAnswers, $verifiedDatesData) {
     $systemPrompt = "You are a world-class resume optimizer and technical career consultant. Your goal is to optimize a candidate's resume for Applicant Tracking Systems (ATS) and human recruiters.
 
 CORE PILLARS:
@@ -447,54 +389,39 @@ Use the mathematically verified experience details provided to set accurate date
         $datesInput .= "- {$ed['role']} at {$ed['company']} ({$ed['start_date']} to {$ed['end_date']}) - Duration: {$ed['duration_formatted']}\n";
     }
 
-    $contents = "<resume_text>\n" . $resumeText . "\n</resume_text>\n\n" .
+    $userContent = "<resume_text>\n" . $resumeText . "\n</resume_text>\n\n" .
                 "<target_role>\n" . $targetRole . "\n</target_role>\n\n" .
                 "<job_description>\n" . $jobDescription . "\n</job_description>\n\n" .
                 "<additional_candidate_input_on_skills_gaps>\n" . $gapInput . "</additional_candidate_input_on_skills_gaps>\n\n" .
                 "<mathematically_verified_timeline_details>\n" . $datesInput . "</mathematically_verified_timeline_details>";
 
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $contents]
-                ]
-            ]
-        ],
-        "systemInstruction" => [
-            "parts" => [
-                ["text" => $systemPrompt]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json",
-            "responseSchema" => [
-                "type" => "object",
-                "properties" => [
-                    "rating" => ["type" => "integer"],
-                    "alignment_summary" => ["type" => "string"],
-                    "rewritten_resume_markdown" => ["type" => "string"],
-                    "ai_refined_role" => ["type" => "string"],
-                    "changes" => [
-                        "type" => "array",
-                        "items" => [
-                            "type" => "object",
-                            "properties" => [
-                                "original_point" => ["type" => "string"],
-                                "optimized_point" => ["type" => "string"],
-                                "reasoning" => ["type" => "string"]
-                            ],
-                            "required" => ["original_point", "optimized_point", "reasoning"]
-                        ]
+    $response = callAI([
+        ["role" => "system", "content" => $systemPrompt],
+        ["role" => "user", "content" => $userContent]
+    ], 'resume_rewrite', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+            "type" => "object",
+            "properties" => [
+                "rating" => ["type" => "integer"],
+                "alignment_summary" => ["type" => "string"],
+                "rewritten_resume_markdown" => ["type" => "string"],
+                "ai_refined_role" => ["type" => "string"],
+                "changes" => [
+                    "type" => "array",
+                    "items" => [
+                        "type" => "object",
+                        "properties" => [
+                            "original_point" => ["type" => "string"],
+                            "optimized_point" => ["type" => "string"],
+                            "reasoning" => ["type" => "string"]
+                        ],
+                        "required" => ["original_point", "optimized_point", "reasoning"]
                     ]
-                ],
-                "required" => ["rating", "alignment_summary", "rewritten_resume_markdown", "ai_refined_role", "changes"]
-            ]
-        ]
-    ];
-
-    $response = callGemini($payload, $model, $apiKey);
+                ]
+            ],
+            "required" => ["rating", "alignment_summary", "rewritten_resume_markdown", "ai_refined_role", "changes"]
+        ]]]
+    ]);
     return json_decode($response, true);
 }
 

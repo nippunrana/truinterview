@@ -111,7 +111,7 @@ function hideLoading() {
 
 // Step 1: Reality check
 async function loadRealityCheck() {
-  showLoading('Gemini is running reality check (blind analysis)...');
+  showLoading('AI is running reality check (blind analysis)...');
   try {
     const response = await fetch('api/resume_optimizer_ajax.php', {
       method: 'POST',
@@ -189,7 +189,7 @@ function renderGapsList() {
 
   if (state.gaps.length === 0) {
     wrapper.innerHTML = `<div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.15); color: var(--color-emerald); padding: 24px; border-radius: var(--radius-inner); text-align: center; font-weight: 600;">
-      🎉 Fantastic match! Gemini found no significant skill gaps between your resume and the target role requirements. Click verify timeline to continue.
+      🎉 Fantastic match! The AI found no significant skill gaps between your resume and the target role requirements. Click verify timeline to continue.
     </div>`;
     return;
   }

@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="auth-hero-content">
         <div class="hero-text-block">
           <h1 class="hero-text-title">Empowering technical interviews with real-time AI.</h1>
-          <p class="hero-text-desc">Whether you are a recruiter assessing top talent or a candidate preparing for your next role, TruInterview provides realistic rounds and deep feedback powered by Gemini.</p>
+          <p class="hero-text-desc">Whether you are a recruiter assessing top talent or a candidate preparing for your next role, TruInterview provides realistic rounds and deep feedback powered by Fireworks AI.</p>
         </div>
       </div>
     </div>

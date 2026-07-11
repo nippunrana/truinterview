@@ -1,171 +1,89 @@
 <?php
-// ai_service.php - Gemini API client integration
+// ai_service.php - AI service helpers (transport lives in ai_client.php)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-/**
- * Base utility to execute request against Gemini API
- */
-function callGeminiRaw($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
-    // Map model names to actual supported Google Gemini API models
-    $modelMap = [
-        'gemini-3.5-flash'      => 'gemini-3.5-flash',
-        'gemini-3.5-flash-lite' => 'gemini-3.1-flash-lite',
-        'gemini-3.5-pro'        => 'gemini-3.1-pro-preview',
-        'gemini-3.1-pro'        => 'gemini-3.1-pro-preview',
-    ];
-    if (isset($modelMap[$model])) {
-        $model = $modelMap[$model];
-    }
-
-    $apiKey = $apiKeyOverride ?: getenv('GEMINI_API_KEY');
-    if (!$apiKey) {
-        $apiKey = $_ENV['GEMINI_API_KEY'] ?? '';
-    }
-    if (empty($apiKey)) {
-        throw new Exception("Gemini API key is not configured.");
-    }
-    
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($apiKey);
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json'
-    ]);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error = curl_error($ch);
-    curl_close($ch);
-    
-    if ($error) {
-        throw new Exception("Curl error when calling Gemini API: " . $error);
-    }
-    
-    if ($httpCode !== 200) {
-        throw new Exception("Gemini API returned HTTP code {$httpCode}: " . $response);
-    }
-    
-    $data = json_decode($response, true);
-    if (!$data) {
-        throw new Exception("Invalid JSON response from Gemini API: " . $response);
-    }
-    return $data;
-}
-
-function callGemini($payload, $model = 'gemini-3.5-flash', $apiKeyOverride = null) {
-    $data = callGeminiRaw($payload, $model, $apiKeyOverride);
-    if (!isset($data['candidates'][0]['content']['parts'][0]['text'])) {
-        throw new Exception("Unexpected response format from Gemini API: " . json_encode($data));
-    }
-    
-    return trim($data['candidates'][0]['content']['parts'][0]['text']);
-}
+require_once __DIR__ . '/ai_client.php';
 
 /**
- * Multimodal vision check using Gemini
+ * Multimodal vision check on a screen capture
  */
-function queryGeminiVision($imagePath, $prompt, $context, $apiKeyOverride = null, $model = 'gemini-3.5-flash') {
+function queryVision($imagePath, $prompt, $context) {
     if (!file_exists($imagePath)) {
         throw new Exception("Image file not found: " . $imagePath);
     }
-    
+
     $imageData = base64_encode(file_get_contents($imagePath));
-    $mimeType = 'image/jpeg';
-    
-    $systemPrompt = getInterviewSystemPrompt();
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => "Here is the candidate's latest screen capture context and dialog history.\n\n" . 
-                                  "Dialog History:\n" . $context . "\n\n" .
-                                  "Candidate's latest utterance: \"" . $prompt . "\"\n\n" .
-                                  "Analyze the screenshot image relative to their utterance and continue the technical interview conversation."
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => $mimeType,
-                            "data" => $imageData
-                        ]
-                    ]
-                ]
-            ]
+
+    $messages = [
+        [
+            "role" => "system",
+            "content" => getInterviewSystemPrompt()
         ],
-        "systemInstruction" => [
-            "parts" => [
+        [
+            "role" => "user",
+            "content" => [
                 [
-                    "text" => $systemPrompt
+                    "type" => "text",
+                    "text" => "Here is the candidate's latest screen capture context and dialog history.\n\n" .
+                              "Dialog History:\n" . $context . "\n\n" .
+                              "Candidate's latest utterance: \"" . $prompt . "\"\n\n" .
+                              "Analyze the screenshot image relative to their utterance and continue the technical interview conversation."
+                ],
+                [
+                    "type" => "image_url",
+                    "image_url" => ["url" => "data:image/jpeg;base64," . $imageData]
                 ]
             ]
         ]
     ];
-    
-    return callGemini($payload, $model, $apiKeyOverride);
+
+    return callAI($messages, 'interview_chat_vision');
 }
 
 /**
- * Text-only dialog chat turn progression using Gemini
+ * Text-only dialog chat turn progression
  */
-function queryGeminiChat($messages, $systemPrompt = null, $apiKeyOverride = null, $model = 'gemini-3.5-flash') {
+function queryChat($messages, $systemPrompt = null) {
     if (empty($systemPrompt)) {
         $systemPrompt = getInterviewSystemPrompt();
     }
-    
-    $contents = [];
+
+    $chatMessages = [
+        [
+            "role" => "system",
+            "content" => $systemPrompt
+        ]
+    ];
     foreach ($messages as $msg) {
         $role = strtoupper($msg['speaker'] ?? $msg['role'] ?? '');
         $text = $msg['message'] ?? $msg['text'] ?? '';
-        
+
         if ($role === 'USER' || $role === 'CLIENT') {
             $role = 'user';
         } elseif ($role === 'AGENT' || $role === 'MODEL') {
-            $role = 'model';
+            $role = 'assistant';
         } else {
             continue; // Skip SYSTEM or metadata rows to preserve alternating rules
         }
-        
-        $contents[] = [
+
+        $chatMessages[] = [
             "role" => $role,
-            "parts" => [
-                [
-                    "text" => $text
-                ]
-            ]
+            "content" => $text
         ];
     }
-    
+
     // Ensure we have at least one valid user entry
-    if (empty($contents)) {
-        $contents[] = [
+    if (count($chatMessages) === 1) {
+        $chatMessages[] = [
             "role" => "user",
-            "parts" => [
-                [
-                    "text" => "Hello"
-                ]
-            ]
+            "content" => "Hello"
         ];
     }
-    
-    $payload = [
-        "contents" => $contents,
-        "systemInstruction" => [
-            "parts" => [
-                [
-                    "text" => $systemPrompt
-                ]
-            ]
-        ]
-    ];
-    
-    return callGemini($payload, $model, $apiKeyOverride);
+
+    return callAI($chatMessages, 'interview_chat');
 }
 
 /**
@@ -299,9 +217,32 @@ Return ONLY this JSON (no prose):
 }
 
 /**
- * Verify uploaded resume using Gemini
+ * Build the user message content for a document + prompt.
+ * PDFs are sent as rendered page images; other formats as extracted text.
  */
-function verifyUploadedResume($filePath, $ext, $profileName, $model = 'gemini-3.5-flash', $apiKey = null) {
+function buildDocumentUserContent($filePath, $ext, $prompt) {
+    if ($ext === 'pdf') {
+        return array_merge(
+            [["type" => "text", "text" => $prompt]],
+            pdfToContentParts($filePath)
+        );
+    }
+
+    if ($ext === 'docx') {
+        $text = extractTextFromDocx($filePath);
+    } elseif ($ext === 'doc') {
+        $text = extractTextFromDoc($filePath);
+    } else {
+        $text = file_get_contents($filePath);
+    }
+
+    return $prompt . "\n\nDocument Content:\n" . $text;
+}
+
+/**
+ * Verify uploaded resume
+ */
+function verifyUploadedResume($filePath, $ext, $profileName) {
     if (!file_exists($filePath)) {
         return [
             'is_valid_resume' => false,
@@ -313,65 +254,33 @@ function verifyUploadedResume($filePath, $ext, $profileName, $model = 'gemini-3.
     }
     
     $prompt = "Please analyze the uploaded document and verify if it matches the profile name: \"$profileName\".";
-    
-    if ($ext === 'pdf') {
-        $pdfData = base64_encode(file_get_contents($filePath));
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    [
-                        "text" => $prompt
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => "application/pdf",
-                            "data" => $pdfData
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    } else {
-        $text = "";
-        if ($ext === 'docx') {
-            $text = extractTextFromDocx($filePath);
-        } elseif ($ext === 'doc') {
-            $text = extractTextFromDoc($filePath);
-        } else {
-            $text = file_get_contents($filePath);
-        }
-        
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    [
-                        "text" => $prompt . "\n\nDocument Content:\n" . $text
-                    ]
-                ]
-            ]
-        ];
-    }
-    
-    $systemPrompt = getResumeAnalyzerSystemPrompt($profileName);
-    
-    $payload = [
-        "contents" => $contents,
-        "systemInstruction" => [
-            "parts" => [
-                [
-                    "text" => $systemPrompt
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
-        ]
-    ];
-    
+
     try {
-        $responseJson = callGemini($payload, $model, $apiKey);
+        $messages = [
+            [
+                "role" => "system",
+                "content" => getResumeAnalyzerSystemPrompt($profileName)
+            ],
+            [
+                "role" => "user",
+                "content" => buildDocumentUserContent($filePath, $ext, $prompt)
+            ]
+        ];
+
+        $responseJson = callAI($messages, 'pdf_extract', [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'is_valid_resume' => ['type' => 'boolean'],
+                    'extracted_name' => ['type' => ['string', 'null']],
+                    'is_name_match' => ['type' => 'boolean'],
+                    'confidence' => ['type' => 'number'],
+                    'detected_role' => ['type' => ['string', 'null']],
+                    'short_description' => ['type' => ['string', 'null']]
+                ],
+                'required' => ['is_valid_resume', 'extracted_name', 'is_name_match', 'confidence', 'detected_role', 'short_description']
+            ]]]
+        ]);
         $result = json_decode($responseJson, true);
         if (!$result || !isset($result['is_valid_resume'])) {
             preg_match('/\{.*\}/s', $responseJson, $matches);
@@ -399,7 +308,7 @@ function verifyUploadedResume($filePath, $ext, $profileName, $model = 'gemini-3.
 /**
  * Quality Assurance Assessor for resume text extraction
  */
-function qa_assess_resume_extraction($filePath, $ext, $markdownText, $model = 'gemini-3.5-flash', $apiKey = null) {
+function qa_assess_resume_extraction($filePath, $ext, $markdownText) {
     if (!file_exists($filePath)) {
         throw new Exception("Resume file not found: " . $filePath);
     }
@@ -430,51 +339,24 @@ function qa_assess_resume_extraction($filePath, $ext, $markdownText, $model = 'g
               "}\n" .
               "</output_format>";
 
-    if ($ext === 'pdf') {
-        $pdfData = base64_encode(file_get_contents($filePath));
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt],
-                    [
-                        "inlineData" => [
-                            "mimeType" => "application/pdf",
-                            "data" => $pdfData
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    } else {
-        $text = "";
-        if ($ext === 'docx') {
-            $text = extractTextFromDocx($filePath);
-        } elseif ($ext === 'doc') {
-            $text = extractTextFromDoc($filePath);
-        } else {
-            $text = file_get_contents($filePath);
-        }
-        
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt . "\n\nOriginal Document Plain Text:\n" . $text]
-                ]
-            ]
-        ];
-    }
-
-    $payload = [
-        "contents" => $contents,
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
-        ]
-    ];
-
     try {
-        $responseJson = callGemini($payload, $model, $apiKey);
+        $messages = [
+            [
+                "role" => "user",
+                "content" => buildDocumentUserContent($filePath, $ext, $prompt)
+            ]
+        ];
+
+        $responseJson = callAI($messages, 'resume_qa', [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'needs_fix' => ['type' => 'boolean'],
+                    'issues' => ['type' => 'array', 'items' => ['type' => 'string']]
+                ],
+                'required' => ['needs_fix', 'issues']
+            ]]]
+        ]);
         $result = json_decode($responseJson, true);
         if (!$result || !isset($result['needs_fix'])) {
             preg_match('/\{.*\}/s', $responseJson, $matches);
@@ -491,7 +373,7 @@ function qa_assess_resume_extraction($filePath, $ext, $markdownText, $model = 'g
 /**
  * Fixer for resume text extraction based on QA issues
  */
-function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model = 'gemini-3.5-flash', $apiKey = null) {
+function fix_resume_extraction($filePath, $ext, $markdownText, $issues) {
     if (!file_exists($filePath)) {
         throw new Exception("Resume file not found: " . $filePath);
     }
@@ -519,48 +401,15 @@ function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model =
               "Output ONLY valid Markdown text. Do not include conversational filler.\n" .
               "</output_format>";
 
-    if ($ext === 'pdf') {
-        $pdfData = base64_encode(file_get_contents($filePath));
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt],
-                    [
-                        "inlineData" => [
-                            "mimeType" => "application/pdf",
-                            "data" => $pdfData
-                        ]
-                    ]
-                ]
-            ]
-        ];
-    } else {
-        $text = "";
-        if ($ext === 'docx') {
-            $text = extractTextFromDocx($filePath);
-        } elseif ($ext === 'doc') {
-            $text = extractTextFromDoc($filePath);
-        } else {
-            $text = file_get_contents($filePath);
-        }
-        
-        $contents = [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt . "\n\nOriginal Document Plain Text:\n" . $text]
-                ]
-            ]
-        ];
-    }
-
-    $payload = [
-        "contents" => $contents
-    ];
-
     try {
-        return callGemini($payload, $model, $apiKey);
+        $messages = [
+            [
+                "role" => "user",
+                "content" => buildDocumentUserContent($filePath, $ext, $prompt)
+            ]
+        ];
+
+        return callAI($messages, 'resume_fix');
     } catch (Exception $e) {
         return $markdownText;
     }
@@ -569,7 +418,7 @@ function fix_resume_extraction($filePath, $ext, $markdownText, $issues, $model =
 /**
  * Match a role title to the best fitting category
  */
-function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash', $apiKey = null) {
+function matchRoleToCategory($roleTitle, $categories) {
     if (empty($categories)) {
         return ['category_id' => null, 'match_percentage' => 0];
     }
@@ -641,23 +490,21 @@ function matchRoleToCategory($roleTitle, $categories, $model = 'gemini-3.5-flash
               "- Ensure category_id is either null or a string matching one of the UUIDs in <categories> exactly.\n" .
               "- Confirm match_percentage is exactly one of [100, 75, 50, 0].\n" .
               "</verification>";
-              
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt]
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
-        ]
-    ];
-    
+
     try {
-        $responseJson = callGemini($payload, $model, $apiKey);
+        $responseJson = callAI([
+            ["role" => "user", "content" => $prompt]
+        ], 'taxonomy_match', [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'rationale' => ['type' => 'string'],
+                    'category_id' => ['type' => ['string', 'null']],
+                    'match_percentage' => ['type' => 'number']
+                ],
+                'required' => ['rationale', 'category_id', 'match_percentage']
+            ]]]
+        ]);
         $result = json_decode($responseJson, true);
         
         if (!$result || (!isset($result['category_id']) && !array_key_exists('category_id', $result))) {

@@ -16,9 +16,6 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
     $action = $_GET['ajax_action'] ?? $_POST['ajax_action'] ?? '';
     header('Content-Type: application/json');
 
-    $model = $userFull['model_optimizer_task'] ?? 'gemini-3.5-flash';
-    $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-
     try {
         if ($action === 'optimizer_init') {
             $resumePath = $_POST['resume_path'] ?? '';
@@ -50,7 +47,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             if (empty($text)) {
                 $ext = strtolower(pathinfo($resumePath, PATHINFO_EXTENSION));
                 $fullPath = __DIR__ . '/../../' . $resumePath;
-                $text = optimizer_extract_text($fullPath, $ext, $model, $apiKey);
+                $text = optimizer_extract_text($fullPath, $ext);
             }
             
             echo json_encode(['success' => true, 'resume_text' => $text]);
@@ -63,7 +60,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
                 echo json_encode(['success' => false, 'message' => 'Resume text content is empty.']);
                 exit;
             }
-            $result = optimizer_reality_check($resumeText, $model, $apiKey);
+            $result = optimizer_reality_check($resumeText);
             echo json_encode(['success' => true, 'data' => $result]);
             exit;
         }
@@ -73,7 +70,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             $targetRole = $_POST['target_role'] ?? '';
             $jobDescription = $_POST['job_description'] ?? '';
 
-            $result = optimizer_gap_analysis($resumeText, $targetRole, $jobDescription, $model, $apiKey);
+            $result = optimizer_gap_analysis($resumeText, $targetRole, $jobDescription);
             echo json_encode(['success' => true, 'data' => $result]);
             exit;
         }
@@ -82,7 +79,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             $resumeText = $_POST['resume_text'] ?? '';
             
             // Extract raw dates
-            $rawExp = optimizer_extract_dates($resumeText, $model, $apiKey);
+            $rawExp = optimizer_extract_dates($resumeText);
             // Verify mathematically
             $result = optimizer_verify_dates_math($rawExp);
             
@@ -97,7 +94,7 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
             $gapAnswers = json_decode($_POST['gap_answers'] ?? '[]', true);
             $verifiedDates = json_decode($_POST['verified_dates'] ?? '{}', true);
 
-            $result = optimizer_generate_rewrite($resumeText, $targetRole, $jobDescription, $gapAnswers, $verifiedDates, $model, $apiKey);
+            $result = optimizer_generate_rewrite($resumeText, $targetRole, $jobDescription, $gapAnswers, $verifiedDates);
             echo json_encode(['success' => true, 'data' => $result]);
             exit;
         }

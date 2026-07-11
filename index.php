@@ -127,7 +127,7 @@ exit();
           <span class="g-dot g-yellow"></span>
           <span class="g-dot g-green"></span>
         </span>
-        <span style="color: var(--text-secondary);">Powered by Google Gemini 3.5 &amp; TruGen.ai</span>
+        <span style="color: var(--text-secondary);">Powered by Fireworks AI &amp; TruGen.ai</span>
       </div>
     </div>
   </section>
@@ -158,7 +158,7 @@ exit();
             </svg>
           </div>
           <h3 class="feature-title">Live Code Vision</h3>
-          <p class="feature-desc">Share your screen context as you code. <strong>Google Gemini 3.5 Flash</strong> reviews code structures, algorithms, and logical flows directly via real-time canvas tracking.</p>
+          <p class="feature-desc">Share your screen context as you code. <strong>Fireworks AI</strong> reviews code structures, algorithms, and logical flows directly via real-time canvas tracking.</p>
         </div>
 
         <div class="feature-card">
@@ -168,7 +168,7 @@ exit();
             </svg>
           </div>
           <h3 class="feature-title">Dynamic MCQ Assessment</h3>
-          <p class="feature-desc">Dynamically switches into multi-choice questions using <strong>Google Gemini</strong> to parse and classify vocal answers and read questions aloud according to preference.</p>
+          <p class="feature-desc">Dynamically switches into multi-choice questions using <strong>Fireworks AI</strong> to parse and classify vocal answers and read questions aloud according to preference.</p>
         </div>
 
         <div class="feature-card">
@@ -198,7 +198,7 @@ exit();
             </svg>
           </div>
           <h3 class="feature-title">AI Vision Proctoring</h3>
-          <p class="feature-desc">Ensures test integrity using browser-native checks (tab focus, clipboard locks, multi-screen blocks) and <strong>Gemini Vision</strong> webcam conduct tracking for maximum security.</p>
+          <p class="feature-desc">Ensures test integrity using browser-native checks (tab focus, clipboard locks, multi-screen blocks) and <strong>Fireworks AI vision</strong> webcam conduct tracking for maximum security.</p>
         </div>
       </div>
     </div>
@@ -266,7 +266,7 @@ exit();
         <div class="badge">Actionable Analytics</div>
         <h2 class="section-title">Get a detailed evaluation of your performance</h2>
         <p style="color: var(--text-secondary); line-height: 1.7; font-size: 1.05rem;">
-          Once you conclude the interview session, Gemini processes your conversation transcripts, code quality updates, and screen snapshots. You will immediately receive a structured dashboard highlighting your strengths, development items, and specific ratings.
+          Once you conclude the interview session, Fireworks AI processes your conversation transcripts, code quality updates, and screen snapshots. You will immediately receive a structured dashboard highlighting your strengths, development items, and specific ratings.
         </p>
         <div style="margin-top: var(--space-2);">
           <a href="interview.php" class="btn btn-primary">Get Your Scorecard</a>
@@ -280,10 +280,10 @@ exit();
     <div class="section-container">
       <div class="proctor-simulator-grid">
         <div class="proctor-desc-side">
-          <div class="badge">Google Gemini Vision in Action</div>
+          <div class="badge">Fireworks AI Vision in Action</div>
           <h2 class="section-title">Experience Real-Time AI Proctoring</h2>
           <p class="section-body-text">
-            Our dual-integrity engine leverages advanced browser hooks alongside <strong>Google Gemini Vision</strong> webcam analysis to ensure secure, authentic assessments.
+            Our dual-integrity engine leverages advanced browser hooks alongside <strong>Fireworks AI vision</strong> webcam analysis to ensure secure, authentic assessments.
           </p>
           <p class="section-body-text">
             Click any button below to simulate candidate behavior and watch how our real-time AI warning system flags misconduct automatically.
@@ -330,7 +330,7 @@ exit();
                 </div>
                 <div class="metric-item">
                   <span class="metric-lbl">Analysis Mode</span>
-                  <span class="metric-val text-brand">Gemini 3.5 Vision</span>
+                  <span class="metric-val text-brand">Fireworks AI Vision</span>
                 </div>
               </div>
             </div>
@@ -372,7 +372,7 @@ exit();
         <div class="step-card">
           <div class="step-num">3</div>
           <h3 class="step-title">Converse &amp; Code</h3>
-          <p class="step-desc">Speak naturally with the TruGen conversational agent while Google Gemini analyzes code structures and MCQ selections.</p>
+          <p class="step-desc">Speak naturally with the TruGen conversational agent while Fireworks AI analyzes code structures and MCQ selections.</p>
         </div>
 
         <div class="step-card">
@@ -396,7 +396,7 @@ exit();
         <details class="faq-details">
           <summary class="faq-summary">How does the AI agent evaluate my code?</summary>
           <div class="faq-content">
-            <p>The application captures periodic snapshots of your shared screen (every 9 seconds or when you manually click "Submit Code"). Gemini 3.5 Flash reviews these images alongside your vocal answers to score your logical code quality, code completeness, and system architectures.</p>
+            <p>The application captures periodic snapshots of your shared screen (every 9 seconds or when you manually click "Submit Code"). Fireworks AI vision models review these images alongside your vocal answers to score your logical code quality, code completeness, and system architectures.</p>
           </div>
         </details>
 
@@ -408,9 +408,9 @@ exit();
         </details>
 
         <details class="faq-details">
-          <summary class="faq-summary">How are Google Gemini and TruGen.ai integrated?</summary>
+          <summary class="faq-summary">How are Fireworks AI and TruGen.ai integrated?</summary>
           <div class="faq-content">
-            <p>TruGen.ai provides the conversational audio iframe token for high-speed voice streaming. Google Gemini models act as the cognitive brain behind the scenes, routing dialog intents, processing visual proctoring alerts, reviewing resume gaps, and synthesizing scorecards.</p>
+            <p>TruGen.ai provides the conversational audio iframe token for high-speed voice streaming. Fireworks AI open models act as the cognitive brain behind the scenes, routing dialog intents, processing visual proctoring alerts, reviewing resume gaps, and synthesizing scorecards.</p>
           </div>
         </details>
 
@@ -428,7 +428,7 @@ exit();
   <footer class="landing-footer">
     <div class="footer-container">
       <span class="footer-logo">TruInterview</span>
-      <span class="footer-copy">&copy; 2026 TruInterview. Crafted with Gemini 3.5 Flash &amp; TruGen.ai. All rights reserved.</span>
+      <span class="footer-copy">&copy; 2026 TruInterview. Crafted with Fireworks AI &amp; TruGen.ai. All rights reserved.</span>
     </div>
   </footer>
 
@@ -464,7 +464,7 @@ exit();
       
       statusTag.className = 'console-tag tag-pending';
       statusTag.innerText = 'Analyzing...';
-      log.innerHTML += `<div class="feed-event event-info">${timeStr} Snapshot captured. Feeding frame to Gemini Vision API...</div>`;
+      log.innerHTML += `<div class="feed-event event-info">${timeStr} Snapshot captured. Feeding frame to the Fireworks vision model...</div>`;
       log.scrollTop = log.scrollHeight;
       
       setTimeout(() => {
@@ -487,7 +487,7 @@ exit();
           warnings.className = 'metric-val text-danger';
           warnings.innerText = '1 / 3';
           
-          log.innerHTML += `<div class="feed-event event-danger">${timeStr} WARNING: Candidate gaze vector shifted off-screen. (Gemini: "Candidate is looking down at a mobile device or secondary screen").</div>`;
+          log.innerHTML += `<div class="feed-event event-danger">${timeStr} WARNING: Candidate gaze vector shifted off-screen. (AI: "Candidate is looking down at a mobile device or secondary screen").</div>`;
         } else if (type === 'tab') {
           statusTag.className = 'console-tag tag-danger';
           statusTag.innerText = 'Suspicious';
@@ -520,7 +520,7 @@ exit();
           warnings.className = 'metric-val text-danger';
           warnings.innerText = '3 / 3 (Session Terminated)';
           
-          log.innerHTML += `<div class="feed-event event-critical">${timeStr} CRITICAL: Gemini Vision API flagged secondary face in webcam frame. Session auto-terminated due to security misconduct rules.</div>`;
+          log.innerHTML += `<div class="feed-event event-critical">${timeStr} CRITICAL: The vision model flagged secondary face in webcam frame. Session auto-terminated due to security misconduct rules.</div>`;
         }
         log.scrollTop = log.scrollHeight;
       }, 750);

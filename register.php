@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div id="hero-text-recruiter" class="hero-text-block" style="display: none;">
           <h1 class="hero-text-title">Identify top technical talent in minutes, not hours.</h1>
-          <p class="hero-text-desc">Create custom assessment templates, generate candidate-specific invites, and review depth feedback screens powered by Gemini.</p>
+          <p class="hero-text-desc">Create custom assessment templates, generate candidate-specific invites, and review depth feedback screens powered by Fireworks AI.</p>
         </div>
       </div>
     </div>

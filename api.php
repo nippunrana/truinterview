@@ -247,7 +247,7 @@ try {
             exit;
         }
         
-        // If final_score is not generated, generate it using Gemini
+        // If final_score is not generated, generate it using AI
         if (empty($session['final_score'])) {
             if (($session['closure_reason'] ?? '') === 'misconduct') {
                 $evaluation = [
@@ -268,7 +268,7 @@ try {
                     "overall_feedback" => "The interview was terminated by the automated system due to a breach of the professional conduct guidelines. Multiple warnings were issued for off-topic behavior or prompt-injection attempts before closure."
                 ];
             } else {
-                $evaluation = generateGeminiEvaluation($sessionId);
+                $evaluation = generateEvaluation($sessionId);
             }
             
             $stmt = $db->prepare("UPDATE sessions SET final_score = :final_score WHERE id = :id");
@@ -349,33 +349,6 @@ try {
         $linkId = null;
         $templateId = null;
         $sessionType = 'practice';
-        
-        // Defaults
-        $modelChat = $_POST['model_chat_task'] ?? $input['model_chat_task'] ?? null;
-        $modelVision = $_POST['model_vision_task'] ?? $input['model_vision_task'] ?? null;
-        $modelEval = $_POST['model_eval_task'] ?? $input['model_eval_task'] ?? null;
-
-        if ($userId) {
-            $db = getDB();
-            $stmt = $db->prepare("SELECT model_chat_task, model_vision_task, model_eval_task FROM users WHERE id = :id");
-            $stmt->execute(['id' => $userId]);
-            $candidateDefaults = $stmt->fetch();
-            if ($candidateDefaults) {
-                if (empty($modelChat)) {
-                    $modelChat = $candidateDefaults['model_chat_task'] ?: null;
-                }
-                if (empty($modelVision)) {
-                    $modelVision = $candidateDefaults['model_vision_task'] ?: null;
-                }
-                if (empty($modelEval)) {
-                    $modelEval = $candidateDefaults['model_eval_task'] ?: null;
-                }
-            }
-        }
-
-        if (empty($modelChat)) $modelChat = 'gemini-3.1-flash-lite';
-        if (empty($modelVision)) $modelVision = 'gemini-3.1-flash-lite';
-        if (empty($modelEval)) $modelEval = 'gemini-3.1-flash-lite';
 
         if (!empty($inviteCode)) {
             $link = getInterviewLinkByCode($inviteCode);
@@ -395,17 +368,6 @@ try {
 
             // Increment attempts
             incrementLinkAttempts($linkId);
-            
-            // Resolve recruiter settings
-            $db = getDB();
-            $stmt = $db->prepare("SELECT u.model_chat_task, u.model_vision_task, u.model_eval_task FROM users u WHERE u.id = :id");
-            $stmt->execute(['id' => $link['created_by']]);
-            $recruiterSettings = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($recruiterSettings) {
-                $modelChat = $recruiterSettings['model_chat_task'] ?: $modelChat;
-                $modelVision = $recruiterSettings['model_vision_task'] ?: $modelVision;
-                $modelEval = $recruiterSettings['model_eval_task'] ?: $modelEval;
-            }
         }
         
         // Start session to access pending QA data
@@ -428,7 +390,7 @@ try {
             }
         }
 
-        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $modelChat, $modelVision, $modelEval, $profileId, $qaJson, $targetLevel);
+        $sessionId = createSession($name, $email, $userId, $linkId, $templateId, $sessionType, $profileId, $qaJson, $targetLevel);
         
         // Set client cookie
         $_SESSION['session_id'] = $sessionId;
@@ -654,12 +616,8 @@ try {
         
         // Load proctor service
         require_once __DIR__ . '/proctor_service.php';
-        
-        // Determine which Gemini API key to override with
-        $apiKeyOverride = getSessionApiKey($session);
-        $model = $session['model_vision_task'] ?? 'gemini-3.5-flash';
-        
-        // Analyze snapshot using Gemini Vision (skip for browser-native deterministic telemetry)
+
+        // Analyze snapshot using the vision model (skip for browser-native deterministic telemetry)
         $aiVerdict = 'AI analysis skipped.';
         $aiConfirmed = true; // default to true if no snapshot is available for analysis
         
@@ -670,7 +628,7 @@ try {
                 $aiVerdict = 'Browser-native telemetry logged.';
                 $aiConfirmed = true;
             } else {
-                $analysis = analyzeProctorSnapshot(__DIR__ . '/' . $snapshotPath, $alertType, $clientDetails, $apiKeyOverride, $model);
+                $analysis = analyzeProctorSnapshot(__DIR__ . '/' . $snapshotPath, $alertType, $clientDetails);
                 $aiVerdict = $analysis['verdict'] ?? 'AI analysis completed.';
                 $aiConfirmed = isset($analysis['confirmed']) ? (bool)$analysis['confirmed'] : true;
             }

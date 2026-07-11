@@ -5,51 +5,43 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/ai_service.php';
 
 /**
- * Analyzes the candidate's screenshot using Gemini vision capabilities.
+ * Analyzes the candidate's screenshot using the vision model.
  */
-function analyzeScreenshotForEvaluation($imagePath, $customApiKey = null, $model = 'gemini-3.1-flash-lite') {
+function analyzeScreenshotForEvaluation($imagePath) {
     if (!file_exists($imagePath)) {
         return "No screenshot was uploaded.";
     }
-    
+
     $imageData = base64_encode(file_get_contents($imagePath));
-    $mimeType = 'image/jpeg';
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => "Analyze the code, UI, or work shown in this screenshot. Provide a brief, technical summary of what is visible, including any programming languages, algorithms, UI designs, or potential bugs/issues. Keep it under 2-3 sentences."
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => $mimeType,
-                            "data" => $imageData
-                        ]
-                    ]
+
+    $messages = [
+        [
+            "role" => "user",
+            "content" => [
+                [
+                    "type" => "text",
+                    "text" => "Analyze the code, UI, or work shown in this screenshot. Provide a brief, technical summary of what is visible, including any programming languages, algorithms, UI designs, or potential bugs/issues. Keep it under 2-3 sentences."
+                ],
+                [
+                    "type" => "image_url",
+                    "image_url" => ["url" => "data:image/jpeg;base64," . $imageData]
                 ]
             ]
         ]
     ];
-    
-    return callGemini($payload, $model, $customApiKey);
+
+    return callAI($messages, 'evaluation_vision');
 }
 
 /**
- * Generates a comprehensive Gemini feedback/evaluation report for a session.
+ * Generates a comprehensive feedback/evaluation report for a session.
  */
-function generateGeminiEvaluation($sessionId) {
+function generateEvaluation($sessionId) {
     $session = getSession($sessionId);
     if (!$session) {
         throw new Exception("Session not found");
     }
-    
-    // Resolve model tasks and custom API keys
-    $evalModel = $session['model_eval_task'] ?? 'gemini-3.1-flash-lite';
-    $visionModel = $session['model_vision_task'] ?? 'gemini-3.1-flash-lite';
-    $customApiKey = getSessionApiKey($session);
-    
+
     // 1. Gather transcripts
     $transcripts = getTranscripts($sessionId);
     $transcriptStr = "";
@@ -73,7 +65,7 @@ function generateGeminiEvaluation($sessionId) {
     $visionNotes = "No screen capture shared.";
     if (file_exists($imagePath) && is_readable($imagePath)) {
         try {
-            $visionNotes = analyzeScreenshotForEvaluation($imagePath, $customApiKey, $visionModel);
+            $visionNotes = analyzeScreenshotForEvaluation($imagePath);
         } catch (Exception $e) {
             $visionNotes = "Error analyzing latest screen capture: " . $e->getMessage();
         }
@@ -115,28 +107,31 @@ You MUST return ONLY a valid JSON object matching the following schema exactly (
   ],
   \"overall_feedback\": \"Comprehensive overall feedback summary.\"
 }";
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => $prompt
-                    ]
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
-        ]
-    ];
-    
-    $jsonResponse = callGemini($payload, $evalModel, $customApiKey);
-    
+
+    $jsonResponse = callAI([
+        ["role" => "user", "content" => $prompt]
+    ], 'evaluation', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'communication_score' => ['type' => 'number'],
+                'communication_feedback' => ['type' => 'string'],
+                'problem_solving_score' => ['type' => 'number'],
+                'problem_solving_feedback' => ['type' => 'string'],
+                'code_quality_score' => ['type' => 'number'],
+                'code_quality_feedback' => ['type' => 'string'],
+                'strengths' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'recommendations' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'overall_feedback' => ['type' => 'string']
+            ],
+            'required' => ['communication_score', 'communication_feedback', 'problem_solving_score', 'problem_solving_feedback', 'code_quality_score', 'code_quality_feedback', 'strengths', 'recommendations', 'overall_feedback']
+        ]]]
+    ]);
+
     $decoded = json_decode($jsonResponse, true);
     if (!$decoded) {
-        throw new Exception("Failed to generate a valid JSON evaluation from Gemini.");
+        throw new Exception("Failed to generate a valid JSON evaluation.");
     }
-    
+
     return $decoded;
 }

@@ -260,14 +260,6 @@ function handleRegister(event) {
     body += `&profile_id=${encodeURIComponent(profileId)}`;
   }
 
-  // Include model selection values if they exist on the form
-  const modelChatEl = document.getElementById('model_chat_task');
-  const modelVisionEl = document.getElementById('model_vision_task');
-  const modelEvalEl = document.getElementById('model_eval_task');
-  if (modelChatEl) body += `&model_chat_task=${encodeURIComponent(modelChatEl.value)}`;
-  if (modelVisionEl) body += `&model_vision_task=${encodeURIComponent(modelVisionEl.value)}`;
-  if (modelEvalEl) body += `&model_eval_task=${encodeURIComponent(modelEvalEl.value)}`;
-
   fetch('api.php?action=start', {
     method: 'POST',
     headers: {
@@ -935,7 +927,7 @@ async function transitionToCompleted(immediate = false) {
         </div>
         <div class="analyzing-text">
           <h3>Generating Assessment Report</h3>
-          <p>Gemini is evaluating your technical skills, dialogue transcripts, and screen submissions...</p>
+          <p>AI is evaluating your technical skills, dialogue transcripts, and screen submissions...</p>
         </div>
       `;
       document.querySelector('.app-container').appendChild(analyzingDiv);
@@ -1096,7 +1088,7 @@ async function transitionToCompleted(immediate = false) {
       const workspace = document.querySelector('.workspace-grid');
       if (workspace) workspace.style.display = 'none';
 
-      // Step 6: Fetch report details (generates via Gemini on the clean reloaded page)
+      // Step 6: Fetch report details (generates via AI on the clean reloaded page)
       const res = await fetch(`api.php?action=complete&session_id=${sessionId}`);
       const data = await res.json();
       if (analyzingDiv) analyzingDiv.remove();

@@ -14,7 +14,7 @@ require_once __DIR__ . '/ai_service.php';
 require_once __DIR__ . '/trugen_service.php';
 require_once __DIR__ . '/conduct_service.php';
 
-function mapMessagesForGemini($messages) {
+function mapMessagesForChat($messages) {
     $mapped = [];
     foreach ($messages as $msg) {
         $role = strtolower($msg['role'] ?? '');
@@ -35,7 +35,7 @@ function mapMessagesForGemini($messages) {
     return $mapped;
 }
 
-function streamOpenAIResponse($text, $model = 'gemini-3.1-flash-lite') {
+function streamOpenAIResponse($text, $model = 'truinterview') {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
@@ -136,14 +136,7 @@ try {
     $sessionId = $session['id'];
     $status = $session['current_status'];
     $pref = $session['mcq_preference'];
-    
-    // Model task overrides
-    $chatModel = $session['model_chat_task'] ?? 'gemini-3.1-flash-lite';
-    $visionModel = $session['model_vision_task'] ?? 'gemini-3.1-flash-lite';
-    
-    // Recruiter custom API Key override
-    $customApiKey = getSessionApiKey($session);
-    
+
     // Extract last user utterance
     $candidateText = '';
     if (!empty($messages)) {
@@ -153,25 +146,17 @@ try {
         }
     }
 
-    $mappedMessages = mapMessagesForGemini($messages);
+    $mappedMessages = mapMessagesForChat($messages);
     $spokenText = "";
 
     // 2. Perform state machine flow logic identical to api.php but synchronous
     if ($status === 'MCQ_PROMPTING') {
-        $payload = [
-            "contents" => [
-                [
-                    "parts" => [
-                        [
-                            "text" => "Given the user response: '" . $candidateText . "', classify the user preference into one of these two options: READ_ALOUD, SELF_READ. Return only the preference string."
-                        ]
-                    ]
-                ]
-            ]
-        ];
-        
+        $prompt = "Given the user response: '" . $candidateText . "', classify the user preference into one of these two options: READ_ALOUD, SELF_READ. Return only the preference string.";
+
         try {
-            $classification = strtoupper(trim(callGemini($payload, $chatModel, $customApiKey)));
+            $classification = strtoupper(trim(callAI([
+                ["role" => "user", "content" => $prompt]
+            ], 'intent_classification')));
         } catch (Exception $e) {
             $classification = 'SELF_READ';
         }
@@ -205,20 +190,12 @@ try {
         $question = ($qa && $mcqIndex !== null) ? ($qa[$mcqIndex] ?? null) : null;
         
         if ($question) {
-            $payload = [
-                "contents" => [
-                    [
-                        "parts" => [
-                            [
-                                "text" => "Given the user response: '" . $candidateText . "' and the current question: '" . $question['question'] . "' with options A: '" . ($question['options']['A'] ?? '') . "', B: '" . ($question['options']['B'] ?? '') . "', C: '" . ($question['options']['C'] ?? '') . "', D: '" . ($question['options']['D'] ?? '') . "'. Classify the user response into one of these options: A, B, C, D, or NONE if they did not select an option. Return only the option letter (A, B, C, or D) or NONE."
-                            ]
-                        ]
-                    ]
-                ]
-            ];
-            
+            $prompt = "Given the user response: '" . $candidateText . "' and the current question: '" . $question['question'] . "' with options A: '" . ($question['options']['A'] ?? '') . "', B: '" . ($question['options']['B'] ?? '') . "', C: '" . ($question['options']['C'] ?? '') . "', D: '" . ($question['options']['D'] ?? '') . "'. Classify the user response into one of these options: A, B, C, D, or NONE if they did not select an option. Return only the option letter (A, B, C, or D) or NONE.";
+
             try {
-                $classification = strtoupper(trim(callGemini($payload, $chatModel, $customApiKey)));
+                $classification = strtoupper(trim(callAI([
+                    ["role" => "user", "content" => $prompt]
+                ], 'intent_classification')));
             } catch (Exception $e) {
                 $classification = 'NONE';
             }
@@ -265,10 +242,10 @@ try {
                 }
             } else {
                 // If they ask a general question during MCQ segment, fallback to normal response
-                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
+                $spokenText = queryChatWithTools($mappedMessages, $sessionId);
             }
         } else {
-            $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
+            $spokenText = queryChatWithTools($mappedMessages, $sessionId);
         }
     } else {
         // Standard technical interview conversation mode
@@ -283,12 +260,12 @@ try {
         $imagePath = __DIR__ . '/uploads/sessions/' . $sessionId . '/latest.jpg';
         if (file_exists($imagePath) && is_readable($imagePath)) {
             try {
-                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $visionModel, $sessionId, $imagePath, $contextStr, $candidateText);
+                $spokenText = queryChatWithTools($mappedMessages, $sessionId, $imagePath, $contextStr, $candidateText);
             } catch (Exception $visionEx) {
-                $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
+                $spokenText = queryChatWithTools($mappedMessages, $sessionId);
             }
         } else {
-            $spokenText = queryGeminiChatWithTools($mappedMessages, $customApiKey, $chatModel, $sessionId);
+            $spokenText = queryChatWithTools($mappedMessages, $sessionId);
         }
     }
 
@@ -296,14 +273,14 @@ try {
 
     $stream = $input['stream'] ?? false;
     if ($stream) {
-        streamOpenAIResponse($cleanResponse, $input['model'] ?? $chatModel);
+        streamOpenAIResponse($cleanResponse, $input['model'] ?? 'truinterview');
     } else {
         // Format OpenAI-compatible Chat Completions JSON output
         $response = [
             "id" => "chatcmpl-" . uniqid(),
             "object" => "chat.completion",
             "created" => time(),
-            "model" => $chatModel,
+            "model" => $input['model'] ?? 'truinterview',
             "choices" => [
                 [
                     "index" => 0,

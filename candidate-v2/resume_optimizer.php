@@ -101,7 +101,7 @@ $initials = substr($initials, 0, 2);
       
       <!-- LOADING COVER SKELETON -->
       <div id="loading-container" style="display: none; flex-direction: column; gap: 24px; width: 100%;">
-        <div class="panel-title-large" id="loading-status">Analyzing with Gemini AI...</div>
+        <div class="panel-title-large" id="loading-status">Analyzing with AI...</div>
         <div class="skeleton-wrapper">
           <div class="skeleton-line" style="width: 80%;"></div>
           <div class="skeleton-line" style="width: 95%;"></div>
@@ -114,7 +114,7 @@ $initials = substr($initials, 0, 2);
       <!-- STEP 1: REALITY CHECK & JD ENTRY -->
       <div class="panel-step-content active" id="step-content-1">
         <h3 class="panel-title-large">Step 1: Reality Check</h3>
-        <p class="panel-subtitle">Gemini has analyzed your resume blindly to deduce how standard Applicant Tracking Systems bucket your profile.</p>
+        <p class="panel-subtitle">The AI has analyzed your resume blindly to deduce how standard Applicant Tracking Systems bucket your profile.</p>
 
         <div style="background: #f8fafc; border: 1px solid var(--color-border); padding: 24px; border-radius: var(--radius-inner);">
           <div style="display: flex; gap: 40px; align-items: baseline; margin-bottom: 12px;">
@@ -170,7 +170,7 @@ $initials = substr($initials, 0, 2);
       <!-- STEP 2: GAP ANALYSIS & QUESTIONNAIRE -->
       <div class="panel-step-content" id="step-content-2">
         <h3 class="panel-title-large">Step 2: Gap Analysis & Skill Gathering</h3>
-        <p class="panel-subtitle">Gemini has compared your resume against the Job Description. Tell us if you have worked with these missing items, and we'll weave them into the final version.</p>
+        <p class="panel-subtitle">The AI has compared your resume against the Job Description. Tell us if you have worked with these missing items, and we'll weave them into the final version.</p>
 
         <div id="gaps-list" style="display: flex; flex-direction: column; gap: 16px;">
           <!-- Loaded dynamically -->
@@ -180,7 +180,7 @@ $initials = substr($initials, 0, 2);
       <!-- STEP 3: EXPERIENCE MATHEMATICAL TIMELINE -->
       <div class="panel-step-content" id="step-content-3">
         <h3 class="panel-title-large">Step 3: Computational Experience Verification</h3>
-        <p class="panel-subtitle">ATS algorithms rank resumes strictly on calculated duration metrics. Gemini parsed your employment dates, and we computed them mathematically to prevent overlaps and formatting failures.</p>
+        <p class="panel-subtitle">ATS algorithms rank resumes strictly on calculated duration metrics. The AI parsed your employment dates, and we computed them mathematically to prevent overlaps and formatting failures.</p>
 
         <div class="timeline-metric-card">
           <div>

@@ -61,58 +61,6 @@ const initCandidateHub = () => {
     return new Promise(resolve => setTimeout(resolve, delay));
   }
 
-  // Settings Modal Logic
-  const settingsModal = document.getElementById('settings-modal');
-  const btnOpenSettings = document.getElementById('btn-open-settings-modal');
-  const btnCloseSettings = document.getElementById('btn-close-settings-modal');
-  const formSettings = document.getElementById('form-settings');
-  
-  if (btnOpenSettings) {
-    btnOpenSettings.addEventListener('click', () => {
-      settingsModal.classList.add('active');
-    });
-  }
-  
-  if (btnCloseSettings) {
-    btnCloseSettings.addEventListener('click', () => {
-      settingsModal.classList.remove('active');
-    });
-  }
-
-  if (formSettings) {
-    formSettings.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btnSubmit = document.getElementById('btn-submit-settings');
-      btnSubmit.innerHTML = '<span class="spinner"></span> Saving...';
-      btnSubmit.disabled = true;
-
-      const formData = new URLSearchParams(new FormData(formSettings));
-      formData.append('action', 'update_settings');
-
-      try {
-        const res = await fetch('ajax.php', {
-          method: 'POST',
-          body: formData,
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-          showToast(data.message, 'success');
-          setTimeout(() => window.location.reload(), 1000);
-        } else {
-          showToast(data.message || 'Error updating settings', 'error');
-          btnSubmit.innerHTML = 'Save Settings';
-          btnSubmit.disabled = false;
-        }
-      } catch (err) {
-        showToast('Network error', 'error');
-        btnSubmit.innerHTML = 'Save Settings';
-        btnSubmit.disabled = false;
-      }
-    });
-  }
-
   // Create Profile Modal Logic
   const createModal = document.getElementById('create-modal');
   const btnOpenCreate = document.getElementById('btn-open-create-modal');

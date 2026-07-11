@@ -303,7 +303,7 @@ $codeOffset = 251.2 - (251.2 * $codeScore) / 10;
                   </div>
                   
                   <div style="font-size: 0.85rem; line-height: 1.4; color: var(--color-text-primary); margin-top: 4px;">
-                    <strong>Gemini Vision Verdict:</strong> <?php echo htmlspecialchars($alert['ai_verdict'] ?? 'No verification performed.'); ?>
+                    <strong>AI Vision Verdict:</strong> <?php echo htmlspecialchars($alert['ai_verdict'] ?? 'No verification performed.'); ?>
                   </div>
                   
                   <div style="margin-top: 6px;">

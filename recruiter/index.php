@@ -42,32 +42,17 @@ $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
 // Check for update_settings action (AJAX POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_settings') {
     header('Content-Type: application/json');
-    $apiKey = $_POST['custom_gemini_api_key'] ?? '';
-    $geminiScope = $_POST['gemini_key_scope'] ?? 'invite_only';
     $trugenApiKey = $_POST['custom_trugen_api_key'] ?? '';
     $trugenScope = $_POST['trugen_key_scope'] ?? 'invite_only';
-    $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.1-flash-lite';
-    $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.1-flash-lite';
-    $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.1-flash-lite';
-    
+
     try {
-        $stmtUpdate = $db->prepare("UPDATE users SET 
-            custom_gemini_api_key = :api_key, 
-            gemini_key_scope = :gemini_scope,
-            custom_trugen_api_key = :trugen_api_key, 
-            trugen_key_scope = :trugen_scope,
-            model_chat_task = :model_chat, 
-            model_vision_task = :model_vision, 
-            model_eval_task = :model_eval
+        $stmtUpdate = $db->prepare("UPDATE users SET
+            custom_trugen_api_key = :trugen_api_key,
+            trugen_key_scope = :trugen_scope
             WHERE id = :id");
         $stmtUpdate->execute([
-            'api_key' => empty($apiKey) ? null : trim($apiKey),
-            'gemini_scope' => $geminiScope,
             'trugen_api_key' => empty($trugenApiKey) ? null : trim($trugenApiKey),
             'trugen_scope' => $trugenScope,
-            'model_chat' => $modelChat,
-            'model_vision' => $modelVision,
-            'model_eval' => $modelEval,
             'id' => $user['id']
         ]);
         echo json_encode(['success' => true, 'message' => 'Settings updated successfully.']);
@@ -191,12 +176,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $categoryId = null;
             $matchPercentage = 0;
             try {
-                $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-                $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-                
                 require_once __DIR__ . '/../ai_service.php';
                 $categories = getAllCategories();
-                $aiResult = matchRoleToCategory($jobRole, $categories, $model, $apiKey);
+                $aiResult = matchRoleToCategory($jobRole, $categories);
                 
                 if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
                     if ($aiResult['match_percentage'] >= 15) {
@@ -694,31 +676,6 @@ $levelNames = [
             <span style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary);">API Credentials</span>
           </div>
 
-          <!-- Custom Gemini API Key -->
-          <div class="form-group" style="margin-bottom: var(--space-2); position: relative;">
-            <label class="form-label">Custom Gemini API Key</label>
-            <div style="position: relative; display: flex; align-items: center;">
-              <input type="password" id="input-gemini-key" name="custom_gemini_api_key" class="form-input" placeholder="e.g. AIzaSy..." value="<?php echo htmlspecialchars($userFull['custom_gemini_api_key'] ?? ''); ?>" style="width: 100%; padding-right: 40px;">
-              <button type="button" onclick="togglePasswordVisibility('input-gemini-key', this)" style="position: absolute; right: 12px; background: transparent; border: none; cursor: pointer; color: var(--color-text-muted); display: flex; align-items: center; padding: 0;">
-                <svg class="eye-icon" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  <path class="eye-closed" style="display: none;" stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                </svg>
-              </button>
-            </div>
-            <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 4px;">If empty, the platform global API key is used.</div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: var(--space-4);">
-            <label class="form-label" style="font-size: 0.78rem; font-weight: 500;">Gemini Key Usage Scope</label>
-            <select name="gemini_key_scope" class="form-input" style="padding: 6px 12px; font-size: 0.78rem;">
-              <option value="everywhere" <?php if (($userFull['gemini_key_scope'] ?? '') === 'everywhere') echo 'selected'; ?>>Everywhere</option>
-              <option value="invite_only" <?php if (($userFull['gemini_key_scope'] ?? 'invite_only') === 'invite_only') echo 'selected'; ?>>Invite Interview</option>
-            </select>
-            <div style="font-size: 0.7rem; color: var(--color-text-secondary); line-height: 1.3; margin-top: 2px;">In "Invite Interview" mode, the recruiter's Gemini API key is always used when candidates access via interview links, allowing them to take the interview without logging in.</div>
-          </div>
-
           <!-- Custom TruGen API Key -->
           <div class="form-group" style="margin-bottom: var(--space-2); position: relative;">
             <label class="form-label">Custom TruGen API Key</label>
@@ -742,42 +699,6 @@ $levelNames = [
               <option value="invite_only" <?php if (($userFull['trugen_key_scope'] ?? 'invite_only') === 'invite_only') echo 'selected'; ?>>Invite Interview</option>
             </select>
             <div style="font-size: 0.7rem; color: var(--color-text-secondary); line-height: 1.3; margin-top: 2px;">In "Invite Interview" mode, the recruiter's TruGen API key is always used when candidates access via interview links, allowing them to take the interview without logging in.</div>
-          </div>
-        </div>
-        
-        <div class="model-configs-group" style="border: 1px solid var(--color-border); border-radius: var(--radius-inner); padding: var(--space-4); background: var(--color-bg-base); display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-2);">
-          <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2); margin-bottom: var(--space-2);">
-            <svg style="width: 18px; height: 18px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 21m0 0l-.813-5.096m.813 5.096a17.21 17.21 0 01-2.906-8.72m2.906 8.72a17.21 17.21 0 002.906-8.72m-5.812 0a17.21 17.21 0 014.286-11.28m-4.286 11.28a17.219 17.219 0 001.378-5.385m4.434 5.385a17.21 17.21 0 00-4.286-11.28m4.286 11.28a17.22 17.22 0 01-1.378-5.385M8.167 12a14.776 14.776 0 001.17 4.195m0 0a14.777 14.777 0 011.17-4.195m-2.34 0a14.777 14.777 0 011.17-4.195m0 0a14.776 14.776 0 001.17 4.195" />
-            </svg>
-            <span style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary);">Model Overrides</span>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Dialogue (Chat) Model Override</label>
-            <select name="model_chat_task" class="form-input" style="width: 100%;">
-              <option value="gemini-3.5-flash" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Fast, conversational)</option>
-              <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-flash-lite' || empty($userFull['model_chat_task'])) echo 'selected'; ?>>gemini-3.1-flash-lite (Ultra-low latency dialog)</option>
-              <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_chat_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Deep, rich answers)</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Screen Context (Vision) Model Override</label>
-            <select name="model_vision_task" class="form-input" style="width: 100%;">
-              <option value="gemini-3.5-flash" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Balanced speed)</option>
-              <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (High intelligence code understanding)</option>
-              <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_vision_task'] ?? '') === 'gemini-3.1-flash-lite' || empty($userFull['model_vision_task'])) echo 'selected'; ?>>gemini-3.1-flash-lite (Fastest processing)</option>
-            </select>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Evaluation (Grading) Model Override</label>
-            <select name="model_eval_task" class="form-input" style="width: 100%;">
-              <option value="gemini-3.1-pro-preview" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-pro-preview') echo 'selected'; ?>>gemini-3.1-pro (Advanced grading report evaluation)</option>
-              <option value="gemini-3.5-flash" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.5-flash') echo 'selected'; ?>>gemini-3.5-flash (Standard grading evaluation)</option>
-              <option value="gemini-3.1-flash-lite" <?php if (($userFull['model_eval_task'] ?? '') === 'gemini-3.1-flash-lite' || empty($userFull['model_eval_task'])) echo 'selected'; ?>>gemini-3.1-flash-lite (Fast grading evaluation)</option>
-            </select>
           </div>
         </div>
 

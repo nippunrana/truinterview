@@ -1,46 +1,41 @@
 <?php
-// proctor_service.php - Gemini Vision Proctoring & Warning Generators
+// proctor_service.php - Vision Proctoring & Warning Generators
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/ai_service.php';
 
 /**
- * Calls Gemini Vision with a focused prompt to analyze a proctoring snapshot.
+ * Calls the vision model with a focused prompt to analyze a proctoring snapshot.
  * Returns ['verdict' => string, 'confirmed' => bool]
  */
-function analyzeProctorSnapshot($imagePath, $alertType, $clientDetails, $apiKeyOverride = null, $model = 'gemini-3.5-flash') {
+function analyzeProctorSnapshot($imagePath, $alertType, $clientDetails) {
     if (!file_exists($imagePath)) {
         throw new Exception("Snapshot image file not found: " . $imagePath);
     }
 
     $imageData = base64_encode(file_get_contents($imagePath));
-    $mimeType = 'image/jpeg';
-    
-    $prompt = getProctorGeminiPrompt($alertType);
-    
-    $payload = [
-        "contents" => [
-            [
-                "parts" => [
-                    [
-                        "text" => $prompt
-                    ],
-                    [
-                        "inlineData" => [
-                            "mimeType" => $mimeType,
-                            "data" => $imageData
-                        ]
-                    ]
-                ]
+
+    $messages = [
+        [
+            "role" => "user",
+            "content" => [
+                ["type" => "text", "text" => getProctorPrompt($alertType)],
+                ["type" => "image_url", "image_url" => ["url" => "data:image/jpeg;base64," . $imageData]]
             ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json"
         ]
     ];
 
     try {
-        $responseJson = callGemini($payload, $model, $apiKeyOverride);
+        $responseJson = callAI($messages, 'proctor_vision', [
+            'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'confirmed' => ['type' => 'boolean'],
+                    'reason' => ['type' => 'string']
+                ],
+                'required' => ['confirmed', 'reason']
+            ]]]
+        ]);
         $data = json_decode($responseJson, true);
         
         if (json_last_error() !== JSON_ERROR_NONE || !isset($data['confirmed'])) {
@@ -60,15 +55,15 @@ function analyzeProctorSnapshot($imagePath, $alertType, $clientDetails, $apiKeyO
     } catch (Exception $e) {
         return [
             'verdict' => 'AI analysis failed: ' . $e->getMessage(),
-            'confirmed' => true // Default to true (trust the local detector) if Gemini call fails
+            'confirmed' => true // Default to true (trust the local detector) if the AI call fails
         ];
     }
 }
 
 /**
- * Returns the appropriate Gemini Vision prompt based on the alert type.
+ * Returns the appropriate vision prompt based on the alert type.
  */
-function getProctorGeminiPrompt($alertType) {
+function getProctorPrompt($alertType) {
     switch ($alertType) {
         case 'no_face':
             return "You are a webcam monitoring assistant for a live interview. The local system flagged that no face was detected in the frame.\n" .

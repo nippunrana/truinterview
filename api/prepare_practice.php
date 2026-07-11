@@ -1,5 +1,5 @@
 <?php
-// api/prepare_practice.php - Prepares practice interview questions using Gemini
+// api/prepare_practice.php - Prepares practice interview questions using AI
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -37,7 +37,6 @@ try {
     $jobRole = "";
     $jobDescription = "";
     $targetLevel = 1;
-    $modelEval = 'gemini-3.5-flash';
     $numOpen = 4;
     $numMCQ = 4;
 
@@ -61,16 +60,6 @@ try {
             $numOpen = 4;
             $numMCQ = 4;
         }
-
-        // Resolve Recruiter Model Settings if available
-        if (!empty($link['created_by'])) {
-            $stmt = $db->prepare("SELECT model_eval_task FROM users WHERE id = :id");
-            $stmt->execute(['id' => $link['created_by']]);
-            $recruiterSettings = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!empty($recruiterSettings['model_eval_task'])) {
-                $modelEval = $recruiterSettings['model_eval_task'];
-            }
-        }
     } else {
         // 1. Fetch Candidate Profile
         $stmt = $db->prepare("SELECT role_title, level, resume_data FROM candidate_profiles WHERE id = :profile_id AND user_id = :user_id");
@@ -93,12 +82,6 @@ try {
         $detectedRole = $resumeData['detected_role'] ?? '';
         $jobRole = $detectedRole ?: $userEnteredRole;
         $jobDescription = $resumeData['user_entered_description'] ?? '';
-
-        // 2. Fetch User Model Settings
-        $stmt = $db->prepare("SELECT model_eval_task FROM users WHERE id = :id");
-        $stmt->execute(['id' => $currentUser['id']]);
-        $userSettings = $stmt->fetch(PDO::FETCH_ASSOC);
-        $modelEval = $userSettings['model_eval_task'] ?: 'gemini-3.5-flash';
     }
 
     // 3. Formulate Context
@@ -221,34 +204,34 @@ Return ONLY a JSON array of exactly {$totalQuestions} objects matching the respo
 </verification>
 EOT;
 
-    // 4. Call Gemini
+    // 4. Call the question generation model
     $schema = [
-        "type" => "ARRAY",
+        "type" => "array",
         "items" => [
-            "type" => "OBJECT",
+            "type" => "object",
             "properties" => [
                 "type" => [
-                    "type" => "STRING",
+                    "type" => "string",
                     "enum" => ["open", "mcq"],
                     "description" => "The type of question, either 'open' or 'mcq'."
                 ],
                 "question" => [
-                    "type" => "STRING",
+                    "type" => "string",
                     "description" => "The text of the question (do not embed options A, B, C, D in this string)."
                 ],
                 "options" => [
-                    "type" => "OBJECT",
+                    "type" => ["object", "null"],
                     "properties" => [
-                        "A" => ["type" => "STRING"],
-                        "B" => ["type" => "STRING"],
-                        "C" => ["type" => "STRING"],
-                        "D" => ["type" => "STRING"]
+                        "A" => ["type" => "string"],
+                        "B" => ["type" => "string"],
+                        "C" => ["type" => "string"],
+                        "D" => ["type" => "string"]
                     ],
                     "required" => ["A", "B", "C", "D"],
-                    "description" => "For MCQ questions, provide four options. For open questions, this field is not present or null."
+                    "description" => "For MCQ questions, provide four options. For open questions, this field is null."
                 ],
                 "answer" => [
-                    "type" => "STRING",
+                    "type" => "string",
                     "description" => "For open questions, a factual explanation strictly under 100 words. For MCQ, the correct option letter (A, B, C, or D)."
                 ]
             ],
@@ -256,23 +239,11 @@ EOT;
         ]
     ];
 
-    $payload = [
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $prompt]
-                ]
-            ]
-        ],
-        "generationConfig" => [
-            "responseMimeType" => "application/json",
-            "responseSchema" => $schema,
-            "temperature" => 0.7
-        ]
-    ];
-
-    $responseJson = callGemini($payload, $modelEval);
+    $responseJson = callAI([
+        ["role" => "user", "content" => $prompt]
+    ], 'question_generation', [
+        'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'questions', 'schema' => $schema]]
+    ]);
     $qaData = json_decode($responseJson, true);
 
     if (!$qaData || !is_array($qaData) || count($qaData) !== $totalQuestions) {

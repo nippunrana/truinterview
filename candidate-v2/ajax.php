@@ -13,37 +13,6 @@ header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
 
-if ($action === 'update_settings') {
-    $apiKey = $_POST['custom_gemini_api_key'] ?? '';
-    $modelChat = $_POST['model_chat_task'] ?? 'gemini-3.1-flash-lite';
-    $modelVision = $_POST['model_vision_task'] ?? 'gemini-3.1-flash-lite';
-    $modelEval = $_POST['model_eval_task'] ?? 'gemini-3.1-flash-lite';
-    $modelOptimizer = $_POST['model_optimizer_task'] ?? 'gemini-3.5-flash';
-    
-    try {
-        $db = getDB();
-        $stmt = $db->prepare("UPDATE users SET 
-            custom_gemini_api_key = :api_key, 
-            model_chat_task = :model_chat, 
-            model_vision_task = :model_vision, 
-            model_eval_task = :model_eval,
-            model_optimizer_task = :model_optimizer
-            WHERE id = :id");
-        $stmt->execute([
-            'api_key' => empty($apiKey) ? null : trim($apiKey),
-            'model_chat' => $modelChat,
-            'model_vision' => $modelVision,
-            'model_eval' => $modelEval,
-            'model_optimizer' => $modelOptimizer,
-            'id' => $user['id']
-        ]);
-        echo json_encode(['success' => true, 'message' => 'Settings updated successfully.']);
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
-    exit;
-}
-
 if ($action === 'create_profile') {
     $roleTitle = trim($_POST['role_title'] ?? '');
     if (empty($roleTitle)) {
@@ -56,15 +25,12 @@ if ($action === 'create_profile') {
 
     try {
         $db = getDB();
-        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key, resume_path FROM users WHERE id = :id");
+        $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
         $stmt->execute(['id' => $user['id']]);
         $userFull = $stmt->fetch();
-        
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-        
+
         $categories = getAllCategories();
-        $aiResult = matchRoleToCategory($roleTitle, $categories, $model, $apiKey);
+        $aiResult = matchRoleToCategory($roleTitle, $categories);
         
         if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage'])) {
             if ($aiResult['match_percentage'] >= 15) {
@@ -185,15 +151,7 @@ if ($action === 'upload_resume') {
 
     if (move_uploaded_file($tmpName, $dest)) {
         // Run AI Verification
-        $db = getDB();
-        $stmt = $db->prepare("SELECT * FROM users WHERE id = :id");
-        $stmt->execute(['id' => $user['id']]);
-        $userFull = $stmt->fetch();
-        
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.1-flash-lite';
-        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-        
-        $verification = verifyUploadedResume($dest, $ext, $user['full_name'], $model, $apiKey);
+        $verification = verifyUploadedResume($dest, $ext, $user['full_name']);
 
         if (!$verification || isset($verification['error'])) {
             @unlink($dest);
@@ -232,13 +190,13 @@ if ($action === 'upload_resume') {
                 }
             }
 
-            $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
-            
+            $textVersion = optimizer_extract_text($finalDest, $ext);
+
             // Run QA check
-            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion);
             $needsHumanReview = false;
             if (!empty($qa['needs_fix'])) {
-                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues']);
                 $needsHumanReview = true;
             }
             
@@ -292,20 +250,13 @@ if ($action === 'commit_resume') {
             }
         }
 
-        $db = getDB();
-        $stmt = $db->prepare("SELECT model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
-        $stmt->execute(['id' => $user['id']]);
-        $userFull = $stmt->fetch();
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-        
-        $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
-        
+        $textVersion = optimizer_extract_text($finalDest, $ext);
+
         // Run QA check
-        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion);
         $needsHumanReview = false;
         if (!empty($qa['needs_fix'])) {
-            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues']);
             $needsHumanReview = true;
         }
         
@@ -348,7 +299,7 @@ if ($action === 'upload_global_resume') {
     }
 
     $db = getDB();
-    $stmt = $db->prepare("SELECT resume_path, model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
     $stmt->execute(['id' => $user['id']]);
     $userFull = $stmt->fetch();
 
@@ -368,10 +319,7 @@ if ($action === 'upload_global_resume') {
 
     if (move_uploaded_file($tmpName, $dest)) {
         // Run AI Verification
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-        
-        $verification = verifyUploadedResume($dest, $ext, $user['full_name'], $model, $apiKey);
+        $verification = verifyUploadedResume($dest, $ext, $user['full_name']);
 
         if (!$verification || isset($verification['error'])) {
             @unlink($dest);
@@ -401,13 +349,13 @@ if ($action === 'upload_global_resume') {
         if (rename($dest, $finalDest)) {
             $resumePath = 'uploads/resumes/' . $finalFileName;
             
-            $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
-            
+            $textVersion = optimizer_extract_text($finalDest, $ext);
+
             // Run QA check
-            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+            $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion);
             $needsHumanReview = false;
             if (!empty($qa['needs_fix'])) {
-                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+                $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues']);
                 $needsHumanReview = true;
             }
 
@@ -453,7 +401,7 @@ if ($action === 'commit_global_resume') {
     }
 
     $db = getDB();
-    $stmt = $db->prepare("SELECT resume_path, model_chat_task, custom_gemini_api_key FROM users WHERE id = :id");
+    $stmt = $db->prepare("SELECT resume_path FROM users WHERE id = :id");
     $stmt->execute(['id' => $user['id']]);
     $userFull = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -480,23 +428,20 @@ if ($action === 'commit_global_resume') {
         
         $textVersion = '';
         $shortDescription = 'Bypassed name mismatch verification.';
-        
-        $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-        $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-        
-        $verification = verifyUploadedResume($finalDest, $ext, $user['full_name'], $model, $apiKey);
+
+        $verification = verifyUploadedResume($finalDest, $ext, $user['full_name']);
         if ($verification && !isset($verification['error'])) {
             $textVersion = $verification['text_version'] ?? '';
             $shortDescription = $verification['short_description'] ?? 'Bypassed name mismatch verification.';
         }
-        
-        $textVersion = optimizer_extract_text($finalDest, $ext, $model, $apiKey);
-        
+
+        $textVersion = optimizer_extract_text($finalDest, $ext);
+
         // Run QA check
-        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion, $model, $apiKey);
+        $qa = qa_assess_resume_extraction($finalDest, $ext, $textVersion);
         $needsHumanReview = false;
         if (!empty($qa['needs_fix'])) {
-            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues'], $model, $apiKey);
+            $textVersion = fix_resume_extraction($finalDest, $ext, $textVersion, $qa['issues']);
             $needsHumanReview = true;
         }
 

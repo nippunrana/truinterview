@@ -38,10 +38,8 @@ foreach ($profiles as $idx => $profile) {
                 $fullPath = __DIR__ . '/../' . $profile['optimized_resume_path'];
                 if (file_exists($fullPath)) {
                     $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-                    $model = $userFull['model_chat_task'] ?? 'gemini-3.5-flash';
-                    $apiKey = $userFull['custom_gemini_api_key'] ?? null;
-                    
-                    $verification = verifyUploadedResume($fullPath, $ext, $user['full_name'], $model, $apiKey);
+
+                    $verification = verifyUploadedResume($fullPath, $ext, $user['full_name']);
                     if ($verification && !isset($verification['error'])) {
                         $detectedRole = $verification['detected_role'] ?? 'Resume';
                         $profileChanges = $profileResumeData['optimization_changes'] ?? null;
@@ -332,9 +330,6 @@ $levelDescriptions = [
         </button>
         <!-- END OPTION C -->
 
-        <button id="btn-open-settings-modal" class="btn btn-outline-header" style="padding: 6px; border: none; background: transparent;" title="Settings">
-          <svg style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        </button>
         <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
         <a href="../logout.php" class="btn btn-outline-header" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
