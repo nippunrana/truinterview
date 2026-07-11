@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../auth.php';
 require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../optimizer_service.php';
+require_once __DIR__ . '/../../ai_service.php';
 
 requireAuth(['candidate']);
 $user = getCurrentUser();
@@ -119,10 +120,62 @@ if (isset($_GET['ajax_action']) || isset($_POST['ajax_action'])) {
                     $aiRefinedRole = $targetRole;
                 }
                 $result = optimizer_save_to_candidate_profile($profileId, $user['id'], $optimizedMarkdown, $changes, $aiRefinedRole, $originalPath, $targetRole, $jobDescription);
-            } else {
-                $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes, $originalPath);
+                echo json_encode(['success' => true, 'data' => $result]);
+                exit;
             }
-            echo json_encode(['success' => true, 'data' => $result]);
+
+            $result = optimizer_save_to_profile($user['id'], $optimizedMarkdown, $changes, $originalPath);
+
+            $roleProfileCreated = false;
+            $roleProfileId = null;
+            $limitReached = false;
+
+            if (($_POST['create_role_profile'] ?? '') === '1') {
+                $roleForProfile = !empty($aiRefinedRole) ? $aiRefinedRole : $targetRole;
+
+                if (!empty($roleForProfile)) {
+                    $roleTitleId = preg_replace('/\s+/', '-', $roleForProfile);
+                    $roleTitleId = preg_replace('/[^a-zA-Z0-9\-]/', '', $roleTitleId);
+                    $roleTitleId = preg_replace('/-+/', '-', $roleTitleId);
+                    $roleTitleId = trim($roleTitleId, '-');
+
+                    $newProfileId = findCandidateProfileBySlug($user['id'], $roleTitleId);
+
+                    if (empty($newProfileId)) {
+                        $categoryId = null;
+                        $matchPercentage = 0;
+                        try {
+                            $categories = getAllCategories();
+                            $aiResult = matchRoleToCategory($roleForProfile, $categories);
+                            if (!empty($aiResult['category_id']) && isset($aiResult['match_percentage']) && $aiResult['match_percentage'] >= 15) {
+                                $categoryId = $aiResult['category_id'];
+                                $matchPercentage = $aiResult['match_percentage'];
+                            }
+                        } catch (Exception $e) {
+                            // Fail silently and leave category empty if AI matching fails
+                        }
+
+                        $newProfileId = createCandidateProfile($user['id'], $roleForProfile, $categoryId, $matchPercentage);
+                        if (empty($newProfileId)) {
+                            $limitReached = true;
+                        }
+                    }
+
+                    if (!empty($newProfileId)) {
+                        optimizer_save_to_candidate_profile($newProfileId, $user['id'], $optimizedMarkdown, $changes, $aiRefinedRole, $originalPath, $targetRole, $jobDescription);
+                        $roleProfileCreated = true;
+                        $roleProfileId = $newProfileId;
+                    }
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => $result,
+                'role_profile_created' => $roleProfileCreated,
+                'role_profile_id' => $roleProfileId,
+                'limit_reached' => $limitReached
+            ]);
             exit;
         }
 

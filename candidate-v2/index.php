@@ -305,10 +305,6 @@ $levelDescriptions = [
     }
   }
   </style>
-
-  <script>
-    window.IS_ONBOARDING_STATE = <?php echo json_encode($isEmptyState); ?>;
-  </script>
 </head>
 <body>
 
@@ -382,8 +378,8 @@ $levelDescriptions = [
             <div class="onboarding-step">
               <div class="step-num">2</div>
               <div class="step-info">
-                <span class="step-title">Confirm Role</span>
-                <span class="step-desc">Verify AI detected role</span>
+                <span class="step-title">Optimize Resume</span>
+                <span class="step-desc">Get an AI-optimized version (optional)</span>
               </div>
             </div>
             <div class="step-connector"></div>

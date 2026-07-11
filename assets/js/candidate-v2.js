@@ -508,11 +508,7 @@ const initCandidateHub = () => {
           const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
           await stopLoadingText(msg, 2000);
           document.getElementById('ai-loading-overlay').classList.remove('active');
-          if (window.IS_ONBOARDING_STATE) {
-            showOnboardingSuccessModal(data.path, data.detected_role);
-          } else {
-            showPostUploadModal(data.path);
-          }
+          showPostUploadModal(data.path);
         } else {
           await stopLoadingText(null, 0);
           document.getElementById('ai-loading-overlay').classList.remove('active');
@@ -678,11 +674,7 @@ const initCandidateHub = () => {
             await stopLoadingText(msg, 2000);
             if (window.isGlobalUpload) {
               document.getElementById('ai-loading-overlay').classList.remove('active');
-              if (window.IS_ONBOARDING_STATE) {
-                showOnboardingSuccessModal(data.path, data.detected_role);
-              } else {
-                showPostUploadModal(data.path);
-              }
+              showPostUploadModal(data.path);
             } else {
               window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(data.path) + '&profile_id=' + encodeURIComponent(window.pendingProfileId);
             }
@@ -869,20 +861,6 @@ const initCandidateHub = () => {
   };
 
   // --- Onboarding Flow Logic ---
-  const onboardingSuccessModal = document.getElementById('onboarding-success-modal');
-  const onboardingRoleInput = document.getElementById('onboarding_role_title');
-  let onboardingResumePath = null;
-
-  function showOnboardingSuccessModal(resumePath, detectedRole) {
-    onboardingResumePath = resumePath;
-    if (onboardingRoleInput) {
-      onboardingRoleInput.value = detectedRole || 'Software Engineer';
-    }
-    if (onboardingSuccessModal) {
-      onboardingSuccessModal.classList.add('active');
-      setTimeout(() => onboardingRoleInput.focus(), 50);
-    }
-  }
 
   // Onboarding Drag and Drop + Trigger Upload
   const onboardingDropZone = document.getElementById('onboarding-drop-zone');
@@ -965,7 +943,7 @@ const initCandidateHub = () => {
         const msg = data.needs_human_review ? "Done! Fixed minor issues. Please verify the text version." : "All done successfully!";
         await stopLoadingText(msg, 2000);
         document.getElementById('ai-loading-overlay').classList.remove('active');
-        showOnboardingSuccessModal(data.path, data.detected_role);
+        showPostUploadModal(data.path);
       } else {
         await stopLoadingText(null, 0);
         document.getElementById('ai-loading-overlay').classList.remove('active');
@@ -985,52 +963,6 @@ const initCandidateHub = () => {
       document.getElementById('ai-loading-overlay').classList.remove('active');
       showToast('Network error during upload', 'error');
     }
-  }
-
-  // Onboarding Modal button events
-  const btnOnboardingSubmit = document.getElementById('btn-onboarding-submit');
-
-  if (btnOnboardingSubmit) {
-    btnOnboardingSubmit.addEventListener('click', async () => {
-      const roleTitle = onboardingRoleInput.value.trim();
-      if (!roleTitle) {
-        showToast('Please enter a target role title.', 'error');
-        return;
-      }
-
-      btnOnboardingSubmit.innerHTML = '<span class="spinner"></span> Creating Profile...';
-      btnOnboardingSubmit.disabled = true;
-
-      try {
-        const formData = new URLSearchParams();
-        formData.append('action', 'create_profile');
-        formData.append('role_title', roleTitle);
-        formData.append('base_resume_path', onboardingResumePath);
-
-        const res = await fetch('ajax.php', {
-          method: 'POST',
-          body: formData,
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-          showToast('Profile created successfully! Routing to optimizer...', 'success');
-          // Redirect directly to the resume optimizer
-          setTimeout(() => {
-            window.location.href = 'resume_optimizer.php?resume_path=' + encodeURIComponent(onboardingResumePath) + '&profile_id=' + encodeURIComponent(data.profile_id);
-          }, 1000);
-        } else {
-          showToast(data.message || 'Error creating profile', 'error');
-          btnOnboardingSubmit.innerHTML = '<span>Create Profile & Start Optimization</span>';
-          btnOnboardingSubmit.disabled = false;
-        }
-      } catch (err) {
-        showToast('Network error while setting up profile', 'error');
-        btnOnboardingSubmit.innerHTML = '<span>Create Profile & Start Optimization</span>';
-        btnOnboardingSubmit.disabled = false;
-      }
-    });
   }
 
   if (btnOnboardingJoin) {

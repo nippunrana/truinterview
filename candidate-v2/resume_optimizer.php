@@ -50,8 +50,8 @@ $initials = substr($initials, 0, 2);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resume Optimizer - TruInterview</title>
-  <link rel="stylesheet" href="../assets/css/candidate.css">
-  <link rel="stylesheet" href="../assets/css/resume_optimizer.css">
+  <link rel="stylesheet" href="../assets/css/candidate.css?v=<?php echo filemtime(__DIR__ . '/../assets/css/candidate.css'); ?>">
+  <link rel="stylesheet" href="../assets/css/resume_optimizer.css?v=<?php echo filemtime(__DIR__ . '/../assets/css/resume_optimizer.css'); ?>">
 </head>
 <body class="dashboard-body">
 
@@ -223,6 +223,7 @@ $initials = substr($initials, 0, 2);
             </div>
           </div>
 
+          <?php if ($isProfileMode): ?>
           <div style="background: #f8fafc; border: 1px solid var(--color-border); padding: 20px; border-radius: var(--radius-inner); display: flex; align-items: center; justify-content: space-between;">
             <div>
               <div style="font-weight: 700; color: var(--color-text-primary); font-size: 0.95rem;">Commit to Profile</div>
@@ -230,6 +231,18 @@ $initials = substr($initials, 0, 2);
             </div>
             <button class="btn-primary-action" id="btn-save-profile" style="padding: 10px 20px; font-size: 0.85rem; min-width: 140px;">Save to Profile</button>
           </div>
+          <?php else: ?>
+          <div style="background: #f8fafc; border: 1px solid var(--color-border); padding: 20px; border-radius: var(--radius-inner); display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+            <div>
+              <div style="font-weight: 700; color: var(--color-text-primary); font-size: 0.95rem;">Base Resume Optimized</div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">We detected this resume targets <strong id="detected-role-label">this role</strong>. Save your optimized base resume, and optionally set up a role profile to start practicing.</div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+              <button class="btn-secondary-action" id="btn-save-base-only" style="padding: 10px 16px; font-size: 0.85rem; min-width: 100px;">Save Only</button>
+              <button class="btn-primary-action" id="btn-save-with-role" style="padding: 10px 16px; font-size: 0.85rem; min-width: 160px;">Save & Create Role Profile</button>
+            </div>
+          </div>
+          <?php endif; ?>
         </div>
 
         <div class="tab-nav">
@@ -289,7 +302,7 @@ $initials = substr($initials, 0, 2);
       profileId: <?php echo json_encode($_GET['profile_id'] ?? null); ?>
     };
   </script>
-  <script src="../assets/js/resume_optimizer.js"></script>
+  <script src="../assets/js/resume_optimizer.js?v=<?php echo filemtime(__DIR__ . '/../assets/js/resume_optimizer.js'); ?>"></script>
 
 </body>
 </html>

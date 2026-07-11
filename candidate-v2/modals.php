@@ -147,43 +147,6 @@
 </div>
 <!-- END OPTION C -->
 
-<!-- Onboarding Success Modal -->
-<div class="modal-overlay" id="onboarding-success-modal">
-  <div class="modal-content" style="max-width: 460px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); border: 1px solid rgba(79, 70, 229, 0.15); box-shadow: var(--shadow-float);">
-    <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4);">
-      <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(16, 185, 129, 0.1); color: var(--color-success); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-        <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-      </div>
-      <div>
-        <h3 style="font-size: var(--text-lg); font-weight: 700; color: var(--color-text-primary); font-family: 'Outfit', sans-serif;">Resume Analyzed!</h3>
-        <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin: 2px 0 0 0;">Step 2 of 3: Establish your target profile</p>
-      </div>
-    </div>
-    
-    <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-5);">
-      Our AI has successfully analyzed your base resume and detected your target job role. You can confirm or customize the role title below to set up your primary profile.
-    </div>
-
-    <form id="form-onboarding-profile" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6);">
-      <div class="form-group" style="margin-bottom: 0;">
-        <label class="form-label" for="onboarding_role_title" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);">Target Job Role</label>
-        <input type="text" id="onboarding_role_title" name="role_title" class="form-input" placeholder="e.g. Senior Frontend Developer" required autocomplete="off" style="width: 100%; box-sizing: border-box; background: rgba(243, 244, 256, 0.5); border: 1px solid var(--color-border); padding: 12px 14px; font-weight: 600;">
-      </div>
-    </form>
-
-    <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-      <button id="btn-onboarding-submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 0.95rem; font-family: 'Outfit', sans-serif; gap: 8px;">
-        <span>Create Profile & Start Optimization</span>
-        <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-        </svg>
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- Post-Upload Success Modal -->
 <div class="modal-overlay" id="post-upload-modal">
   <div class="modal-content" style="max-width: 440px;">

@@ -875,6 +875,14 @@ function createCandidateProfile($userId, $roleTitle, $categoryId = null, $matchP
     return $stmt->fetchColumn();
 }
 
+function findCandidateProfileBySlug($userId, $roleTitleId) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT id FROM candidate_profiles WHERE user_id = :user_id AND role_title_id = :slug LIMIT 1");
+    $stmt->execute(['user_id' => $userId, 'slug' => $roleTitleId]);
+    $id = $stmt->fetchColumn();
+    return $id !== false ? $id : null;
+}
+
 function deleteCandidateProfile($profileId, $userId) {
     $db = getDB();
     $stmt = $db->prepare("DELETE FROM candidate_profiles WHERE id = :id AND user_id = :user_id");

@@ -366,6 +366,11 @@ async function runFinalOptimization() {
 function renderFinalOutputs() {
   const data = state.finalResult;
 
+  const detectedRoleLabel = document.getElementById('detected-role-label');
+  if (detectedRoleLabel) {
+    detectedRoleLabel.textContent = data.ai_refined_role || state.targetRole || 'this role';
+  }
+
   // Score circle
   document.getElementById('final-score-badge').textContent = data.rating || '0';
   
@@ -443,9 +448,8 @@ document.getElementById('btn-copy-clipboard').addEventListener('click', () => {
   });
 });
 
-// Save optimized resume to profile
-document.getElementById('btn-save-profile').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-profile');
+// Save optimized resume, optionally creating/linking a role profile (base-resume mode only)
+async function saveOptimizedResume(btn, createRoleProfile, defaultLabel) {
   btn.disabled = true;
   btn.textContent = 'Saving...';
 
@@ -458,34 +462,55 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
     if (state.profileId) {
         bodyStr += '&profile_id=' + encodeURIComponent(state.profileId);
     }
+    if (createRoleProfile) {
+        bodyStr += '&create_role_profile=1';
+    }
     if (state.finalResult && state.finalResult.changes) {
         bodyStr += '&changes=' + encodeURIComponent(JSON.stringify(state.finalResult.changes));
     }
-    
+
     const response = await fetch('api/resume_optimizer_ajax.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: bodyStr
     });
     const result = await response.json();
-    
+
     if (result.success) {
       btn.textContent = 'Saved!';
       btn.style.background = 'var(--color-emerald)';
+      if (result.limit_reached) {
+        alert("Resume optimized and saved! You've already reached the maximum of 3 role profiles, so no new role profile was created.");
+      }
       setTimeout(() => {
         window.location.href = 'index.php?success=' + encodeURIComponent('Optimized resume added to your profile successfully.');
       }, 1500);
     } else {
       btn.disabled = false;
-      btn.textContent = 'Save to Profile';
+      btn.textContent = defaultLabel;
       alert('Save failed: ' + (result.message || 'Unknown error'));
     }
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = 'Save to Profile';
+    btn.textContent = defaultLabel;
     alert('API error: ' + err.message);
   }
-});
+}
+
+const btnSaveProfile = document.getElementById('btn-save-profile');
+if (btnSaveProfile) {
+  btnSaveProfile.addEventListener('click', () => saveOptimizedResume(btnSaveProfile, false, 'Save to Profile'));
+}
+
+const btnSaveBaseOnly = document.getElementById('btn-save-base-only');
+if (btnSaveBaseOnly) {
+  btnSaveBaseOnly.addEventListener('click', () => saveOptimizedResume(btnSaveBaseOnly, false, 'Save Only'));
+}
+
+const btnSaveWithRole = document.getElementById('btn-save-with-role');
+if (btnSaveWithRole) {
+  btnSaveWithRole.addEventListener('click', () => saveOptimizedResume(btnSaveWithRole, true, 'Save & Create Role Profile'));
+}
 
 // Step 1: Target Choice handlers
 const btnRcYes = document.getElementById('btn-rc-yes');
