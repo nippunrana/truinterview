@@ -232,12 +232,12 @@ $initials = substr($initials, 0, 2);
             <button class="btn-primary-action" id="btn-save-profile" style="padding: 10px 20px; font-size: 0.85rem; min-width: 140px;">Save to Profile</button>
           </div>
           <?php else: ?>
-          <div style="background: #f8fafc; border: 1px solid var(--color-border); padding: 20px; border-radius: var(--radius-inner); display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+          <div style="background: #f8fafc; border: 1px solid var(--color-border); padding: 20px; border-radius: var(--radius-inner); display: flex; flex-direction: column; gap: 14px;">
             <div>
               <div style="font-weight: 700; color: var(--color-text-primary); font-size: 0.95rem;">Base Resume Optimized</div>
               <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">We detected this resume targets <strong id="detected-role-label">this role</strong>. Save your optimized base resume, and optionally set up a role profile to start practicing.</div>
             </div>
-            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+            <div style="display: flex; gap: 8px;">
               <button class="btn-secondary-action" id="btn-save-base-only" style="padding: 10px 16px; font-size: 0.85rem; min-width: 100px;">Save Only</button>
               <button class="btn-primary-action" id="btn-save-with-role" style="padding: 10px 16px; font-size: 0.85rem; min-width: 160px;">Save & Create Role Profile</button>
             </div>

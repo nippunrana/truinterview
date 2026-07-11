@@ -53,11 +53,27 @@ function optimizer_extract_text($filePath, $ext) {
  * Phase 1: Reality Check (Blind Analysis)
  */
 function optimizer_reality_check($resumeText) {
-    $systemPrompt = "You are a professional technical recruiter. Analyze the provided resume text blindly (without any job description context) to identify the target role and seniority level that the resume currently conveys based on keywords, experience weighting, and accomplishments. Output a JSON object with 'target_role', 'seniority', and 'summary' keys.";
+    $systemPrompt = "<context>\n" .
+                     "You are a professional technical recruiter performing a blind resume assessment, without any job description or target role context.\n" .
+                     "</context>\n" .
+                     "<task>\n" .
+                     "Analyze the resume text and determine:\n" .
+                     "1. The target_role the resume currently conveys, based on the candidate's most recent and most heavily weighted experience, accomplishments, and keyword usage.\n" .
+                     "2. The seniority level implied by that experience.\n" .
+                     "3. A brief professional summary (1-2 sentences) capturing their primary skills and background.\n" .
+                     "</task>\n" .
+                     "<constraints>\n" .
+                     "- Base your assessment strictly on what is stated in the resume text. Do not infer skills or experience that are not evidenced in the text.\n" .
+                     "- target_role must be a concise, standardized job title (2-4 words), not a copy of a bullet point.\n" .
+                     "- seniority must reflect the years and scope of responsibility actually described in the resume, not just the candidate's self-given title.\n" .
+                     "</constraints>\n" .
+                     "<output_format>\n" .
+                     "Output a JSON object with 'target_role', 'seniority', and 'summary' keys.\n" .
+                     "</output_format>";
 
     $response = callAI([
         ["role" => "system", "content" => $systemPrompt],
-        ["role" => "user", "content" => "Analyze this resume text and output the results:\n\n" . $resumeText]
+        ["role" => "user", "content" => "<resume_text>\n" . $resumeText . "\n</resume_text>"]
     ], 'optimizer_analysis', [
         'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
             "type" => "object",
@@ -76,9 +92,28 @@ function optimizer_reality_check($resumeText) {
  * Phase 2: Gap Analysis & Skill Gathering
  */
 function optimizer_gap_analysis($resumeText, $targetRole, $jobDescription) {
-    $systemPrompt = "You are an expert recruiter. Compare the candidate's resume text against the target role and the job description. Identify up to 4 major missing skills, tools, methodologies, or experiences. For each missing item, write a direct question asking the candidate if they have experience with it, offering context on why it is important. Output a JSON object containing a 'gaps' array with keys: 'skill', 'importance', and 'question'.";
+    $systemPrompt = "<context>\n" .
+                     "You are an expert technical recruiter comparing a candidate's resume against a specific job description to identify genuine skill gaps.\n" .
+                     "</context>\n" .
+                     "<task>\n" .
+                     "Compare the resume against the target role and job description. Identify major skills, tools, methodologies, or experiences that the job description requires or strongly implies, but that are missing or unclear in the resume.\n" .
+                     "</task>\n" .
+                     "<constraints>\n" .
+                     "- Only flag a gap if it is explicitly required or strongly implied by the job description text. Do not flag generic skills that the job description never mentions or implies.\n" .
+                     "- Do not flag a skill as missing if it is reasonably evidenced elsewhere in the resume, even outside a dedicated skills section.\n" .
+                     "- Identify at most 4 of the most important gaps. If the candidate is a strong match with no meaningful gaps, return fewer items or an empty array. Do not invent gaps to fill a quota.\n" .
+                     "- For each gap, write a direct question asking the candidate if they have experience with it, referencing the specific job description requirement that surfaced it.\n" .
+                     "- importance rubric:\n" .
+                     "  - \"high\": the job description explicitly requires this or calls it a must-have / core responsibility.\n" .
+                     "  - \"medium\": the job description lists this as a nice-to-have, or it is strongly implied but not explicitly required.\n" .
+                     "</constraints>\n" .
+                     "<output_format>\n" .
+                     "Output a JSON object containing a 'gaps' array (up to 4 items) with keys: 'skill', 'importance' (\"high\" or \"medium\"), and 'question'.\n" .
+                     "</output_format>";
 
-    $userContent = "Resume:\n" . $resumeText . "\n\nTarget Role: " . $targetRole . "\n\nJob Description:\n" . $jobDescription;
+    $userContent = "<resume_text>\n" . $resumeText . "\n</resume_text>\n\n" .
+                   "<target_role>\n" . $targetRole . "\n</target_role>\n\n" .
+                   "<job_description>\n" . $jobDescription . "\n</job_description>";
 
     $response = callAI([
         ["role" => "system", "content" => $systemPrompt],
@@ -89,6 +124,7 @@ function optimizer_gap_analysis($resumeText, $targetRole, $jobDescription) {
             "properties" => [
                 "gaps" => [
                     "type" => "array",
+                    "maxItems" => 4,
                     "items" => [
                         "type" => "object",
                         "properties" => [
@@ -110,11 +146,26 @@ function optimizer_gap_analysis($resumeText, $targetRole, $jobDescription) {
  * Phase 3: Extract Timeline Dates
  */
 function optimizer_extract_dates($resumeText) {
-    $systemPrompt = "Analyze the resume text and extract all professional experience entries. For each entry, extract the company name, role title, start date, end date, and the raw date string as written. Format start_date and end_date as YYYY-MM. If the job is current, use 'Present' for the end_date. If a date cannot be parsed, use null for start_date or end_date. Output a JSON object containing an 'experiences' array.";
+    $systemPrompt = "<context>\n" .
+                     "You are a precise data-extraction engine for resume work history.\n" .
+                     "</context>\n" .
+                     "<task>\n" .
+                     "Extract every professional experience entry from the resume text. For each entry, extract the company name, role title, start date, end date, and the raw date string exactly as written.\n" .
+                     "</task>\n" .
+                     "<constraints>\n" .
+                     "- Extract every distinct role, including short-tenure or overlapping roles. Do not skip or merge entries.\n" .
+                     "- Format start_date and end_date as YYYY-MM.\n" .
+                     "- If the role is current/ongoing, use 'Present' for the end_date.\n" .
+                     "- If a date cannot be confidently parsed, use null for that field rather than guessing.\n" .
+                     "- Do not fabricate entries that are not present in the resume text.\n" .
+                     "</constraints>\n" .
+                     "<output_format>\n" .
+                     "Output a JSON object containing an 'experiences' array.\n" .
+                     "</output_format>";
 
     $response = callAI([
         ["role" => "system", "content" => $systemPrompt],
-        ["role" => "user", "content" => $resumeText]
+        ["role" => "user", "content" => "<resume_text>\n" . $resumeText . "\n</resume_text>"]
     ], 'optimizer_analysis', [
         'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'result', 'schema' => [
             "type" => "object",
