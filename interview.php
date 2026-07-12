@@ -491,23 +491,20 @@ if (!empty($inviteCode)) {
             <span class="webcam-monitor-title">Candidate Webcam Monitor</span>
             <span class="webcam-status-pill" id="webcam-status-pill">Connecting</span>
           </div>
-          <div style="display: flex; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.1); padding: var(--space-4);">
-            <div class="webcam-monitor-viewport" style="width: 180px; height: 180px; aspect-ratio: 1/1; overflow: hidden; position: relative; border-radius: var(--radius-inner); border: 2px solid rgba(99, 102, 241, 0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-              <div class="webcam-monitor-placeholder" id="webcam-monitor-placeholder">
-                <svg style="width: 24px; height: 24px; opacity: 0.5; color: var(--color-text-muted);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
-                <p style="font-size: 10px; color: var(--color-text-muted); margin-top: 2px;">Webcam feed initializing...</p>
-              </div>
-              <video id="webcam-display-video" autoplay playsinline muted></video>
-              <canvas id="webcam-mesh-canvas"></canvas>
-              <div class="webcam-alert-badge" id="webcam-alert-badge" style="display: none;"></div>
-              <div class="webcam-scan-corner top-left"></div>
-              <div class="webcam-scan-corner top-right"></div>
-              <div class="webcam-scan-corner bottom-left"></div>
-              <div class="webcam-scan-corner bottom-right"></div>
+          <div class="webcam-monitor-viewport" style="aspect-ratio: 1/1; overflow: hidden; position: relative;">
+            <div class="webcam-monitor-placeholder" id="webcam-monitor-placeholder">
+              <svg style="width: 24px; height: 24px; opacity: 0.5; color: var(--color-text-muted);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+              <p style="font-size: 10px; color: var(--color-text-muted); margin-top: 2px;">Webcam feed initializing...</p>
             </div>
+            <video id="webcam-display-video" autoplay playsinline muted></video>
+            <canvas id="webcam-mesh-canvas"></canvas>
+            <div class="webcam-alert-badge" id="webcam-alert-badge" style="display: none;"></div>
+            <div class="webcam-scan-corner top-left"></div>
+            <div class="webcam-scan-corner top-right"></div>
+            <div class="webcam-scan-corner bottom-left"></div>
+            <div class="webcam-scan-corner bottom-right"></div>
           </div>
         </div>
-
         <div class="proctor-note" style="padding: 0 var(--space-4) var(--space-4) var(--space-4); font-size: 10px; color: var(--color-text-muted); text-align: center; border-bottom: 1px solid var(--color-border); margin-top: -8px;">
           Webcam is being monitored locally to verify interview integrity.
         </div>
@@ -546,12 +543,6 @@ if (!empty($inviteCode)) {
               <button id="stt-send-btn" style="display: none; padding: var(--space-2) var(--space-4); font-size: var(--text-sm); border-radius: var(--radius-inner); font-weight: 600; background: var(--color-accent); border: none; color: #fff; cursor: pointer; transition: background 0.2s; flex-shrink: 0;">Send</button>
             </div>
           </div>
-        </div>
-
-        <div class="media-controls" style="padding: var(--space-2); display: flex; justify-content: center; background: rgba(0,0,0,0.01); border-top: 1px solid var(--color-border);">
-          <button id="end-interview-btn" class="btn-control danger" onclick="transitionToCompleted()" title="End Interview" style="width: 36px; height: 36px;">
-            <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
-          </button>
         </div>
       </div>
 
