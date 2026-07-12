@@ -595,8 +595,9 @@ $levelDescriptions = [
                     Optimize Resume
                   </a>
                 <?php else: ?>
-                  <button class="btn btn-outline btn-choose-resume" 
+                  <button class="btn btn-outline btn-choose-resume"
                     data-profile-id="<?php echo $profile['id']; ?>"
+                    data-role-title="<?php echo htmlspecialchars($profile['role_title']); ?>"
                     data-has-base="<?php echo $baseResume ? '1' : '0'; ?>"
                     data-base-path="<?php echo $baseResume ? htmlspecialchars($baseResume['path']) : ''; ?>"
                     data-has-optimized="<?php echo $baseResumeHasOptimized ? '1' : '0'; ?>"

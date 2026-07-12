@@ -365,11 +365,15 @@ const initCandidateHub = () => {
       e.preventDefault();
       currentProfileData = {
         profileId: btn.getAttribute('data-profile-id'),
+        roleTitle: btn.getAttribute('data-role-title'),
         hasBase: btn.getAttribute('data-has-base') === '1',
         basePath: btn.getAttribute('data-base-path'),
         hasOptimized: btn.getAttribute('data-has-optimized') === '1',
         optPath: btn.getAttribute('data-opt-path')
       };
+
+      const crsTitleText = document.getElementById('crs-title-text');
+      if (crsTitleText) crsTitleText.textContent = "Setup Profile '" + currentProfileData.roleTitle + "'";
 
       if (step1) step1.style.display = 'block';
       if (step2Optimized) step2Optimized.style.display = 'none';
