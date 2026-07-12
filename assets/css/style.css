@@ -384,7 +384,7 @@ header {
 
 .console-grid {
   display: grid;
-  grid-template-rows: 240px 1fr 200px;
+  grid-template-rows: 170px 1fr;
   height: 100%;
   min-height: 0;
 }

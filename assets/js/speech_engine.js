@@ -7,6 +7,7 @@ let isSpeaking = false;
 let isListening = false;
 let engineDestroyed = false;
 let lottieInstance = null;
+let isMuted = false;
 
 // Lottie animation URLs for each state (free, CDN-hosted, no account needed)
 const LOTTIE_ANIMATIONS = {
@@ -206,6 +207,10 @@ async function startVADEngine() {
 
   try {
     localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Apply initial mute state
+    localAudioStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     mediaStreamSource = audioContext.createMediaStreamSource(localAudioStream);
     analyser = audioContext.createAnalyser();
@@ -304,7 +309,7 @@ async function startVADEngine() {
         }
       }
 
-      if (isListening && !isSpeaking) {
+      if (isListening && !isSpeaking && !isMuted) {
         if (rms > VOICE_THRESHOLD) {
           speakDetected = true;
           clearTimeout(silenceTimer);
@@ -364,13 +369,68 @@ async function startVADEngine() {
 }
 
 function resetRecordButton() {
+  if (isMuted) {
+    updateMuteButtonUI();
+    return;
+  }
   const recordBtn = document.getElementById('stt-mic-btn');
   if (recordBtn) {
     recordBtn.innerHTML = '<svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path></svg>';
     recordBtn.style.background = 'var(--color-surface-elevated)';
     recordBtn.style.borderColor = 'var(--color-border)';
     recordBtn.style.color = 'var(--color-text-primary)';
+    recordBtn.title = 'Mute Microphone';
   }
+}
+
+function updateMuteButtonUI() {
+  const recordBtn = document.getElementById('stt-mic-btn');
+  if (!recordBtn) return;
+  if (isMuted) {
+    recordBtn.style.background = 'var(--color-danger-bg)';
+    recordBtn.style.borderColor = 'var(--color-danger)';
+    recordBtn.style.color = 'var(--color-danger)';
+    recordBtn.title = 'Unmute Microphone';
+    recordBtn.innerHTML = `
+      <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.822 7.822L21 21m-2.228-2.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+      </svg>
+    `;
+  } else {
+    recordBtn.style.background = 'var(--color-surface-elevated)';
+    recordBtn.style.borderColor = 'var(--color-border)';
+    recordBtn.style.color = 'var(--color-text-primary)';
+    recordBtn.title = 'Mute Microphone';
+    recordBtn.innerHTML = `
+      <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
+      </svg>
+    `;
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  if (localAudioStream) {
+    localAudioStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
+  }
+  
+  if (isMuted && isVoiceRecording) {
+    speakDetected = false;
+    if (voiceRecorder && voiceRecorder.state === 'recording') {
+      try {
+        voiceRecorder.stop();
+      } catch (err) {}
+    }
+    isVoiceRecording = false;
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+    voiceChunks = [];
+  }
+  
+  updateMuteButtonUI();
 }
 
 // --- AI Turn Submission -------------------------------------------------------
@@ -424,11 +484,24 @@ function initSpeechEngine() {
     startListening();
   });
 
-  setTimeout(() => {
+  // Pre-fetch voices to populate browser cache
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+  }
+
+  const triggerGreeting = () => {
     if (window.triggerGreetingOnce) {
       window.triggerGreetingOnce('local_speech_session');
     }
-  }, 1000);
+  };
+
+  // Wait for voices to load so greeting uses the high-quality voice
+  if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.addEventListener('voiceschanged', triggerGreeting, { once: true });
+    setTimeout(triggerGreeting, 2500); // backup timeout
+  } else {
+    setTimeout(triggerGreeting, 1000);
+  }
 }
 
 function destroySpeechEngine() {
@@ -477,19 +550,12 @@ function initFallbackInput() {
     });
   }
 
-  if (recordBtn && sttInput) {
-    recordBtn.addEventListener('click', async () => {
-      if (voiceRecorder && voiceRecorder.state === 'recording') {
-        speakDetected = true;
-        clearTimeout(silenceTimer);
-        silenceTimer = null;
-        try {
-          voiceRecorder.stop();
-        } catch (e) {}
-        isVoiceRecording = false;
-        resetRecordButton();
-      }
+  if (recordBtn) {
+    recordBtn.addEventListener('click', () => {
+      toggleMute();
     });
+    // Set initial title
+    recordBtn.title = 'Mute Microphone';
   }
 }
 
