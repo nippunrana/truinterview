@@ -70,3 +70,4 @@ uploads/*
 CLAUDE.md
 
 temp/
+whisper-env/

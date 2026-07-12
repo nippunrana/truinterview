@@ -118,18 +118,7 @@ exit();
       </div>
     </div>
 
-    <!-- Powered By Bar -->
-    <div class="tech-logobar">
-      <div class="tech-container" style="justify-content: center; gap: var(--space-2); font-weight: 600; font-size: 0.9rem;">
-        <span class="google-dots">
-          <span class="g-dot g-blue"></span>
-          <span class="g-dot g-red"></span>
-          <span class="g-dot g-yellow"></span>
-          <span class="g-dot g-green"></span>
-        </span>
-        <span style="color: var(--text-secondary);">Powered by Fireworks AI &amp; TruGen.ai</span>
-      </div>
-    </div>
+
   </section>
 
   <!-- Features Grid Section -->

@@ -48,9 +48,6 @@ try {
         $promptText = "I have loaded some multiple-choice questions on your screen. Would you like me to read them to you, or do you prefer reading them yourself?";
         logTranscript($sessionId, 'AGENT', $promptText);
         
-        if (!empty($session['trugen_conversation_id'])) {
-            injectSpeakText($session['trugen_conversation_id'], $promptText);
-        }
         
         echo json_encode([
             "status" => "success",
@@ -180,9 +177,6 @@ try {
             
             $spokenText = $feedback . $nextPrompt;
             logTranscript($sessionId, 'AGENT', $spokenText);
-            if (!empty($session['trugen_conversation_id'])) {
-                injectSpeakText($session['trugen_conversation_id'], cleanSpeechText($spokenText));
-            }
         } else {
             $db = getDB();
             $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, current_mcq_index = NULL WHERE id = :id");
@@ -191,10 +185,6 @@ try {
             $spokenText = $feedback . " We have completed the MCQ assessment. Thank you.";
             logTranscript($sessionId, 'AGENT', $spokenText);
             logTranscript($sessionId, 'SYSTEM', "MCQ assessment completed.");
-            
-            if (!empty($session['trugen_conversation_id'])) {
-                injectSpeakText($session['trugen_conversation_id'], cleanSpeechText($spokenText));
-            }
         }
         
         echo json_encode([
@@ -229,9 +219,8 @@ try {
 
 
         
-        // Terminate TruGen conversation if there is an active session
+        // Clear local conversation ID setting if present
         if (!empty($session['trugen_conversation_id'])) {
-            terminateTruGenConversation($session['trugen_conversation_id']);
             $stmt = $db->prepare("UPDATE sessions SET trugen_conversation_id = NULL WHERE id = :id");
             $stmt->execute(['id' => $sessionId]);
             $session['trugen_conversation_id'] = null;
@@ -461,9 +450,6 @@ try {
             // Write agent greeting to transcripts log
             logTranscript($sessionId, 'AGENT', $greetingText);
             
-            // 5. Speak it to Huma-1
-            require_once __DIR__ . '/trugen_service.php';
-            injectSpeakText($convId, cleanSpeechText($greetingText));
         }
         
         echo json_encode([
@@ -843,17 +829,9 @@ try {
         $speakTextMsg = null;
         if ($shouldSpeak) {
             $speakText = buildProctorWarningMessage($alertType, $aiVerdict);
-            require_once __DIR__ . '/trugen_service.php';
-            if (!empty($session['trugen_conversation_id'])) {
-                try {
-                    injectSpeakText($session['trugen_conversation_id'], $speakText);
-                    $warningSpoken = true;
-                    $speakTextMsg = $speakText;
-                    logTranscript($sessionId, 'SYSTEM', "Spoke warning to candidate: " . $speakText);
-                } catch (Exception $e) {
-                    logTranscript($sessionId, 'SYSTEM', "Failed to inject speak warning: " . $e->getMessage());
-                }
-            }
+            $warningSpoken = true;
+            $speakTextMsg = $speakText;
+            logTranscript($sessionId, 'SYSTEM', "Spoke warning to candidate: " . $speakText);
         }
         
         echo json_encode([
@@ -867,6 +845,54 @@ try {
         exit;
     }
     
+    if ($action === 'transcribe') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            throw new Exception("Method not allowed. Use POST.");
+        }
+        if (!isset($_FILES['audio'])) {
+            throw new Exception("No audio file uploaded");
+        }
+        
+        $file = $_FILES['audio'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Upload error: " . $file['error']);
+        }
+        
+        // Ensure temp folder exists in workspace (inside uploads which is writable)
+        $tempDir = __DIR__ . '/uploads/temp';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+        
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (empty($extension)) {
+            $extension = 'webm';
+        }
+        $tempPath = $tempDir . '/transcription_' . uniqid() . '.' . $extension;
+        
+        if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
+            throw new Exception("Failed to save uploaded audio file");
+        }
+        
+        try {
+            $mimeType = $file['type'] ?: 'audio/webm';
+            $transcriptionText = transcribeAudio($tempPath, $mimeType);
+            
+            echo json_encode([
+                "status" => "success",
+                "text" => $transcriptionText
+            ]);
+        } catch (Exception $e) {
+            file_put_contents(__DIR__ . '/uploads/debug_transcribe.log', date('[Y-m-d H:i:s] ') . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            throw $e;
+        } finally {
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+        }
+        exit;
+    }
+
     if ($action === 'proctor_status') {
         $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
         if (empty($sessionId)) {
@@ -890,128 +916,7 @@ try {
         exit;
     }
 
-    if ($action === 'webhook') {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            throw new Exception("Method not allowed. Use POST.");
-        }
-        
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (!$input) {
-            throw new Exception("Invalid JSON webhook payload");
-        }
-        
-        $convId = $input['conversation_id'] ?? '';
-        if (empty($convId)) {
-            throw new Exception("Missing conversation_id");
-        }
-        
-        $event = $input['event'] ?? [];
-        $eventName = $event['name'] ?? '';
-        $eventPayload = $event['payload'] ?? [];
-        
-        $session = getSessionByConversationId($convId);
-        if (!$session && !in_array($eventName, ['participant_left', 'max_call_duration_timeout'])) {
-            // For call_ended, search all active sessions; for others, only unassociated STARTED ones
-            if ($eventName === 'call_ended') {
-                $session = getLatestActiveSession();
-            } else {
-                $session = getLatestStartedSession();
-            }
-            if ($session) {
-                updateSessionConversation($session['id'], $convId);
-                $session = getSession($session['id']);
-            }
-        }
-
-        if (!$session) {
-            // No matching session found — skip processing rather than creating a phantom test session
-            echo json_encode(["status" => "ignored", "message" => "No active session found for webhook event: " . $eventName]);
-            exit;
-        }
-        
-        $sessionId = $session['id'];
-        
-        if ($eventName === 'agent.started_speaking') {
-            $text = $eventPayload['text'] ?? '';
-            if (is_array($text)) {
-                $text = implode(" ", $text);
-            }
-            logTranscript($sessionId, 'AGENT', $text);
-            
-            $db = getDB();
-            if (in_array($session['current_status'] ?? '', ['TERMINATING', 'COMPLETED'])) {
-                // Keep terminal states so they are not overwritten by late-arriving webhooks
-            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false ||
-                stripos($text, 'generate your feedback report') !== false ||
-                stripos($text, 'analyze your responses') !== false)) {
-
-                $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
-                $stmt->execute(['id' => $sessionId]);
-
-                if (!empty($convId)) {
-                    terminateTruGenConversation($convId);
-                }
-            } else {
-                $stmt = $db->prepare("UPDATE sessions SET current_status = 'AGENT_SPEAKING' WHERE id = :id");
-                $stmt->execute(['id' => $sessionId]);
-            }
-            
-        } elseif ($eventName === 'agent.stopped_speaking') {
-            $text = $eventPayload['text'] ?? '';
-            if (is_array($text)) {
-                $text = implode(" ", $text);
-            }
-            logTranscript($sessionId, 'AGENT', $text);
-            
-            $db = getDB();
-            if (($session['current_status'] ?? '') === 'COMPLETED') {
-                // Don't overwrite a completed session with a late-arriving stopped_speaking event
-            } elseif (($session['current_status'] ?? '') === 'TERMINATING') {
-                $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
-                $stmt->execute(['id' => $sessionId]);
-
-                if (!empty($convId)) {
-                    terminateTruGenConversation($convId);
-                }
-            } elseif (!empty($text) && (stripos($text, 'interview is complete') !== false ||
-                stripos($text, 'generate your feedback report') !== false ||
-                stripos($text, 'analyze your responses') !== false)) {
-
-                $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
-                $stmt->execute(['id' => $sessionId]);
-
-                if (!empty($convId)) {
-                    terminateTruGenConversation($convId);
-                }
-            } else {
-                $newStatus = ($session['current_mcq_index'] !== null) ? 'MCQ_ACTIVE' : 'IN_PROGRESS';
-                $stmt = $db->prepare("UPDATE sessions SET current_status = :status WHERE id = :id");
-                $stmt->execute(['status' => $newStatus, 'id' => $sessionId]);
-            }
-            
-        } elseif ($eventName === 'utterance_committed') {
-            $candidateText = $eventPayload['text'] ?? '';
-            if (is_array($candidateText)) {
-                $candidateText = implode(" ", $candidateText);
-            }
-            if (!empty($candidateText)) {
-                logTranscript($sessionId, 'USER', $candidateText);
-            }
-            
-        } elseif ($eventName === 'call_ended') {
-            $db = getDB();
-            $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP WHERE id = :id");
-            $stmt->execute(['id' => $sessionId]);
-            logTranscript($sessionId, 'SYSTEM', "Call ended.");
-        }
-        
-        echo json_encode([
-            "status" => "success",
-            "message" => "Webhook event processed: " . $eventName,
-            "session_id" => $sessionId
-        ]);
-        exit;
-    }
+    // Webhook action removed. TruGen integrations are disabled.
     
     throw new Exception("Invalid or unsupported action: " . $action);
 

@@ -6,8 +6,8 @@ let recognition = null;
 let isSpeaking = false;
 let isListening = false;
 let engineDestroyed = false;
-let lastAgentTranscriptIndex = -1;
 let lottieInstance = null;
+let isMuted = false;
 
 // Lottie animation URLs for each state (free, CDN-hosted, no account needed)
 const LOTTIE_ANIMATIONS = {
@@ -150,98 +150,302 @@ function stopSynthKeepAlive() {
   }
 }
 
-// ─── STT ──────────────────────────────────────────────────────────────────────
+// --- STT ----------------------------------------------------------------------
+
+let useLocalVAD = true;
+let audioContext = null;
+let mediaStreamSource = null;
+let analyser = null;
+let voiceRecorder = null;
+let voiceChunks = [];
+let isVoiceRecording = false;
+let speakDetected = false;
+let silenceTimer = null;
+let localAudioStream = null;
+
+const VOICE_THRESHOLD = 0.012; // RMS volume speaking threshold
+const SILENCE_TIMEOUT = 1800;   // Auto-submit after 1.8s of silence
 
 function startListening() {
   if (engineDestroyed || isSpeaking || isListening) return;
-  if (!recognition) return;
 
-  try {
-    recognition.start();
-    isListening = true;
-  } catch (e) {
-    // Ignore 'already started' errors from rapid state transitions
+  isListening = true;
+  updateAvatarState('listening');
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  const sttInput = document.getElementById('stt-input');
+  if (sttInput) {
+    sttInput.placeholder = 'Speak or type your response...';
   }
 }
 
 function stopListening() {
-  if (!isListening || !recognition) return;
-  try {
-    recognition.stop();
-  } catch (e) {}
   isListening = false;
+  if (voiceRecorder && voiceRecorder.state === 'recording') {
+    const prevSpeak = speakDetected;
+    speakDetected = false;
+    try {
+      voiceRecorder.stop();
+    } catch (e) {}
+    isVoiceRecording = false;
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+  if (audioContext && audioContext.state === 'running') {
+    audioContext.suspend();
+  }
 }
 
-function setupSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn('[SpeechEngine] SpeechRecognition not supported in this browser.');
-    return null;
+async function startVADEngine() {
+  if (localAudioStream) return;
+
+  const waveformContainer = document.getElementById('stt-waveform-container');
+  if (waveformContainer) {
+    waveformContainer.style.display = 'flex';
   }
 
-  const rec = new SpeechRecognition();
-  rec.lang = 'en-US';
-  rec.continuous = false;       // fire per-utterance; we restart after each
-  rec.interimResults = false;   // final results only for cleaner transcripts
+  try {
+    localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Apply initial mute state
+    localAudioStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    mediaStreamSource = audioContext.createMediaStreamSource(localAudioStream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    mediaStreamSource.connect(analyser);
 
-  rec.onresult = (event) => {
-    const transcript = Array.from(event.results)
-      .map(r => r[0].transcript)
-      .join(' ')
-      .trim();
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Float32Array(bufferLength);
+    const bars = document.querySelectorAll('#stt-waveform-container .bar');
 
-    if (!transcript) return;
-
-    // Add to local transcript panel
-    if (window.addLocalTranscript) {
-      window.addLocalTranscript('USER', transcript);
-    }
-
-    // Hand off to the AI conversation engine
-    submitCandidateTurn(transcript);
-  };
-
-  rec.onend = () => {
-    isListening = false;
-    // Auto-restart listening if not speaking and engine is alive
-    if (!isSpeaking && !engineDestroyed) {
-      setTimeout(() => startListening(), 300);
-    }
-  };
-
-  rec.onerror = (event) => {
-    isListening = false;
-    if (event.error === 'aborted' || event.error === 'no-speech') {
-      // Normal — restart quietly
-      if (!isSpeaking && !engineDestroyed) {
-        setTimeout(() => startListening(), 500);
+    voiceRecorder = new MediaRecorder(localAudioStream);
+    
+    voiceRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        voiceChunks.push(e.data);
       }
-      return;
-    }
-    if (event.error === 'not-allowed') {
-      console.error('[SpeechEngine] Microphone permission denied.');
-      updateAvatarState('idle');
-      return;
-    }
-    console.warn('[SpeechEngine] STT error:', event.error);
-    setTimeout(() => { if (!isSpeaking && !engineDestroyed) startListening(); }, 1000);
-  };
+    };
 
-  return rec;
+    voiceRecorder.onstop = async () => {
+      if (!speakDetected || voiceChunks.length === 0) {
+        voiceChunks = [];
+        return;
+      }
+
+      const audioBlob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || 'audio/webm' });
+      voiceChunks = [];
+      speakDetected = false;
+
+      updateAvatarState('thinking');
+      const sttInput = document.getElementById('stt-input');
+      if (sttInput) {
+        sttInput.placeholder = 'Transcribing voice answer...';
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        const res = await fetch('api.php?action=transcribe', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        
+        if (data.status === 'success' && data.text) {
+          const text = data.text.trim();
+          if (text) {
+            if (sttInput) {
+              sttInput.value = '';
+              sttInput.placeholder = 'Speak or type your response...';
+            }
+            if (window.addLocalTranscript) {
+              window.addLocalTranscript('USER', text);
+            }
+            submitCandidateTurn(text);
+          } else {
+            if (sttInput) {
+              sttInput.placeholder = 'Speak or type your response...';
+            }
+            updateAvatarState('listening');
+          }
+        } else {
+          console.error('[SpeechEngine] Local VAD STT error:', data.message);
+          if (sttInput) {
+            sttInput.placeholder = 'Transcription failed. Please try speaking again.';
+          }
+          updateAvatarState('listening');
+        }
+      } catch (err) {
+        console.error('[SpeechEngine] VAD fetch error:', err);
+        if (sttInput) {
+          sttInput.placeholder = 'Network error. Please type your response.';
+        }
+        updateAvatarState('listening');
+      }
+    };
+
+    function checkVolume() {
+      if (engineDestroyed) return;
+
+      analyser.getFloatTimeDomainData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i] * dataArray[i];
+      }
+      const rms = Math.sqrt(sum / bufferLength);
+
+      if (bars.length > 0) {
+        const freqData = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(freqData);
+        for (let i = 0; i < bars.length; i++) {
+          const index = Math.floor(i * (freqData.length / bars.length));
+          const value = freqData[index];
+          const height = Math.max(4, Math.floor((value / 255) * 28));
+          bars[i].style.height = height + 'px';
+        }
+      }
+
+      if (isListening && !isSpeaking && !isMuted) {
+        if (rms > VOICE_THRESHOLD) {
+          speakDetected = true;
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+
+          if (!isVoiceRecording) {
+            isVoiceRecording = true;
+            voiceChunks = [];
+            try {
+              voiceRecorder.start();
+              updateAvatarState('listening');
+              const sttInput = document.getElementById('stt-input');
+              if (sttInput) {
+                sttInput.placeholder = 'Recording voice...';
+              }
+              const recordBtn = document.getElementById('stt-mic-btn');
+              if (recordBtn) {
+                recordBtn.style.background = 'var(--color-danger-bg)';
+                recordBtn.style.borderColor = 'var(--color-danger)';
+                recordBtn.style.color = 'var(--color-danger)';
+                recordBtn.innerHTML = '<span style="display: block; width: 12px; height: 12px; border-radius: 2px; background: var(--color-danger); animation: pulse 1s infinite;"></span>';
+                
+                if (!document.getElementById('recording-pulse-style')) {
+                  const style = document.createElement('style');
+                  style.id = 'recording-pulse-style';
+                  style.innerHTML = '@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }';
+                  document.head.appendChild(style);
+                }
+              }
+            } catch (err) {}
+          }
+        } else {
+          if (isVoiceRecording && speakDetected && !silenceTimer) {
+            silenceTimer = setTimeout(() => {
+              try {
+                voiceRecorder.stop();
+              } catch (err) {}
+              isVoiceRecording = false;
+              silenceTimer = null;
+              resetRecordButton();
+            }, SILENCE_TIMEOUT);
+          }
+        }
+      }
+
+      requestAnimationFrame(checkVolume);
+    }
+
+    checkVolume();
+  } catch (err) {
+    console.error('[SpeechEngine] VAD initialization failed:', err);
+    const sttInput = document.getElementById('stt-input');
+    if (sttInput) {
+      sttInput.placeholder = 'Microphone blocked or unavailable. Type response...';
+    }
+  }
 }
 
-// ─── AI Turn Submission ───────────────────────────────────────────────────────
+function resetRecordButton() {
+  if (isMuted) {
+    updateMuteButtonUI();
+    return;
+  }
+  const recordBtn = document.getElementById('stt-mic-btn');
+  if (recordBtn) {
+    recordBtn.innerHTML = '<svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path></svg>';
+    recordBtn.style.background = 'var(--color-surface-elevated)';
+    recordBtn.style.borderColor = 'var(--color-border)';
+    recordBtn.style.color = 'var(--color-text-primary)';
+    recordBtn.title = 'Mute Microphone';
+  }
+}
+
+function updateMuteButtonUI() {
+  const recordBtn = document.getElementById('stt-mic-btn');
+  if (!recordBtn) return;
+  if (isMuted) {
+    recordBtn.style.background = 'var(--color-danger-bg)';
+    recordBtn.style.borderColor = 'var(--color-danger)';
+    recordBtn.style.color = 'var(--color-danger)';
+    recordBtn.title = 'Unmute Microphone';
+    recordBtn.innerHTML = `
+      <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.822 7.822L21 21m-2.228-2.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+      </svg>
+    `;
+  } else {
+    recordBtn.style.background = 'var(--color-surface-elevated)';
+    recordBtn.style.borderColor = 'var(--color-border)';
+    recordBtn.style.color = 'var(--color-text-primary)';
+    recordBtn.title = 'Mute Microphone';
+    recordBtn.innerHTML = `
+      <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
+      </svg>
+    `;
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  if (localAudioStream) {
+    localAudioStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
+  }
+  
+  if (isMuted && isVoiceRecording) {
+    speakDetected = false;
+    if (voiceRecorder && voiceRecorder.state === 'recording') {
+      try {
+        voiceRecorder.stop();
+      } catch (err) {}
+    }
+    isVoiceRecording = false;
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+    voiceChunks = [];
+  }
+  
+  updateMuteButtonUI();
+}
+
+// --- AI Turn Submission -------------------------------------------------------
 
 let turnInProgress = false;
 
 async function submitCandidateTurn(userText) {
-  if (turnInProgress || !window.sessionId) return;
+  const sId = window.sessionId || (typeof sessionId !== 'undefined' ? sessionId : '');
+  if (turnInProgress || !sId) return;
   turnInProgress = true;
   updateAvatarState('thinking');
 
   try {
     const res = await fetch(
-      `api.php?action=conduct&session_id=${encodeURIComponent(window.sessionId)}`,
+      `api.php?action=conduct&session_id=${encodeURIComponent(sId)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,13 +455,11 @@ async function submitCandidateTurn(userText) {
     const data = await res.json();
 
     if (data.speak_text) {
-      // Server returned text to speak (new field added to API responses)
       if (window.addLocalTranscript) {
         window.addLocalTranscript('AGENT', data.speak_text);
       }
       speakText(data.speak_text);
     } else if (data.status === 'success') {
-      // Fall back: poll transcripts (pollStatus will pick up the agent's next message)
       updateAvatarState('listening');
       startListening();
     }
@@ -270,21 +472,36 @@ async function submitCandidateTurn(userText) {
   }
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// --- Public API ---------------------------------------------------------------
 
 function initSpeechEngine() {
   if (engineDestroyed) return;
 
-  recognition = setupSpeechRecognition();
   startSynthKeepAlive();
   updateAvatarState('idle');
+  
+  startVADEngine().then(() => {
+    startListening();
+  });
 
-  // Trigger greeting once Web Speech API is ready
-  setTimeout(() => {
+  // Pre-fetch voices to populate browser cache
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+  }
+
+  const triggerGreeting = () => {
     if (window.triggerGreetingOnce) {
       window.triggerGreetingOnce('local_speech_session');
     }
-  }, 1000);
+  };
+
+  // Wait for voices to load so greeting uses the high-quality voice
+  if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.addEventListener('voiceschanged', triggerGreeting, { once: true });
+    setTimeout(triggerGreeting, 2500); // backup timeout
+  } else {
+    setTimeout(triggerGreeting, 1000);
+  }
 }
 
 function destroySpeechEngine() {
@@ -296,7 +513,56 @@ function destroySpeechEngine() {
     lottieInstance.destroy();
     lottieInstance = null;
   }
+  useLocalVAD = false;
+  if (localAudioStream) {
+    localAudioStream.getTracks().forEach(track => track.stop());
+    localAudioStream = null;
+  }
   updateAvatarState('idle');
+}
+
+function initFallbackInput() {
+  const sttInput = document.getElementById('stt-input');
+  const sendBtn = document.getElementById('stt-send-btn');
+  const recordBtn = document.getElementById('stt-mic-btn');
+
+  if (sttInput && sendBtn) {
+    const sendResponse = () => {
+      const text = sttInput.value.trim();
+      if (!text || turnInProgress) return;
+      
+      stopListening();
+      
+      if (window.addLocalTranscript) {
+        window.addLocalTranscript('USER', text);
+      }
+      
+      sttInput.value = '';
+      sttInput.placeholder = 'Speak or type your response...';
+      submitCandidateTurn(text);
+    };
+
+    sendBtn.addEventListener('click', sendResponse);
+    sttInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendResponse();
+      }
+    });
+  }
+
+  if (recordBtn) {
+    recordBtn.addEventListener('click', () => {
+      toggleMute();
+    });
+    // Set initial title
+    recordBtn.title = 'Mute Microphone';
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initFallbackInput);
+} else {
+  initFallbackInput();
 }
 
 // Expose globals for interview.js and browser_proctor.js

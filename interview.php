@@ -92,23 +92,11 @@ if (!empty($inviteCode)) {
   <!-- Lottie animation player -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
   <style>
-    /* ── AI Interviewer Avatar Panel ──────────────────────────── */
-    .ai-interviewer-panel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      min-height: 220px;
-      padding: var(--space-4);
-      position: relative;
-      gap: var(--space-3);
-    }
+    /* ── AI Interviewer Avatar Panel (Compact View) ──────────────────────────── */
     .lottie-avatar-container {
       position: relative;
-      width: 140px;
-      height: 140px;
+      width: 50px;
+      height: 50px;
       border-radius: 50%;
       background: rgba(99, 102, 241, 0.06);
       border: 2px solid rgba(99, 102, 241, 0.2);
@@ -121,15 +109,15 @@ if (!empty($inviteCode)) {
     }
     .lottie-avatar-container.avatar-speaking {
       border-color: rgba(99, 102, 241, 0.8);
-      box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12), 0 0 0 12px rgba(99, 102, 241, 0.05);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15), 0 0 0 8px rgba(99, 102, 241, 0.05);
     }
     .lottie-avatar-container.avatar-listening {
       border-color: rgba(16, 185, 129, 0.7);
-      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1), 0 0 0 12px rgba(16, 185, 129, 0.04);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15), 0 0 0 8px rgba(16, 185, 129, 0.05);
     }
     .lottie-avatar-container.avatar-thinking {
       border-color: rgba(245, 158, 11, 0.6);
-      box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.08);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
     }
     .lottie-avatar-container.avatar-idle {
       border-color: rgba(99, 102, 241, 0.2);
@@ -138,11 +126,11 @@ if (!empty($inviteCode)) {
     /* Outer ring pulse animation for speaking state */
     @keyframes avatar-ring-pulse {
       0%, 100% { transform: scale(1); opacity: 0.5; }
-      50% { transform: scale(1.08); opacity: 0.15; }
+      50% { transform: scale(1.15); opacity: 0.15; }
     }
     .lottie-avatar-ring {
       position: absolute;
-      inset: -16px;
+      inset: -6px;
       border-radius: 50%;
       border: 2px solid rgba(99, 102, 241, 0.3);
       pointer-events: none;
@@ -153,39 +141,14 @@ if (!empty($inviteCode)) {
       opacity: 1;
       animation: avatar-ring-pulse 1.4s ease-in-out infinite;
     }
-    #lottie-player {
-      width: 100%;
-      height: 100%;
-    }
-    /* Avatar identity card */
-    .ai-identity-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      text-align: center;
-    }
-    .ai-identity-name {
-      font-size: var(--text-lg);
-      font-weight: 700;
-      color: var(--color-text-primary);
-      letter-spacing: -0.02em;
-    }
-    .ai-identity-role {
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      font-weight: 600;
-    }
     /* State badge */
     .avatar-state-badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 4px 10px;
+      padding: 2px 8px;
       border-radius: 20px;
-      font-size: var(--text-xs);
+      font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.03em;
       transition: all 0.3s ease;
@@ -194,33 +157,6 @@ if (!empty($inviteCode)) {
     .avatar-state-speaking { background: rgba(99,102,241,0.12); color: var(--color-accent); }
     .avatar-state-listening { background: rgba(16,185,129,0.1); color: var(--color-success, #10b981); }
     .avatar-state-thinking { background: rgba(245,158,11,0.1); color: #d97706; }
-    /* Mic indicator strip */
-    .mic-indicator-strip {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      padding: 6px 12px;
-      border-radius: var(--radius-inner);
-      background: var(--color-bg-subtle, rgba(0,0,0,0.04));
-      border: 1px solid var(--color-border);
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-      font-weight: 600;
-      width: 100%;
-      justify-content: center;
-    }
-    .mic-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--color-text-muted);
-      transition: background 0.3s;
-    }
-    .mic-dot.active { background: #10b981; animation: mic-pulse 1s ease-in-out infinite; }
-    @keyframes mic-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
   </style>
   <?php if ($session && $session['current_status'] === 'COMPLETED'): ?>
     <style>
@@ -515,46 +451,50 @@ if (!empty($inviteCode)) {
     </header>
 
     <div class="workspace-grid">
-      <!-- Left Panel: Video Agent -->
-      <div class="panel left-panel">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="panel-title">AI Interviewer</h3>
-          <div class="proctor-indicator warning" id="proctor-status">
+      <!-- Left Panel: AI Interviewer & Transcripts & Proctoring -->
+      <div class="panel left-panel" style="display: flex; flex-direction: column; gap: 0; height: 100%;">
+        <!-- Compact AI Interviewer Header -->
+        <div class="ai-interviewer-header-compact" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); border-bottom: 1px solid var(--color-border); background: var(--glass-bg);">
+          <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <!-- Avatar Container -->
+            <div class="lottie-avatar-container avatar-idle" id="lottie-avatar-container" style="width: 50px; height: 50px; border-radius: 50%; position: relative; overflow: hidden; border: 2px solid rgba(99, 102, 241, 0.2); transition: all 0.4s ease; flex-shrink: 0;">
+              <div class="lottie-avatar-ring"></div>
+              <img src="assets/images/alex_avatar.png" alt="Alex" style="width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; z-index: 1;">
+              <div id="lottie-player" style="display: none;"></div>
+            </div>
+            <!-- Identity Info -->
+            <div class="ai-identity-card" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px;">
+              <div style="display: flex; align-items: center; gap: var(--space-2);">
+                <span class="ai-identity-name" style="font-size: var(--text-base); font-weight: 700; color: var(--color-text-primary);">Alex</span>
+                <span class="avatar-state-badge avatar-state-idle" id="avatar-state-badge" style="padding: 2px 8px; font-size: 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.03em;">● Connecting...</span>
+              </div>
+              <span class="ai-identity-role" style="font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">AI Interviewer</span>
+            </div>
+          </div>
+          <!-- Proctor Status -->
+          <div class="proctor-indicator warning" id="proctor-status" style="margin-left: auto;">
             <span class="proctor-dot"></span>
             <span class="proctor-text">Connecting...</span>
           </div>
         </div>
-        <!-- AI Interviewer Avatar (Lottie-powered, replaces TruGen iframe) -->
-        <div class="agent-video-container" id="agent-video-container">
-          <div class="ai-interviewer-panel">
-            <div class="lottie-avatar-container avatar-idle" id="lottie-avatar-container">
-              <div class="lottie-avatar-ring"></div>
-              <div id="lottie-player"></div>
-            </div>
-            <div class="ai-identity-card">
-              <div class="ai-identity-name">Alex</div>
-              <div class="ai-identity-role">AI Technical Interviewer</div>
-              <div class="avatar-state-badge avatar-state-idle" id="avatar-state-badge">● Connecting...</div>
-            </div>
-            <div class="mic-indicator-strip" id="mic-indicator-strip">
-              <div class="mic-dot" id="mic-dot"></div>
-              <span id="avatar-status-label">● Connecting...</span>
-            </div>
-          </div>
+
+        <!-- Hidden compatibility elements -->
+        <div id="agent-video-container" style="display: none;"></div>
+        <div id="mic-indicator-strip" style="display: none;">
+          <div class="mic-dot" id="mic-dot"></div>
+          <span id="avatar-status-label">● Connecting...</span>
         </div>
-        <div class="proctor-note" style="padding: var(--space-2) var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; border-bottom: 1px solid var(--color-border);">
-          Webcam is being monitored locally to verify interview integrity.
-        </div>
-        
-        <div class="webcam-monitor-block" data-status="connecting" id="webcam-monitor-block">
+
+        <!-- Webcam Monitor Block (Proctoring) -->
+        <div class="webcam-monitor-block" data-status="connecting" id="webcam-monitor-block" style="margin: var(--space-4); flex: none; border-radius: var(--radius-inner);">
           <div class="webcam-monitor-header">
             <span class="webcam-monitor-title">Candidate Webcam Monitor</span>
             <span class="webcam-status-pill" id="webcam-status-pill">Connecting</span>
           </div>
-          <div class="webcam-monitor-viewport">
+          <div class="webcam-monitor-viewport" style="aspect-ratio: 1/1; overflow: hidden; position: relative;">
             <div class="webcam-monitor-placeholder" id="webcam-monitor-placeholder">
-              <svg style="width: 28px; height: 28px; opacity: 0.5; color: var(--color-text-muted);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
-              <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-1);">Webcam feed initializing...</p>
+              <svg style="width: 24px; height: 24px; opacity: 0.5; color: var(--color-text-muted);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+              <p style="font-size: 10px; color: var(--color-text-muted); margin-top: 2px;">Webcam feed initializing...</p>
             </div>
             <video id="webcam-display-video" autoplay playsinline muted></video>
             <canvas id="webcam-mesh-canvas"></canvas>
@@ -565,13 +505,44 @@ if (!empty($inviteCode)) {
             <div class="webcam-scan-corner bottom-right"></div>
           </div>
         </div>
-        
+        <div class="proctor-note" style="padding: 0 var(--space-4) var(--space-4) var(--space-4); font-size: 10px; color: var(--color-text-muted); text-align: center; border-bottom: 1px solid var(--color-border); margin-top: -8px;">
+          Webcam is being monitored locally to verify interview integrity.
+        </div>
 
+        <!-- Live Transcripts Section (Chat) -->
+        <div class="console-section transcripts-section-compact" style="flex: 1; display: flex; flex-direction: column; min-height: 0; background: rgba(0,0,0,0.02); padding: var(--space-4); border-bottom: none;">
+          <h4 style="margin-bottom: var(--space-2); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary); font-weight: 600;">Live Transcripts</h4>
+          <div class="transcripts-feed" id="transcripts-feed" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); padding-right: 4px;">
+            <!-- Transcript elements injected here -->
+          </div>
+          <!-- Voice and Keyboard Input Container -->
+          <div id="stt-input-container" style="margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: var(--space-2);">
+            
+            <!-- Waveform Visualizer & Microphone Row -->
+            <div id="stt-waveform-container" style="display: none; align-items: center; justify-content: space-between; gap: var(--space-2); height: 40px; margin-bottom: var(--space-2); background: rgba(0,0,0,0.15); border-radius: var(--radius-inner); border: 1px dashed var(--color-border); padding: 0 var(--space-3); width: 100%;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-right: var(--space-2); font-weight: 500;">Voice Input Level:</span>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+              </div>
+              <button id="stt-mic-btn" style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface-elevated); border: 1px solid var(--color-border); color: var(--color-text-primary); cursor: pointer; transition: all 0.2s; flex-shrink: 0;" title="Mute Microphone">
+                <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
+                </svg>
+              </button>
+            </div>
 
-        <div class="media-controls">
-          <button id="end-interview-btn" class="btn-control danger" onclick="transitionToCompleted()" title="End Interview">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 5H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2zM9 9h6v6H9V9z"></path></svg>
-          </button>
+            <div style="display: flex; gap: var(--space-2); align-items: center; justify-content: center;">
+              <input type="text" id="stt-input" style="display: none; flex: 1; background: var(--color-surface-elevated); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-inner); font-family: inherit; font-size: var(--text-sm);" placeholder="Speak or type your response...">
+              <button id="stt-send-btn" style="display: none; padding: var(--space-2) var(--space-4); font-size: var(--text-sm); border-radius: var(--radius-inner); font-weight: 600; background: var(--color-accent); border: none; color: #fff; cursor: pointer; transition: background 0.2s; flex-shrink: 0;">Send</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -697,14 +668,6 @@ if (!empty($inviteCode)) {
             </div>
           </div>
 
-          <!-- Dialog Transcript Row -->
-          <div class="console-section" style="background: rgba(0,0,0,0.1);">
-            <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Live Transcripts</h4>
-            <div class="transcripts-feed" id="transcripts-feed">
-              <!-- Transcript elements injected here -->
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
@@ -719,13 +682,13 @@ if (!empty($inviteCode)) {
 
   <script>
     const sessionActive = <?php echo $session ? 'true' : 'false'; ?>;
-    const sessionId = '<?php echo $sessionId; ?>';
-    const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
-    const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
+    const sessionId = <?php echo json_encode($sessionId); ?>;
+    const startedTime = <?php echo json_encode($session ? $session['started_at'] : ''); ?>;
+    const sessionStatus = <?php echo json_encode($session ? $session['current_status'] : ''); ?>;
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
     // trugenAgentId removed — replaced by Web Speech API engine
-    const candidateName = '<?php echo $session ? addslashes($session['candidate_name']) : ''; ?>';
-    const candidateEmail = '<?php echo $session ? addslashes($session['email']) : ''; ?>';
+    const candidateName = <?php echo json_encode($session ? $session['candidate_name'] : ''); ?>;
+    const candidateEmail = <?php echo json_encode($session ? $session['email'] : ''); ?>;
   </script>
   <script type="module">
     import { initProctor, destroyProctor, getWebcamStream } from './assets/js/proctor.js';
