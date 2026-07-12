@@ -719,13 +719,13 @@ if (!empty($inviteCode)) {
 
   <script>
     const sessionActive = <?php echo $session ? 'true' : 'false'; ?>;
-    const sessionId = '<?php echo $sessionId; ?>';
-    const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
-    const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
+    const sessionId = <?php echo json_encode($sessionId); ?>;
+    const startedTime = <?php echo json_encode($session ? $session['started_at'] : ''); ?>;
+    const sessionStatus = <?php echo json_encode($session ? $session['current_status'] : ''); ?>;
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
     // trugenAgentId removed — replaced by Web Speech API engine
-    const candidateName = '<?php echo $session ? addslashes($session['candidate_name']) : ''; ?>';
-    const candidateEmail = '<?php echo $session ? addslashes($session['email']) : ''; ?>';
+    const candidateName = <?php echo json_encode($session ? $session['candidate_name'] : ''); ?>;
+    const candidateEmail = <?php echo json_encode($session ? $session['email'] : ''); ?>;
   </script>
   <script type="module">
     import { initProctor, destroyProctor, getWebcamStream } from './assets/js/proctor.js';
