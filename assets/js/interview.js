@@ -502,10 +502,14 @@ function triggerGreetingOnce(convId) {
       console.log("Greeting status:", data);
       if (data.status === 'success' && data.greeting) {
         addLocalTranscript('AGENT', data.greeting);
+        if (window.speakText) {
+          window.speakText(data.greeting);
+        }
       }
     })
     .catch(err => console.error("Error triggering greeting:", err));
 }
+window.triggerGreetingOnce = triggerGreetingOnce;
 
 function pollStatus() {
   if (!sessionId) return;
@@ -696,6 +700,9 @@ async function submitMCQOption() {
     const data = await response.json();
     if (data.status === 'success') {
       console.log('MCQ Option submitted successfully:', data);
+      if (window.speakText && data.speak_text) {
+        window.speakText(data.speak_text);
+      }
       
       container.innerHTML = `
         <div class="skeleton-mcq">
@@ -848,31 +855,7 @@ window.setLatestLandmarks = (landmarks) => {
   latestLandmarks = landmarks;
 };
 
-// Dynamically construct and load the TruGen AI agent iframe
-window.loadAgentIframe = function() {
-  const container = document.getElementById('agent-video-container');
-  if (!container) return;
-
-  // Remove placeholder
-  const placeholder = container.querySelector('.agent-video-placeholder');
-  if (placeholder) {
-    placeholder.style.opacity = '0';
-    setTimeout(() => { placeholder.style.display = 'none'; }, 300);
-  }
-
-  // Check if iframe already exists
-  if (container.querySelector('iframe')) return;
-
-  // Create iframe
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://app.trugen.ai/embed/${encodeURIComponent(trugenAgentId)}?username=${encodeURIComponent(candidateName)}&id=${encodeURIComponent(candidateEmail)}`;
-  iframe.style.width = '100%';
-  iframe.style.height = '100%';
-  iframe.style.border = 'none';
-  // Enable camera, microphone, autoplay, and display-capture for WebRTC connection as per TruGen AI guidelines
-  iframe.setAttribute('allow', 'camera; microphone; autoplay; display-capture');
-  container.appendChild(iframe);
-};
+// Speech engine is initialized via window.initSpeechEngine() directly from browser_proctor.js
 
 // Initialize on load
 window.addEventListener('DOMContentLoaded', () => {
@@ -936,25 +919,16 @@ async function transitionToCompleted(immediate = false) {
 
   try {
     if (sessionStatus !== 'COMPLETED') {
-      // Send end_call signal via postMessage to the TruGen iframe to trigger immediate client-side track teardown
-      const agentIframe = document.querySelector('#agent-video-container iframe');
-      if (agentIframe && agentIframe.contentWindow) {
-        try {
-          agentIframe.contentWindow.postMessage({ action: 'end_call', type: 'end_call' }, '*');
-          agentIframe.contentWindow.postMessage('end_call', '*');
-        } catch (e) {
-          console.error("Error sending postMessage to TruGen iframe:", e);
-        }
+      // Teardown browser speech engine
+      if (window.destroySpeechEngine) {
+        window.destroySpeechEngine();
       }
 
-      // Step 1: Fast mark session completed on backend and terminate streams (sends signaling call-end)
+      // Step 1: Fast mark session completed on backend and terminate streams
       const res = await fetch(`api.php?action=complete&session_id=${sessionId}&fast=1`);
       const data = await res.json();
       
       if (data.status === 'success') {
-        // Step 2: Wait 3.0 seconds to let the cross-origin iframe receive the signaling call-end and shut down WebRTC media tracks cleanly
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
         // Step 3: Stop local webcam proctoring
         if (window.destroyProctor) {
           window.destroyProctor();
@@ -992,12 +966,7 @@ async function transitionToCompleted(immediate = false) {
           displayVideo.srcObject = null;
         }
 
-        // Step 5: Release camera/microphone by navigating the agent iframe
-        const agentIframeRemove = document.querySelector('#agent-video-container iframe');
-        if (agentIframeRemove) {
-          agentIframeRemove.src = 'about:blank';
-          agentIframeRemove.style.display = 'none';
-        }
+        // TruGen agent iframe removed, no iframe release needed
 
         if (meshAnimFrame) {
           cancelAnimationFrame(meshAnimFrame);
@@ -1041,6 +1010,9 @@ async function transitionToCompleted(immediate = false) {
       }
     } else {
       // Clean up local tracks if we are loading into the completed state directly
+      if (window.destroySpeechEngine) {
+        window.destroySpeechEngine();
+      }
       if (window.destroyProctor) {
         window.destroyProctor();
       }
@@ -1054,11 +1026,6 @@ async function transitionToCompleted(immediate = false) {
           }
         }
         displayVideo.srcObject = null;
-      }
-      const agentIframe = document.querySelector('#agent-video-container iframe');
-      if (agentIframe) {
-        agentIframe.src = 'about:blank';
-        agentIframe.remove();
       }
       if (meshAnimFrame) {
         cancelAnimationFrame(meshAnimFrame);
@@ -1363,50 +1330,4 @@ function forceStopAllMediaTracks() {
 window.addEventListener('beforeunload', forceStopAllMediaTracks);
 window.addEventListener('pagehide', forceStopAllMediaTracks);
 
-// Listen to TruGen iframe messages for auto-closing proceedings
-window.addEventListener('message', (event) => {
-  if (event.origin && event.origin.includes('trugen.ai')) {
-    console.log('TruGen message received:', event.data);
-    const data = event.data;
-    
-    // Check if the message contains connection info or conversation_id to trigger the initial greeting
-    if (data && typeof data === 'object') {
-      const convId = data.conversation_id || data.conversationId || data.roomId || data.room_name || data.roomName;
-      if (convId && typeof convId === 'string' && convId.length > 10) {
-        triggerGreetingOnce(convId);
-      }
-      
-      // Listen to pipeline speaker events to update the local transcript storage in real-time
-      if (data.event && data.event.name) {
-        const eventName = data.event.name;
-        const eventPayload = data.event.payload || {};
-        let text = eventPayload.text || '';
-        if (Array.isArray(text)) {
-          text = text.join(' ');
-        }
-        text = text.trim();
-        
-        if (text) {
-          if (eventName === 'agent.started_speaking') {
-            addLocalTranscript('AGENT', text);
-          } else if (eventName === 'utterance_committed') {
-            addLocalTranscript('USER', text);
-          }
-        }
-      }
-    }
-    
-    if (data && (
-      data.type === 'call_ended' || 
-      data.event === 'call_ended' ||
-      data.type === 'call-ended' ||
-      data.event === 'call-ended' ||
-      (typeof data === 'string' && (data === 'call_ended' || data === 'call-ended' || data === 'close' || data === 'closed' || data === 'completed'))
-    )) {
-      console.log('TruGen call ended signal detected via postMessage.');
-      if (typeof transitionToCompleted === 'function') {
-        transitionToCompleted();
-      }
-    }
-  }
-});
+// TruGen iframe postMessage listener removed. Speech engine handles conversation state.

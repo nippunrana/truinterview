@@ -179,9 +179,9 @@ function completeWizardAndStart() {
     const overlay = document.getElementById('integrity-setup-modal');
     if (overlay) overlay.style.display = 'none';
     
-    // Load TruGen Agent call iframe dynamically
-    if (window.loadAgentIframe) {
-        window.loadAgentIframe();
+    // Initialize Web Speech API engine (TTS + STT + Lottie avatar)
+    if (window.initSpeechEngine) {
+        window.initSpeechEngine();
     }
     
     // Enable passive security logging listeners
@@ -709,6 +709,9 @@ async function triggerBrowserAlert(alertType, severity, clientDetails) {
         
         const data = await response.json();
         console.log(`[Browser Proctor response]`, data);
+        if (window.speakText && data.speak_text) {
+            window.speakText(data.speak_text);
+        }
         
         const isBrowserAlert = ['tab_switch', 'fullscreen_exit', 'copy_paste_attempt', 'cursor_left_screen', 'device_change', 'screen_share_stopped'].includes(alertType);
         const aiVerdict = isBrowserAlert ? 'Browser-native telemetry logged.' : 'AI analysis skipped.';

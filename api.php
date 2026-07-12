@@ -9,6 +9,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/ai_service.php';
 require_once __DIR__ . '/trugen_service.php';
+require_once __DIR__ . '/conduct_service.php';
 require_once __DIR__ . '/evaluation_service.php';
 
 $action = $_GET['action'] ?? '';
@@ -200,7 +201,8 @@ try {
             "status" => "success",
             "message" => "Option submitted successfully",
             "is_correct" => $isCorrect,
-            "has_more" => !empty($nextQuestion)
+            "has_more" => !empty($nextQuestion),
+            "speak_text" => cleanSpeechText($spokenText)
         ]);
         exit;
     }
@@ -472,6 +474,184 @@ try {
         exit;
     }
 
+    if ($action === 'conduct') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            throw new Exception("Method not allowed. Use POST.");
+        }
+        
+        $input = json_decode(file_get_contents('php://input'), true);
+        $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? $input['session_id'] ?? '';
+        $userText = $input['user_message'] ?? '';
+        
+        if (empty($sessionId)) {
+            throw new Exception("Session ID required");
+        }
+        
+        $session = getSession($sessionId);
+        if (!$session) {
+            throw new Exception("Session not found");
+        }
+        
+        $status = $session['current_status'];
+        $pref = $session['mcq_preference'];
+        
+        // 1. Log the candidate's utterance to transcripts
+        if (!empty($userText)) {
+            logTranscript($sessionId, 'USER', $userText);
+        }
+        
+        // 2. Fetch the updated list of transcripts to build the conversation history context
+        $transcripts = getTranscripts($sessionId);
+        $mappedMessages = [];
+        $contextStr = "";
+        foreach ($transcripts as $t) {
+            if ($t['speaker'] === 'USER') {
+                $mappedMessages[] = ['speaker' => 'USER', 'message' => $t['message']];
+                $contextStr .= "USER: " . $t['message'] . "\n";
+            } elseif ($t['speaker'] === 'AGENT') {
+                $mappedMessages[] = ['speaker' => 'AGENT', 'message' => $t['message']];
+                $contextStr .= "AGENT: " . $t['message'] . "\n";
+            }
+        }
+        
+        $spokenText = "";
+        $db = getDB();
+        
+        // 3. Run the conversation state machine
+        if ($status === 'MCQ_PROMPTING') {
+            $prompt = "Given the user response: '" . $userText . "', classify the user preference into one of these two options: READ_ALOUD, SELF_READ. Return only the preference string.";
+            try {
+                $classification = strtoupper(trim(callAI([
+                    ["role" => "user", "content" => $prompt]
+                ], 'intent_classification')));
+            } catch (Exception $e) {
+                $classification = 'SELF_READ';
+            }
+            
+            if (strpos($classification, 'READ_ALOUD') !== false) {
+                $stmt = $db->prepare("UPDATE sessions SET mcq_preference = 'READ', current_status = 'MCQ_ACTIVE' WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+                
+                $mcqIndex = $session['current_mcq_index'] ?? null;
+                $qa = json_decode($session['q_a'] ?? '', true);
+                $question = ($qa && $mcqIndex !== null) ? ($qa[$mcqIndex] ?? null) : null;
+                
+                if ($question) {
+                    $spokenText = "The question is: " . $question['question'] . 
+                                  ". Option A: " . ($question['options']['A'] ?? '') . 
+                                  ". Option B: " . ($question['options']['B'] ?? '') . 
+                                  ". Option C: " . ($question['options']['C'] ?? '') . 
+                                  ". Option D: " . ($question['options']['D'] ?? '') . 
+                                  ". Which one do you think is correct?";
+                } else {
+                    $spokenText = "We have completed the MCQ assessment. Thank you.";
+                }
+            } else {
+                $stmt = $db->prepare("UPDATE sessions SET mcq_preference = 'SILENT', current_status = 'MCQ_ACTIVE' WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+                $spokenText = "Please read the question on your screen and select your answer.";
+            }
+        } elseif ($status === 'MCQ_ACTIVE') {
+            $mcqIndex = $session['current_mcq_index'] ?? null;
+            $qa = json_decode($session['q_a'] ?? '', true);
+            $question = ($qa && $mcqIndex !== null) ? ($qa[$mcqIndex] ?? null) : null;
+            
+            if ($question) {
+                $prompt = "Given the user response: '" . $userText . "' and the current question: '" . $question['question'] . "' with options A: '" . ($question['options']['A'] ?? '') . "', B: '" . ($question['options']['B'] ?? '') . "', C: '" . ($question['options']['C'] ?? '') . "', D: '" . ($question['options']['D'] ?? '') . "'. Classify the user response into one of these options: A, B, C, D, or NONE if they did not select an option. Return only the option letter (A, B, C, or D) or NONE.";
+                try {
+                    $classification = strtoupper(trim(callAI([
+                        ["role" => "user", "content" => $prompt]
+                    ], 'intent_classification')));
+                } catch (Exception $e) {
+                    $classification = 'NONE';
+                }
+                
+                if (in_array($classification, ['A', 'B', 'C', 'D'])) {
+                    $isCorrect = ($classification === strtoupper(trim($question['answer'])));
+                    saveCandidateResponse($sessionId, $mcqIndex, $classification, $isCorrect);
+                    
+                    // Log selection to transcripts
+                    logTranscript($sessionId, 'USER', "Selected Option " . $classification);
+                    
+                    // Find next MCQ
+                    $nextMCQIndex = null;
+                    if (is_array($qa)) {
+                        for ($i = $mcqIndex + 1; $i < count($qa); $i++) {
+                            if (($qa[$i]['type'] ?? '') === 'mcq') {
+                                $nextMCQIndex = $i;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    $feedback = $isCorrect ? "That is correct!" : "That is incorrect. The correct answer was Option " . $question['answer'] . ".";
+                    
+                    if ($nextMCQIndex !== null) {
+                        $nextQuestion = $qa[$nextMCQIndex];
+                        $nextPrompt = "";
+                        if ($pref === 'READ') {
+                            $nextPrompt = " Let's move to the next question. The question is: " . $nextQuestion['question'] . 
+                                          ". Option A: " . ($nextQuestion['options']['A'] ?? '') . 
+                                          ". Option B: " . ($nextQuestion['options']['B'] ?? '') . 
+                                          ". Option C: " . ($nextQuestion['options']['C'] ?? '') . 
+                                          ". Option D: " . ($nextQuestion['options']['D'] ?? '') . 
+                                          ". Which one do you think is correct?";
+                            $stmt = $db->prepare("UPDATE sessions SET current_status = 'MCQ_ACTIVE', current_mcq_index = :next_index WHERE id = :id");
+                            $stmt->execute(['next_index' => $nextMCQIndex, 'id' => $sessionId]);
+                        } else {
+                            $nextPrompt = " Let's move to the next question. Please read it on your screen and select your answer.";
+                            $stmt = $db->prepare("UPDATE sessions SET current_status = 'MCQ_ACTIVE', current_mcq_index = :next_index WHERE id = :id");
+                            $stmt->execute(['next_index' => $nextMCQIndex, 'id' => $sessionId]);
+                        }
+                        $spokenText = $feedback . $nextPrompt;
+                    } else {
+                        $stmt = $db->prepare("UPDATE sessions SET current_status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, current_mcq_index = NULL WHERE id = :id");
+                        $stmt->execute(['id' => $sessionId]);
+                        $spokenText = $feedback . " We have completed the MCQ assessment. Thank you.";
+                    }
+                } else {
+                    // General query during MCQ, fallback
+                    $spokenText = queryChatWithTools($mappedMessages, $sessionId);
+                }
+            } else {
+                $spokenText = queryChatWithTools($mappedMessages, $sessionId);
+            }
+        } else {
+            // Standard technical interview conversation mode
+            $stmt = $db->prepare("UPDATE sessions SET current_status = 'CANDIDATE_RESPONDED' WHERE id = :id");
+            $stmt->execute(['id' => $sessionId]);
+            
+            $imagePath = __DIR__ . '/uploads/sessions/' . $sessionId . '/latest.jpg';
+            if (file_exists($imagePath) && is_readable($imagePath)) {
+                try {
+                    $spokenText = queryChatWithTools($mappedMessages, $sessionId, $imagePath, $contextStr, $userText);
+                } catch (Exception $visionEx) {
+                    $spokenText = queryChatWithTools($mappedMessages, $sessionId);
+                }
+            } else {
+                $spokenText = queryChatWithTools($mappedMessages, $sessionId);
+            }
+            
+            // Set status to IN_PROGRESS or COMPLETED depending on what AI did
+            $session = getSession($sessionId);
+            if ($session['current_status'] !== 'COMPLETED') {
+                $stmt = $db->prepare("UPDATE sessions SET current_status = 'IN_PROGRESS' WHERE id = :id");
+                $stmt->execute(['id' => $sessionId]);
+            }
+        }
+        
+        $cleanResponse = cleanSpeechText($spokenText);
+        
+        // Log the agent's turn to transcripts
+        logTranscript($sessionId, 'AGENT', $cleanResponse);
+        
+        echo json_encode([
+            "status" => "success",
+            "speak_text" => $cleanResponse
+        ]);
+        exit;
+    }
+
     if ($action === 'status') {
         $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
         if (empty($sessionId)) {
@@ -660,6 +840,7 @@ try {
         }
         
         $warningSpoken = false;
+        $speakTextMsg = null;
         if ($shouldSpeak) {
             $speakText = buildProctorWarningMessage($alertType, $aiVerdict);
             require_once __DIR__ . '/trugen_service.php';
@@ -667,6 +848,7 @@ try {
                 try {
                     injectSpeakText($session['trugen_conversation_id'], $speakText);
                     $warningSpoken = true;
+                    $speakTextMsg = $speakText;
                     logTranscript($sessionId, 'SYSTEM', "Spoke warning to candidate: " . $speakText);
                 } catch (Exception $e) {
                     logTranscript($sessionId, 'SYSTEM', "Failed to inject speak warning: " . $e->getMessage());
@@ -679,7 +861,8 @@ try {
             "alert_id" => $alertId,
             "ai_verdict" => $aiVerdict,
             "ai_confirmed" => $aiConfirmed,
-            "warning_spoken" => $warningSpoken
+            "warning_spoken" => $warningSpoken,
+            "speak_text" => $speakTextMsg
         ]);
         exit;
     }

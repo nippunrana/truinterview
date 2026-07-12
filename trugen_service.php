@@ -72,7 +72,7 @@ function getTruGenApiKey($conversationId) {
  * Interacts with the TruGen speak API endpoint to inject dialogue speech to the candidate.
  */
 function injectSpeakText($conversationId, $text) {
-    if ($conversationId === 'mock_id') {
+    if ($conversationId === 'mock_id' || $conversationId === 'local_speech_session' || strpos($conversationId, 'local_') === 0) {
         return true;
     }
     
@@ -120,7 +120,7 @@ function injectSpeakText($conversationId, $text) {
  * Invokes the TruGen conversation termination API.
  */
 function terminateTruGenConversation($conversationId) {
-    if ($conversationId === 'mock_id') {
+    if ($conversationId === 'mock_id' || $conversationId === 'local_speech_session' || strpos($conversationId, 'local_') === 0) {
         return true;
     }
     

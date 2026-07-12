@@ -89,6 +89,139 @@ if (!empty($inviteCode)) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TruInterview - AI Multimodal Technical Interviewer</title>
   <link rel="stylesheet" href="assets/css/style.css">
+  <!-- Lottie animation player -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
+  <style>
+    /* ── AI Interviewer Avatar Panel ──────────────────────────── */
+    .ai-interviewer-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+      padding: var(--space-4);
+      position: relative;
+      gap: var(--space-3);
+    }
+    .lottie-avatar-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.06);
+      border: 2px solid rgba(99, 102, 241, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: border-color 0.4s ease, box-shadow 0.4s ease;
+      flex-shrink: 0;
+    }
+    .lottie-avatar-container.avatar-speaking {
+      border-color: rgba(99, 102, 241, 0.8);
+      box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.12), 0 0 0 12px rgba(99, 102, 241, 0.05);
+    }
+    .lottie-avatar-container.avatar-listening {
+      border-color: rgba(16, 185, 129, 0.7);
+      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1), 0 0 0 12px rgba(16, 185, 129, 0.04);
+    }
+    .lottie-avatar-container.avatar-thinking {
+      border-color: rgba(245, 158, 11, 0.6);
+      box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.08);
+    }
+    .lottie-avatar-container.avatar-idle {
+      border-color: rgba(99, 102, 241, 0.2);
+      box-shadow: none;
+    }
+    /* Outer ring pulse animation for speaking state */
+    @keyframes avatar-ring-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.08); opacity: 0.15; }
+    }
+    .lottie-avatar-ring {
+      position: absolute;
+      inset: -16px;
+      border-radius: 50%;
+      border: 2px solid rgba(99, 102, 241, 0.3);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .avatar-speaking .lottie-avatar-ring {
+      opacity: 1;
+      animation: avatar-ring-pulse 1.4s ease-in-out infinite;
+    }
+    #lottie-player {
+      width: 100%;
+      height: 100%;
+    }
+    /* Avatar identity card */
+    .ai-identity-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-align: center;
+    }
+    .ai-identity-name {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
+    }
+    .ai-identity-role {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 600;
+    }
+    /* State badge */
+    .avatar-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: all 0.3s ease;
+    }
+    .avatar-state-idle    { background: rgba(99,102,241,0.08); color: var(--color-text-muted); }
+    .avatar-state-speaking { background: rgba(99,102,241,0.12); color: var(--color-accent); }
+    .avatar-state-listening { background: rgba(16,185,129,0.1); color: var(--color-success, #10b981); }
+    .avatar-state-thinking { background: rgba(245,158,11,0.1); color: #d97706; }
+    /* Mic indicator strip */
+    .mic-indicator-strip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 6px 12px;
+      border-radius: var(--radius-inner);
+      background: var(--color-bg-subtle, rgba(0,0,0,0.04));
+      border: 1px solid var(--color-border);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      font-weight: 600;
+      width: 100%;
+      justify-content: center;
+    }
+    .mic-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-text-muted);
+      transition: background 0.3s;
+    }
+    .mic-dot.active { background: #10b981; animation: mic-pulse 1s ease-in-out infinite; }
+    @keyframes mic-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
   <?php if ($session && $session['current_status'] === 'COMPLETED'): ?>
     <style>
       .workspace-grid { display: none !important; }
@@ -391,10 +524,22 @@ if (!empty($inviteCode)) {
             <span class="proctor-text">Connecting...</span>
           </div>
         </div>
+        <!-- AI Interviewer Avatar (Lottie-powered, replaces TruGen iframe) -->
         <div class="agent-video-container" id="agent-video-container">
-          <div class="agent-video-placeholder" style="transition: opacity 0.3s ease;">
-            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
-            <p>Agent Video Connection Pending</p>
+          <div class="ai-interviewer-panel">
+            <div class="lottie-avatar-container avatar-idle" id="lottie-avatar-container">
+              <div class="lottie-avatar-ring"></div>
+              <div id="lottie-player"></div>
+            </div>
+            <div class="ai-identity-card">
+              <div class="ai-identity-name">Alex</div>
+              <div class="ai-identity-role">AI Technical Interviewer</div>
+              <div class="avatar-state-badge avatar-state-idle" id="avatar-state-badge">● Connecting...</div>
+            </div>
+            <div class="mic-indicator-strip" id="mic-indicator-strip">
+              <div class="mic-dot" id="mic-dot"></div>
+              <span id="avatar-status-label">● Connecting...</span>
+            </div>
           </div>
         </div>
         <div class="proctor-note" style="padding: var(--space-2) var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); text-align: center; border-bottom: 1px solid var(--color-border);">
@@ -578,7 +723,7 @@ if (!empty($inviteCode)) {
     const startedTime = '<?php echo $session ? $session['started_at'] : ''; ?>';
     const sessionStatus = '<?php echo $session ? $session['current_status'] : ''; ?>';
     const hasFinalScore = <?php echo ($session && !empty($session['final_score'])) ? 'true' : 'false'; ?>;
-    const trugenAgentId = '<?php echo $trugenAgentId; ?>';
+    // trugenAgentId removed — replaced by Web Speech API engine
     const candidateName = '<?php echo $session ? addslashes($session['candidate_name']) : ''; ?>';
     const candidateEmail = '<?php echo $session ? addslashes($session['email']) : ''; ?>';
   </script>
@@ -593,6 +738,7 @@ if (!empty($inviteCode)) {
     window.initBrowserProctor = initBrowserProctor;
     window.destroyBrowserProctor = destroyBrowserProctor;
   </script>
+  <script src="assets/js/speech_engine.js?v=<?php echo filemtime(__DIR__ . '/assets/js/speech_engine.js'); ?>" defer></script>
   <script src="assets/js/interview.js?v=<?php echo filemtime(__DIR__ . '/assets/js/interview.js'); ?>" defer></script>
 </body>
 </html>
