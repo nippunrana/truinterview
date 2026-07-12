@@ -1308,21 +1308,9 @@ function forceStopAllMediaTracks() {
     console.error("Error stopping screen share tracks on unload:", e);
   }
 
-  // 4. Force unload cross-origin iframe to stop WebRTC media hooks
-  try {
-    const agentIframe = document.querySelector('#agent-video-container iframe');
-    if (agentIframe) {
-      if (agentIframe.contentWindow) {
-        try {
-          agentIframe.contentWindow.postMessage({ action: 'end_call', type: 'end_call' }, '*');
-          agentIframe.contentWindow.postMessage('end_call', '*');
-        } catch(e){}
-      }
-      agentIframe.src = 'about:blank';
-      agentIframe.style.display = 'none';
-    }
-  } catch (e) {
-    console.error("Error freeing iframe on unload:", e);
+  // 4. Teardown browser speech engine
+  if (window.destroySpeechEngine) {
+    window.destroySpeechEngine();
   }
 }
 
