@@ -326,7 +326,7 @@ $levelDescriptions = [
         </button>
         <!-- END OPTION C -->
 
-        <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
+        <div class="avatar-circle" id="btn-open-account-modal" title="Account Settings"><?php echo htmlspecialchars($initials); ?></div>
         <a href="../logout.php" class="btn btn-outline-header" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
     </div>

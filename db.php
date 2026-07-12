@@ -86,6 +86,7 @@ function initSchema() {
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS trugen_key_scope VARCHAR(50) DEFAULT 'invite_only'");
     $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS resume_path TEXT");
     $db->exec("ALTER TABLE users ALTER COLUMN resume_path TYPE TEXT");
+    $db->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS has_password BOOLEAN NOT NULL DEFAULT TRUE");
 
     // Per-task AI models now live in config/models.php; custom AI keys are no longer supported
     $db->exec("ALTER TABLE users DROP COLUMN IF EXISTS custom_gemini_api_key");

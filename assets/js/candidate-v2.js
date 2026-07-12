@@ -973,6 +973,78 @@ const initCandidateHub = () => {
       setTimeout(() => document.getElementById('input-option-c').focus(), 50);
     });
   }
+
+  // --- Account Settings Modal Logic ---
+  const accountModal = document.getElementById('account-modal');
+  const btnOpenAccount = document.getElementById('btn-open-account-modal');
+  const btnCloseAccount = document.getElementById('btn-close-account-modal');
+  const formAccount = document.getElementById('form-account');
+
+  if (btnOpenAccount) {
+    btnOpenAccount.addEventListener('click', () => accountModal.classList.add('active'));
+  }
+  if (btnCloseAccount) {
+    btnCloseAccount.addEventListener('click', () => {
+      accountModal.classList.remove('active');
+      formAccount.reset();
+    });
+  }
+  if (formAccount) {
+    formAccount.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPass = document.getElementById('input-new-password').value;
+      const confirmPass = document.getElementById('input-confirm-password').value;
+      if (newPass || confirmPass) {
+        if (newPass !== confirmPass) { showToast('New password and confirmation do not match.', 'error'); return; }
+        if (newPass.length < 6) { showToast('New password must be at least 6 characters long.', 'error'); return; }
+      }
+      const btnSubmit = document.getElementById('btn-submit-account');
+      const originalHtml = btnSubmit.innerHTML;
+      btnSubmit.innerHTML = '<span class="spinner"></span> Saving...';
+      btnSubmit.disabled = true;
+
+      const formData = new URLSearchParams(new FormData(formAccount));
+      formData.append('action', 'update_account');
+
+      try {
+        const res = await fetch('ajax.php', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          showToast(data.message || 'Error updating account', 'error');
+          btnSubmit.innerHTML = originalHtml;
+          btnSubmit.disabled = false;
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+        btnSubmit.innerHTML = originalHtml;
+        btnSubmit.disabled = false;
+      }
+    });
+  }
+
+  window.togglePasswordVisibility = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const openPaths = btn.querySelectorAll('.eye-open');
+    const closedPath = btn.querySelector('.eye-closed');
+    if (input.type === 'password') {
+      input.type = 'text';
+      openPaths.forEach(p => p.style.display = 'none');
+      closedPath.style.display = 'block';
+      btn.style.color = 'var(--color-brand-primary)';
+    } else {
+      input.type = 'password';
+      openPaths.forEach(p => p.style.display = 'block');
+      closedPath.style.display = 'none';
+      btn.style.color = 'var(--color-text-muted)';
+    }
+  };
 };
 
 if (document.readyState === 'loading') {

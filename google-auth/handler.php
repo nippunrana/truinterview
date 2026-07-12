@@ -133,7 +133,7 @@ try {
 
         try {
             // Insert user
-            $stmt = $db->prepare("INSERT INTO users (email, password_hash, role, full_name) VALUES (:email, :password_hash, :role, :full_name) RETURNING id");
+            $stmt = $db->prepare("INSERT INTO users (email, password_hash, role, full_name, has_password) VALUES (:email, :password_hash, :role, :full_name, FALSE) RETURNING id");
             $stmt->execute([
                 'email' => $email,
                 'password_hash' => $passwordHash,

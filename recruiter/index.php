@@ -62,6 +62,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit();
 }
 
+// Check for update_account action (AJAX POST) - change password / full name
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_account') {
+    header('Content-Type: application/json');
+    $newFullName = trim($_POST['full_name'] ?? '');
+    $currentPassword = $_POST['current_password'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+
+    try {
+        if (empty($newFullName)) {
+            throw new Exception("Full name cannot be empty.");
+        }
+        if (strlen($newFullName) > 150) {
+            throw new Exception("Full name is too long.");
+        }
+
+        $wantsPasswordChange = !empty($newPassword) || !empty($confirmPassword);
+        if ($wantsPasswordChange) {
+            if (!empty($userFull['has_password']) && empty($currentPassword)) {
+                throw new Exception("Please enter your current password.");
+            }
+            if (empty($newPassword) || empty($confirmPassword)) {
+                throw new Exception("To change your password, fill in both new password fields.");
+            }
+            if ($newPassword !== $confirmPassword) {
+                throw new Exception("New password and confirmation do not match.");
+            }
+            if (strlen($newPassword) < 6) {
+                throw new Exception("New password must be at least 6 characters long.");
+            }
+            changeUserPassword($user['id'], $currentPassword, $newPassword);
+        }
+
+        updateUserFullName($user['id'], $newFullName);
+        $_SESSION['user']['full_name'] = $newFullName;
+
+        echo json_encode(['success' => true, 'message' => 'Account updated successfully.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit();
+}
+
 // Check for delete_link action (AJAX POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_link') {
     header('Content-Type: application/json');
@@ -276,7 +319,7 @@ $levelNames = [
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
         </button>
-        <div class="avatar-circle"><?php echo htmlspecialchars($initials); ?></div>
+        <div class="avatar-circle" id="btn-open-account-modal" title="Account Settings"><?php echo htmlspecialchars($initials); ?></div>
         <a href="../logout.php" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">Log Out</a>
       </div>
     </div>
@@ -710,6 +753,82 @@ $levelNames = [
     </div>
   </div>
 
+  <!-- Account Settings Modal -->
+  <div class="modal-overlay" id="account-modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <h2 style="margin-bottom: var(--space-4); display: flex; align-items: center; gap: 8px;">
+        <svg style="width: 24px; height: 24px; color: var(--color-brand-primary);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"></path></svg>
+        Account Settings
+      </h2>
+
+      <form id="form-account" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="input-account-full-name">Full Name</label>
+          <input type="text" id="input-account-full-name" name="full_name" class="form-input" value="<?php echo htmlspecialchars($userFull['full_name'] ?? $user['full_name']); ?>" required autocomplete="name">
+        </div>
+
+        <div style="border-top: 1px solid var(--color-border); padding-top: var(--space-4);">
+          <?php if (!empty($userFull['has_password'])): ?>
+          <div style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary); margin-bottom: var(--space-1);">Change Password</div>
+          <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-bottom: var(--space-3);">Leave blank if you don't want to change your password.</div>
+          <?php else: ?>
+          <div style="font-weight: 700; font-size: var(--text-sm); color: var(--color-text-primary); margin-bottom: var(--space-1);">Set Password</div>
+          <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-bottom: var(--space-3);">You signed in with Google. Set a password to also enable email + password login.</div>
+          <?php endif; ?>
+
+          <?php if (!empty($userFull['has_password'])): ?>
+          <div class="form-group" style="position: relative;">
+            <label class="form-label">Current Password</label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="password" id="input-current-password" name="current_password" class="form-input" placeholder="Enter current password" autocomplete="current-password" style="width: 100%; padding-right: 40px;">
+              <button type="button" onclick="togglePasswordVisibility('input-current-password', this)" style="position: absolute; right: 12px; background: transparent; border: none; cursor: pointer; color: var(--color-text-muted); display: flex; align-items: center; padding: 0;">
+                <svg class="eye-icon" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path class="eye-closed" style="display: none;" stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <?php endif; ?>
+
+          <div class="form-group" style="position: relative;">
+            <label class="form-label">New Password</label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="password" id="input-new-password" name="new_password" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" style="width: 100%; padding-right: 40px;">
+              <button type="button" onclick="togglePasswordVisibility('input-new-password', this)" style="position: absolute; right: 12px; background: transparent; border: none; cursor: pointer; color: var(--color-text-muted); display: flex; align-items: center; padding: 0;">
+                <svg class="eye-icon" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path class="eye-closed" style="display: none;" stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group" style="position: relative; margin-bottom: 0;">
+            <label class="form-label">Confirm New Password</label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <input type="password" id="input-confirm-password" name="confirm_password" class="form-input" placeholder="Re-enter new password" autocomplete="new-password" style="width: 100%; padding-right: 40px;">
+              <button type="button" onclick="togglePasswordVisibility('input-confirm-password', this)" style="position: absolute; right: 12px; background: transparent; border: none; cursor: pointer; color: var(--color-text-muted); display: flex; align-items: center; padding: 0;">
+                <svg class="eye-icon" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                  <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  <path class="eye-closed" style="display: none;" stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2);">
+          <button type="button" class="btn btn-outline" id="btn-close-account-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-account">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Delete Confirmation Modal -->
   <div class="modal-overlay" id="delete-confirm-modal">
     <div class="modal-content" style="max-width: 450px; text-align: center; padding: var(--space-6);">
@@ -791,6 +910,16 @@ $levelNames = [
       settingsModal.classList.remove('active');
     });
 
+    const accountModal = document.getElementById('account-modal');
+    document.getElementById('btn-open-account-modal').addEventListener('click', () => {
+      accountModal.classList.add('active');
+    });
+
+    document.getElementById('btn-close-account-modal').addEventListener('click', () => {
+      accountModal.classList.remove('active');
+      document.getElementById('form-account').reset();
+    });
+
     let linkToDeleteId = null;
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
     const deleteModalRole = document.getElementById('delete-modal-role');
@@ -833,6 +962,7 @@ $levelNames = [
     window.addEventListener('click', (e) => {
       if (e.target === createModal) createModal.classList.remove('active');
       if (e.target === settingsModal) settingsModal.classList.remove('active');
+      if (e.target === accountModal) accountModal.classList.remove('active');
       if (e.target === deleteConfirmModal) {
         deleteConfirmModal.classList.remove('active');
         linkToDeleteId = null;
@@ -921,6 +1051,49 @@ $levelNames = [
         } catch (err) {
           showToast('Network error', 'error');
           btnSubmit.innerHTML = 'Save Settings';
+          btnSubmit.disabled = false;
+        }
+      });
+    }
+
+    // Account settings submit logic
+    const formAccount = document.getElementById('form-account');
+    if (formAccount) {
+      formAccount.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPass = document.getElementById('input-new-password').value;
+        const confirmPass = document.getElementById('input-confirm-password').value;
+        if (newPass || confirmPass) {
+          if (newPass !== confirmPass) { showToast('New password and confirmation do not match.', 'error'); return; }
+          if (newPass.length < 6) { showToast('New password must be at least 6 characters long.', 'error'); return; }
+        }
+        const btnSubmit = document.getElementById('btn-submit-account');
+        const originalHtml = btnSubmit.innerHTML;
+        btnSubmit.innerHTML = '<span class="spinner"></span> Saving...';
+        btnSubmit.disabled = true;
+
+        const formData = new URLSearchParams(new FormData(formAccount));
+        formData.append('action', 'update_account');
+
+        try {
+          const res = await fetch('index.php', {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            showToast(data.message || 'Error updating account', 'error');
+            btnSubmit.innerHTML = originalHtml;
+            btnSubmit.disabled = false;
+          }
+        } catch (err) {
+          showToast('Network error', 'error');
+          btnSubmit.innerHTML = originalHtml;
           btnSubmit.disabled = false;
         }
       });

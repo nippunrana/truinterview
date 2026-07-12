@@ -21,6 +21,35 @@ function verifyPassword($password, $hash) {
 }
 
 /**
+ * Change (or set) a user's password. Accounts with no known password
+ * (e.g. Google-only signups, has_password = FALSE) skip current-password
+ * verification since the caller is already authenticated via their session.
+ */
+function changeUserPassword($userId, $currentPassword, $newPassword) {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT password_hash, has_password FROM users WHERE id = :id");
+    $stmt->execute(['id' => $userId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        throw new Exception("User not found.");
+    }
+    if ($row['has_password'] && !verifyPassword($currentPassword, $row['password_hash'])) {
+        throw new Exception("Current password is incorrect.");
+    }
+    $stmt = $db->prepare("UPDATE users SET password_hash = :password_hash, has_password = TRUE WHERE id = :id");
+    $stmt->execute(['password_hash' => hashPassword($newPassword), 'id' => $userId]);
+}
+
+/**
+ * Update a user's full name
+ */
+function updateUserFullName($userId, $fullName) {
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE users SET full_name = :full_name WHERE id = :id");
+    $stmt->execute(['full_name' => $fullName, 'id' => $userId]);
+}
+
+/**
  * Register a new user and return user info
  */
 function registerUser($email, $password, $fullName, $role) {

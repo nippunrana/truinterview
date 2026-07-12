@@ -615,5 +615,51 @@ if ($action === 'delete_global_resume') {
     exit;
 }
 
+if ($action === 'update_account') {
+    $newFullName = trim($_POST['full_name'] ?? '');
+    $currentPassword = $_POST['current_password'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+
+    try {
+        if (empty($newFullName)) {
+            throw new Exception("Full name cannot be empty.");
+        }
+        if (strlen($newFullName) > 150) {
+            throw new Exception("Full name is too long.");
+        }
+
+        $db = getDB();
+        $stmt = $db->prepare("SELECT has_password FROM users WHERE id = :id");
+        $stmt->execute(['id' => $user['id']]);
+        $hasPassword = $stmt->fetchColumn();
+
+        $wantsPasswordChange = !empty($newPassword) || !empty($confirmPassword);
+        if ($wantsPasswordChange) {
+            if ($hasPassword && empty($currentPassword)) {
+                throw new Exception("Please enter your current password.");
+            }
+            if (empty($newPassword) || empty($confirmPassword)) {
+                throw new Exception("To change your password, fill in both new password fields.");
+            }
+            if ($newPassword !== $confirmPassword) {
+                throw new Exception("New password and confirmation do not match.");
+            }
+            if (strlen($newPassword) < 6) {
+                throw new Exception("New password must be at least 6 characters long.");
+            }
+            changeUserPassword($user['id'], $currentPassword, $newPassword);
+        }
+
+        updateUserFullName($user['id'], $newFullName);
+        $_SESSION['user']['full_name'] = $newFullName;
+
+        echo json_encode(['success' => true, 'message' => 'Account updated successfully.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 exit;
