@@ -453,6 +453,9 @@ try {
         $agentMsgCount = (int)$stmt->fetchColumn();
         
         if ($agentMsgCount === 0) {
+            // Associate conversation ID with session immediately
+            updateSessionConversation($sessionId, $convId);
+            
             // Write agent greeting to transcripts log
             logTranscript($sessionId, 'AGENT', $greetingText);
             

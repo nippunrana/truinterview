@@ -593,6 +593,6 @@ if (!empty($inviteCode)) {
     window.initBrowserProctor = initBrowserProctor;
     window.destroyBrowserProctor = destroyBrowserProctor;
   </script>
-  <script src="assets/js/interview.js" defer></script>
+  <script src="assets/js/interview.js?v=<?php echo filemtime(__DIR__ . '/assets/js/interview.js'); ?>" defer></script>
 </body>
 </html>

@@ -869,8 +869,8 @@ window.loadAgentIframe = function() {
   iframe.style.width = '100%';
   iframe.style.height = '100%';
   iframe.style.border = 'none';
-  // Restrict to microphone and autoplay to prevent iframe camera leaks
-  iframe.setAttribute('allow', 'microphone; autoplay');
+  // Enable camera, microphone, autoplay, and display-capture for WebRTC connection as per TruGen AI guidelines
+  iframe.setAttribute('allow', 'camera; microphone; autoplay; display-capture');
   container.appendChild(iframe);
 };
 

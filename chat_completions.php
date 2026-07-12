@@ -50,6 +50,25 @@ function streamOpenAIResponse($text, $model = 'truinterview') {
     $id = "chatcmpl-" . uniqid();
     $created = time();
     
+    // Send initial assistant role chunk for strict protocol compatibility
+    $roleChunk = [
+        "id" => $id,
+        "object" => "chat.completion.chunk",
+        "created" => $created,
+        "model" => $model,
+        "choices" => [
+            [
+                "index" => 0,
+                "delta" => [
+                    "role" => "assistant"
+                ],
+                "finish_reason" => null
+            ]
+        ]
+    ];
+    echo "data: " . json_encode($roleChunk) . "\n\n";
+    flush();
+    
     // Split text into words/spaces to simulate natural streaming chunks
     $words = preg_split('/(\s+)/', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
     
