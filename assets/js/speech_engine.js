@@ -6,7 +6,6 @@ let recognition = null;
 let isSpeaking = false;
 let isListening = false;
 let engineDestroyed = false;
-let lastAgentTranscriptIndex = -1;
 let lottieInstance = null;
 
 // Lottie animation URLs for each state (free, CDN-hosted, no account needed)
