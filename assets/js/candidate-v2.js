@@ -65,20 +65,26 @@ const initCandidateHub = () => {
   const createModal = document.getElementById('create-modal');
   const btnOpenCreate = document.getElementById('btn-open-create-modal');
   const btnCloseCreate = document.getElementById('btn-close-create-modal');
+  const btnXCloseCreate = document.getElementById('btn-x-close-create-modal');
   const formCreate = document.getElementById('form-create-profile');
-  
+
   if (btnOpenCreate) {
     btnOpenCreate.addEventListener('click', () => {
       createModal.classList.add('active');
       document.getElementById('role_title').focus();
     });
   }
-  
+
+  function closeCreateModal() {
+    createModal.classList.remove('active');
+    formCreate.reset();
+  }
+
   if (btnCloseCreate) {
-    btnCloseCreate.addEventListener('click', () => {
-      createModal.classList.remove('active');
-      formCreate.reset();
-    });
+    btnCloseCreate.addEventListener('click', closeCreateModal);
+  }
+  if (btnXCloseCreate) {
+    btnXCloseCreate.addEventListener('click', closeCreateModal);
   }
 
   // Handle Create Profile
@@ -106,7 +112,7 @@ const initCandidateHub = () => {
         const data = await res.json();
         
         if (data.success) {
-          window.location.reload();
+          window.location.href = window.location.pathname + '?open_setup=' + encodeURIComponent(data.profile_id);
         } else {
           showToast(data.message || 'Error creating profile', 'error');
           btnSubmit.innerHTML = '<span>Create Profile</span>';
@@ -381,10 +387,24 @@ const initCandidateHub = () => {
     });
   });
 
+  function closeChooseResumeModal() {
+    chooseResumeModal.classList.remove('active');
+  }
+
   if (btnCrsCancel) {
-    btnCrsCancel.addEventListener('click', () => {
-      chooseResumeModal.classList.remove('active');
-    });
+    btnCrsCancel.addEventListener('click', closeChooseResumeModal);
+  }
+  const btnCrsXClose = document.getElementById('btn-crs-x-close');
+  if (btnCrsXClose) {
+    btnCrsXClose.addEventListener('click', closeChooseResumeModal);
+  }
+
+  // Auto-open the Setup Profile wizard right after a new role profile is created
+  const openSetupId = new URLSearchParams(window.location.search).get('open_setup');
+  if (openSetupId) {
+    const targetBtn = document.querySelector('.btn-choose-resume[data-profile-id="' + openSetupId + '"]');
+    if (targetBtn) targetBtn.click();
+    window.history.replaceState({}, '', window.location.pathname);
   }
 
   // Handle "Work with Base Resume"

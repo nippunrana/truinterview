@@ -102,7 +102,10 @@
 <!-- Create Profile Modal -->
 <div class="modal-overlay" id="create-modal">
   <div class="modal-content">
-    <h2 style="margin-bottom: var(--space-2);">Create Role Profile</h2>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <h2 style="margin-bottom: var(--space-2);">Create Role Profile</h2>
+      <button type="button" class="modal-close-btn" id="btn-x-close-create-modal" aria-label="Close">&times;</button>
+    </div>
     <p style="color: var(--color-text-secondary); font-size: var(--text-sm); margin-bottom: var(--space-5);">Enter the title of the job role you want to prepare for (e.g. "Senior Frontend Developer", "AI Engineer").</p>
     
     <form id="form-create-profile">
@@ -201,13 +204,16 @@
 <!-- Choose Resume Source Modal -->
 <div class="modal-overlay" id="choose-resume-source-modal">
   <div class="modal-content" style="max-width: 500px;">
-    <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-brand-primary); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
-      <svg style="width: 24px; height: 24px; color: currentColor;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-      </svg>
-      Setup Profile Resume
-    </h3>
-    
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <h3 style="display: flex; align-items: center; gap: var(--space-2); color: var(--color-brand-primary); margin-bottom: var(--space-3); font-size: var(--text-xl); font-family: 'Outfit', sans-serif;">
+        <svg style="width: 24px; height: 24px; color: currentColor;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Setup Profile Resume
+      </h3>
+      <button type="button" class="modal-close-btn" id="btn-crs-x-close" aria-label="Close">&times;</button>
+    </div>
+
     <div id="crs-step-1">
       <div style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: var(--space-6);">
         Would you like to use your existing base resume or upload a completely new resume specifically for this role?
