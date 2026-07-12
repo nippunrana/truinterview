@@ -845,6 +845,54 @@ try {
         exit;
     }
     
+    if ($action === 'transcribe') {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            throw new Exception("Method not allowed. Use POST.");
+        }
+        if (!isset($_FILES['audio'])) {
+            throw new Exception("No audio file uploaded");
+        }
+        
+        $file = $_FILES['audio'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Upload error: " . $file['error']);
+        }
+        
+        // Ensure temp folder exists in workspace (inside uploads which is writable)
+        $tempDir = __DIR__ . '/uploads/temp';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+        
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        if (empty($extension)) {
+            $extension = 'webm';
+        }
+        $tempPath = $tempDir . '/transcription_' . uniqid() . '.' . $extension;
+        
+        if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
+            throw new Exception("Failed to save uploaded audio file");
+        }
+        
+        try {
+            $mimeType = $file['type'] ?: 'audio/webm';
+            $transcriptionText = transcribeAudio($tempPath, $mimeType);
+            
+            echo json_encode([
+                "status" => "success",
+                "text" => $transcriptionText
+            ]);
+        } catch (Exception $e) {
+            file_put_contents(__DIR__ . '/uploads/debug_transcribe.log', date('[Y-m-d H:i:s] ') . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            throw $e;
+        } finally {
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+        }
+        exit;
+    }
+
     if ($action === 'proctor_status') {
         $sessionId = $_GET['session_id'] ?? $_COOKIE['session_id'] ?? '';
         if (empty($sessionId)) {

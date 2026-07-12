@@ -201,3 +201,45 @@ function pdfToContentParts($filePath, $maxPages = 6) {
     }
     return $parts;
 }
+
+/**
+ * Transcribe audio using the local self-hosted Whisper FastAPI server.
+ * $audioFilePath is the path to the recorded audio file on disk.
+ */
+function transcribeAudio($audioFilePath, $mimeType = 'audio/webm') {
+    // Local Whisper service endpoint
+    $url = 'http://127.0.0.1:8090/transcribe';
+
+    // Create CURLFile
+    $cfile = new CURLFile($audioFilePath, $mimeType, basename($audioFilePath));
+
+    $fields = [
+        'file' => $cfile
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // give it up to 60s for long audio
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        throw new Exception("Curl error when calling local Speech-to-Text service: " . $error);
+    }
+
+    if ($httpCode !== 200) {
+        throw new Exception("Local STT service returned HTTP code {$httpCode}: " . $response);
+    }
+
+    $data = json_decode($response, true);
+    if (!$data) {
+        throw new Exception("Invalid JSON response from local STT service: " . $response);
+    }
+
+    return $data['text'] ?? '';
+}

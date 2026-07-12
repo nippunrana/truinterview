@@ -69,7 +69,7 @@ export async function initProctor(sessionId, onStatusChange, onLandmarks) {
                 height: { ideal: 480 },
                 facingMode: "user"
             },
-            audio: false
+            audio: true
         });
         
         // Create off-screen video element

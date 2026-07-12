@@ -698,10 +698,36 @@ if (!empty($inviteCode)) {
           </div>
 
           <!-- Dialog Transcript Row -->
-          <div class="console-section" style="background: rgba(0,0,0,0.1);">
+          <div class="console-section" style="background: rgba(0,0,0,0.1); display: flex; flex-direction: column;">
             <h4 style="margin-bottom: var(--space-2); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary);">Live Transcripts</h4>
-            <div class="transcripts-feed" id="transcripts-feed">
+            <div class="transcripts-feed" id="transcripts-feed" style="flex: 1; overflow-y: auto;">
               <!-- Transcript elements injected here -->
+            </div>
+            <!-- Voice and Keyboard Input Container -->
+            <div id="stt-input-container" style="margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: var(--space-2);">
+              
+              <!-- Waveform Visualizer -->
+              <div id="stt-waveform-container" style="display: none; align-items: center; justify-content: center; gap: 4px; height: 32px; margin-bottom: var(--space-2); background: rgba(0,0,0,0.15); border-radius: var(--radius-inner); border: 1px dashed var(--color-border); padding: 0 var(--space-3);">
+                <span style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-right: var(--space-2); font-weight: 500;">Voice Input Level:</span>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+                <div class="bar" style="width: 3px; height: 4px; background: var(--color-accent); border-radius: 2px; transition: height 0.05s;"></div>
+              </div>
+
+              <div style="display: flex; gap: var(--space-2); align-items: center; justify-content: center;">
+                <input type="text" id="stt-input" style="display: none; flex: 1; background: var(--color-surface-elevated); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: var(--space-2) var(--space-3); border-radius: var(--radius-inner); font-family: inherit; font-size: var(--text-sm);" placeholder="Speak or type your response...">
+                <button id="stt-mic-btn" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--color-surface-elevated); border: 1px solid var(--color-border); color: var(--color-text-primary); cursor: pointer; transition: all 0.2s; flex-shrink: 0;" title="Mic Status">
+                  <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"></path>
+                  </svg>
+                </button>
+                <button id="stt-send-btn" style="display: none; padding: var(--space-2) var(--space-4); font-size: var(--text-sm); border-radius: var(--radius-inner); font-weight: 600; background: var(--color-accent); border: none; color: #fff; cursor: pointer; transition: background 0.2s; flex-shrink: 0;">Send</button>
+              </div>
             </div>
           </div>
 
