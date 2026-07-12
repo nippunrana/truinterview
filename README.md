@@ -1,6 +1,6 @@
 # TruInterview: AI Multimodal Technical Interviewer & Screening Platform
 
-TruInterview is a robust, interactive, web-based technical assessment and screening platform. It leverages the **Gemini 3.5 & 3.1 Family** (via cURL integrations) and **TruGen.ai** to deliver real-time audio interviews, monitor candidate screen sharing, evaluate code submissions via AI vision, administer interactive multiple-choice tests, and generate comprehensive evaluation dashboards for both recruiters and candidates.
+TruInterview is a robust, interactive, web-based technical assessment and screening platform. It leverages a **flexible, provider-agnostic AI Client** (integrated with **Fireworks AI** by default, supporting models like DeepSeek, Qwen, GLM, and Kimi via standard OpenAI-compatible endpoints) and **TruGen.ai** to deliver real-time audio interviews, monitor candidate screen sharing, evaluate code submissions via AI vision, administer interactive multiple-choice tests, and generate comprehensive evaluation dashboards for both recruiters and candidates.
 
 The application follows a lightweight, server-side design pattern requiring **no build or compilation step**, utilizing standard vanilla web technologies (HTML5, Vanilla CSS3, ES6+ JavaScript, PHP, and PostgreSQL) for direct execution.
 
@@ -12,25 +12,27 @@ The application follows a lightweight, server-side design pattern requiring **no
 *   **Dual Dashboards & Role-based Access**:
     *   **Candidate Dashboard (V2)**: Features multi-profile management allowing candidates to maintain up to 3 distinct career profiles (e.g., React Developer, PHP Engineer) with independent difficulty levels, category mappings, practice history, and assessment invite redemptions.
     *   **Recruiter Dashboard**: Allows recruiters to create direct invite links (`TRU-XXXXXX`) configured with job roles, description requirements, candidate passing levels, question counts, and automatic AI-powered category classification, eliminating the need for complex template configurations.
-*   **AI Resume Optimizer**: An integrated multi-phase wizard that extracts text from resumes (PDF/Doc/Docx via Gemini), runs a "Reality Check" (blind analysis of seniority and role match), conducts a "Gap Analysis" interview to let candidates address missing skills, performs computational date math verification (identifying overlaps and calculating experience duration), and generates an ATS-optimized, recruiter-ready Markdown rewrite using the Google XYZ impact formula (X accomplished, measured by Y, doing Z).
+*   **AI Resume Optimizer**: An integrated multi-phase wizard that extracts text from resumes (PDF/Doc/Docx via conversion to JPEG and parsed via AI vision), runs a "Reality Check" (blind analysis of seniority and role match), conducts a "Gap Analysis" interview to let candidates address missing skills, performs computational date math verification (identifying overlaps and calculating experience duration), and generates an ATS-optimized, recruiter-ready Markdown rewrite using the Google XYZ impact formula (X accomplished, measured by Y, doing Z).
 *   **Real-Time Audio Interview Agent**: Live conversational interview flow powered by a TruGen AI agent iframe, dynamically embedded within a clean user interface.
 *   **Pre-Interview Security Setup Wizard**: A strict linear environment check wizard that restricts browser support to Chromium-based engines (Chrome, Edge), enforces fullscreen mode, validates entire desktop screen sharing, and requests webcam/mic permissions step-by-step before dynamically loading the TruGen AI agent. Prevents concurrent sessions and permission overlay conflicts.
 *   **Intelligent Screen Context Sharing**: Periodic passive screen capturing (every 9 seconds) or active "Submit Code" snapshotting. The application captures screen contents into a high-resolution frame for AI vision-based analysis.
 *   **Advanced Browser-Native Proctoring**: Includes multi-monitor detection (blocks secondary screens), tab/app focus tracking, clipboard restrictions (copy/paste blocking), cursor boundary tracking, and DevTools prevention.
-*   **Automated Candidate Conduct Monitoring**: Leverages Gemini function calling and AI vision to track candidate focus and professional conduct. It analyzes webcam snapshots for anomalies (e.g., missing face, multiple faces, gaze away) and inappropriate dialogue, triggering formal system warnings and leading to automated session termination after repeated violations.
-*   **Dynamic MCQ & Open-Ended Assessments**: Dynamically shifts status during interviews to trigger multiple-choice questions or open-ended prompts. MCQ question sets are prepared dynamically on session startup based on role definitions and saved in the session database (stored in `q_a` JSONB). Uses Gemini to classify voice intents for reading preferences (e.g., read aloud vs. self-read) and to extract selected options (A, B, C, or D) from candidate utterances.
+*   **Automated Candidate Conduct Monitoring**: Leverages AI function calling and AI vision to track candidate focus and professional conduct. It analyzes webcam snapshots for anomalies (e.g., missing face, multiple faces, gaze away) and inappropriate dialogue, triggering formal system warnings and leading to automated session termination after repeated violations.
+*   **Dynamic MCQ & Open-Ended Assessments**: Dynamically shifts status during interviews to trigger multiple-choice questions or open-ended prompts. MCQ question sets are prepared dynamically on session startup based on role definitions and saved in the session database (stored in `q_a` JSONB). Uses AI to classify voice intents for reading preferences (e.g., read aloud vs. self-read) and to extract selected options (A, B, C, or D) from candidate utterances.
 *   **Clean Light-Mode Aesthetic**: Refined premium styling with custom variables, smooth transitions, and elegant shadow details.
-*   **Automated Evaluation Reports**: Post-interview analysis detailing Communication, Problem Solving, and Code Quality metrics (graded 1–10) alongside key strengths, development areas, and a synthesized feedback summary generated by Gemini. Automatically increases a candidate's profile level if they score $\ge$ 60% on practice runs.
+*   **Automated Evaluation Reports**: Post-interview analysis detailing Communication, Problem Solving, and Code Quality metrics (graded 1–10) alongside key strengths, development areas, and a synthesized feedback summary generated by AI. Automatically increases a candidate's profile level if they score $\ge$ 60% on practice runs.
 
 ---
 
 ## 🛠️ Technology Stack
 
 *   **Frontend**: HTML5, Vanilla CSS3 (Custom Properties/Variables, CSS Grid, Flexbox, custom keyframes), Vanilla JavaScript (ES6, MediaDevices API, Canvas API for capturing high-resolution screen share context).
-*   **Backend**: PHP 7.4+ (cURL integration client for Gemini APIs and TruGen SDK actions, webhooks controller, database connectivity layer, custom auth validation middleware).
+*   **Backend**: PHP 7.4+ (cURL integration client for OpenAI-compatible AI APIs and TruGen SDK actions, webhooks controller, database connectivity layer, custom auth validation middleware). Requires `php-imagick` extension for PDF rendering.
 *   **Database**: PostgreSQL 12+ (stores session state machine variables, conversation transcripts, candidate responses, users, companies, link details, categories, and candidate profiles).
 *   **AI Models & Engines**:
-    *   **Gemini 3.5 & 3.1 Families (Pro, Flash, Flash-Lite)**: Dynamically routes dialogue tasks, vision parsing (screen context/proctoring), resume optimization tasks (Reality Check, Gap Analysis, date parsing, rewrites), and grading evaluation tasks according to user preferences/practice overrides. Supports bring-your-own-key capability and function calling for conduct monitoring.
+    *   **Provider-Agnostic AI Client System**: Dynamically routes dialogue, vision parsing (screen context/proctoring), resume optimization tasks (Reality Check, Gap Analysis, date parsing, rewrites), and grading evaluation tasks.
+        *   **Fireworks AI (Default Provider)**: Employs standard model mappings (e.g., `deepseek-v4-flash` / `deepseek-v4-pro`, `glm-5p2`, `qwen3p7-plus`, `kimi-k2p7-code`) configured via a centralized task registry.
+        *   **OpenAI-Compatible standard**: Connects to any compatible `/chat/completions` endpoint, supporting customizable parameters and task overrides.
     *   **TruGen.ai**: Facilitates real-time low-latency video/audio interview streams, audio transcription hook triggers, and TTS (Text-to-Speech) conversational injections. Supports custom TruGen agent setups.
 
 ---
@@ -46,12 +48,12 @@ sequenceDiagram
     actor Recruiter as Recruiter (Dashboard)
     participant Server as Backend API (PHP)
     participant DB as PostgreSQL DB
-    participant Gemini as Gemini 3.5 / 3.1
+    participant AI as AI Client / Provider (Fireworks)
     participant TruGen as TruGen AI Agent
 
     Recruiter->>Server: Creates Invite Link (code, job role, description, counts)
-    Server->>Gemini: Classify job role to category & match percent
-    Gemini-->>Server: Return category and percentage
+    Server->>AI: Classify job role to category & match percent
+    AI-->>Server: Return category and percentage
     Server->>DB: Save link details with category info
     Server-->>Recruiter: Present shareable link
     
@@ -60,8 +62,8 @@ sequenceDiagram
     Server-->>Candidate: Pre-fill candidate registration screen
     
     Candidate->>Server: Submits verification & starts
-    Server->>Gemini: Prepare dynamic MCQs & open questions based on role
-    Gemini-->>Server: Return QA set (JSON)
+    Server->>AI: Prepare dynamic MCQs & open questions based on role
+    AI-->>Server: Return QA set (JSON)
     Server->>DB: Create Session (Status: STARTED, saves q_a JSONB)
     Server-->>Candidate: Return Session ID
     note over Candidate: Pre-check Setup Wizard
@@ -78,8 +80,8 @@ sequenceDiagram
         Server->>Candidate: Acknowledge Frame Uploaded
         Candidate->>TruGen: Speaks response / asks question
         TruGen->>Server: Webhook: utterance_committed
-        Server->>Gemini: Query vision/chat response with screenshot context
-        Gemini-->>Server: Return technical reply
+        Server->>AI: Query vision/chat response with screenshot context
+        AI-->>Server: Return technical reply
         Server->>TruGen: PUT /speak (Inject response to candidate)
     end
 
@@ -90,8 +92,8 @@ sequenceDiagram
         Server->>TruGen: Speak MCQ preference prompt
         Candidate->>TruGen: "I want to read it myself"
         TruGen->>Server: Webhook: utterance_committed
-        Server->>Gemini: Classify utterance preference
-        Gemini-->>Server: Return SELF_READ
+        Server->>AI: Classify utterance preference
+        AI-->>Server: Return SELF_READ
         Server->>DB: Update Preference (SILENT)
         Candidate->>Server: Renders MCQ cards, submits choices
         Server->>DB: Log candidate answer & correctness
@@ -101,11 +103,32 @@ sequenceDiagram
     Candidate->>Server: Clicks "End Interview"
     Server->>DB: Update Session Status (COMPLETED)
     Server->>TruGen: Terminate Conversation (DELETE /conversation)
-    Server->>Gemini: Compile final evaluation scorecard
-    Gemini-->>Server: Return structured scorecard JSON
+    Server->>AI: Compile final evaluation scorecard
+    AI-->>Server: Return structured scorecard JSON
     Server->>DB: Update final_score JSONB & promote profile level if applicable
     Server-->>Candidate: Render Report Summary
 ```
+
+### 🤖 Provider-Agnostic AI Client System
+
+All AI interactions in the application are unified through two files, allowing flexible model and provider swaps without changing business logic:
+
+*   **`config/models.php`**: The single source of truth for the AI provider and model task mappings. By default, it configures Fireworks AI as the provider, pointing to a standard OpenAI-compatible base URL. It maps tasks (e.g. `interview_chat`, `evaluation`, `proctor_vision`, `pdf_extract`) to specific models and default parameters.
+*   **`ai_client.php`**: The HTTP client wrapper that handles the actual request/response lifecycle. Exposes:
+    *   `callAI($messages, $task, $options)`: Returns cleaned text replies (strips thinking tags like `<think>`).
+    *   `callAIRaw($messages, $task, $options)`: Returns complete API response structure (essential for tool/function calling).
+    *   `pdfToContentParts($filePath)`: Renders PDF documents to JPEG images (via Imagick) to supply `image_url` data payloads for vision tasks.
+
+#### Task Registry Map
+
+Task configurations currently defined in `config/models.php` include:
+*   **Live Assessment**: `interview_chat` (dialogue), `interview_chat_vision` (screen vision), `intent_classification` (UT preference class)
+*   **Conduct & Monitoring**: `proctor_vision` (anomaly check), `evaluation_vision` (code submission grading)
+*   **Taxonomy & Assessment Prep**: `question_generation` (MCQ generation), `taxonomy_match` (role matching)
+*   **Resume Pipeline**: `pdf_extract` (image conversion extraction), `resume_qa` (gap follow-up), `resume_fix` (inline code edits), `optimizer_analysis` (Reality Check), `resume_rewrite` (Markdown rewrite generation)
+
+#### Request/Response Debug Logging
+Enable detailed execution traces by setting `AI_DEBUG=true` in `.env`. Complete raw JSON request payloads, response strings, and intermediate generated PDF images will be written to `uploads/ai_debug/<timestamp>_<task>_<uuid>/`.
 
 ---
 
@@ -288,10 +311,13 @@ DB_USER=truinterview_usr_1
 DB_PASSWORD=your_postgres_password
 
 # API Credentials
-GEMINI_API_KEY=your_gemini_api_key
+FIREWORKS_API_KEY=your_fireworks_api_key
 TRUGEN_API_KEY=your_trugen_api_key
 TRUGEN_AGENT_ID=your_trugen_agent_id
 GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+
+# Debug Logging
+AI_DEBUG=false
 ```
 
 ---
