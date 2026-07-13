@@ -1,8 +1,28 @@
-# TruInterview: AI Multimodal Technical Interviewer & Screening Platform
+# TruInterview: AI Multimodal Screening & Interview Platform
 
-TruInterview is a robust, interactive, web-based technical assessment and screening platform. It leverages a **flexible, provider-agnostic AI Client** (integrated with **Fireworks AI** by default, supporting models like DeepSeek, Qwen, GLM, and Kimi via standard OpenAI-compatible endpoints) and **TruGen.ai** to deliver real-time audio interviews, monitor candidate screen sharing, evaluate code submissions via AI vision, administer interactive multiple-choice tests, and generate comprehensive evaluation dashboards for both recruiters and candidates.
+### The Pain: Legacy Screening is Broken
+In modern recruitment, every open job posting gets flooded with hundreds of generic resumes. Hiring managers and recruiters are drowning in paperwork, while keyword-reliant legacy Applicant Tracking Systems (ATS) filter out high-potential, hands-on talent over arbitrary formatting or phrasing. Wasted engineering and management hours are spent conducting screening calls for candidates who look perfect on paper but fail basic practical assessments. At the same time, traditional written exams are easily bypassed with external AI lookup tools and fail to evaluate soft skills, communication, or the candidate's actual command of the job description.
+
+### The Solution: Merit-First, AI-Powered Conversations
+**TruInterview** is a secure, real-time, voice-first screening and assessment platform that conducts interviews on behalf of the company. It bypasses paper filters and static tests by evaluating candidates through real-time oral dialogue. By combining dynamic on-the-fly question generation, live voice intent classification, and browser-native proctoring (webcam analysis, multi-monitor blocking, screen-sharing checks), TruInterview validates a candidate's actual competence, integrity, and communication skills directly. 
+
+The application maps candidate capability onto a comprehensive **0-10 Skill Level system**, letting companies instantly filter for the most appropriate matches based on objective merit, while allowing candidates to directly reach companies looking for true talent.
 
 The application follows a lightweight, server-side design pattern requiring **no build or compilation step**, utilizing standard vanilla web technologies (HTML5, Vanilla CSS3, ES6+ JavaScript, PHP, and PostgreSQL) for direct execution.
+
+---
+
+## 📈 The TruInterview Leveling System
+TruInterview evaluates and grades candidates across core competencies (Communication, Problem Solving, and domain-specific knowledge) onto a standardized **Level 0 to 10 scale**. Unlike developer-only assessments, this framework is designed to classify competency across any field:
+
+| Level | Tier | Description |
+| :--- | :--- | :--- |
+| **0–1** | **Novice / Uninitiated** | Lacks basic conceptual vocabulary; unable to perform tasks without step-by-step guidance. |
+| **2–3** | **Elementary Practitioner** | Understands core terms and concepts; capable of handling basic, routine tasks with active supervision. |
+| **4–5** | **Proficient / Independent Contributor** | Possesses strong working knowledge of the domain; handles day-to-day operations and standard workflows independently. |
+| **6–7** | **Advanced / Specialist** | Demonstrates deep analytical understanding; capable of troubleshooting complex, non-routine scenarios. |
+| **8–9** | **Expert / Strategist** | Solves highly unstructured problems; designs strategies, architectures, or frameworks, and guides others. |
+| **10** | **Master / Domain Authority** | Exhibits world-class expertise; drives industry-level best practices and pioneering solutions. |
 
 ---
 
